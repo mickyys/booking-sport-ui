@@ -141,7 +141,7 @@ export default function App() {
         {currentView === 'info' && <LocationServices selectedCenter={selectedCenterId} />}
 
         {currentView === 'booking-status' && (
-          <div className="max-w-xl mx-auto py-20 px-4">
+          <div className="max-w-xl mx-auto px-4">
             {(storeLoading && !currentBooking) && (
               <div className="text-center">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-emerald-500 border-t-transparent mb-4"></div>

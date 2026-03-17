@@ -10,6 +10,7 @@ import { BookingCard } from '../components/booking/BookingCard';
 import { PastBookingItem } from '../components/booking/PastBookingItem';
 import { BookingCardSkeleton, PastBookingItemSkeleton } from '../components/booking/BookingSkeleton';
 import { DashboardHeader } from '../components/dashboard/DashboardHeader';
+import { CancellationModal } from '../components/booking/CancellationModal';
 import { AnimatePresence, motion } from 'motion/react';
 
 
@@ -59,11 +60,11 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user }) => {
         fetchPast();
     }, [fetchMyBookings, getAccessTokenSilently, user.name]);
 
-    const handleCancelBooking = async (id: string) => {
-        if (!id) return;
+    const handleCancelBooking = async (refundPercentage: number) => {
+        if (!bookingToCancel) return;
 
         try {
-            await cancelBooking(id, getAccessTokenSilently);
+            await cancelBooking(bookingToCancel, getAccessTokenSilently);
             // Actualizar el contador de confirmados si es necesario (opcional)
             fetchConfirmedCount(getAccessTokenSilently);
             // Refrescar las listas de bookings
@@ -78,7 +79,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user }) => {
 
     const selectedBooking = bookingToCancel ? myBookings.find(b => b.id === bookingToCancel) : null;
     const now = new Date();
-    const refundPercentage = selectedBooking ? (differenceInHours(parseISO(selectedBooking.date), now) >= 6 ? 100 : 90) : 100;
 
     // Simplification: just show future bookings
     const futureBookings = myBookings
@@ -86,7 +86,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user }) => {
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     // Past bookings are now fetched separately via old=true
-    console.log('Cancelación de booking:', bookingToCancel, 'Refund:', refundPercentage);
 
     return (
         <>
@@ -165,26 +164,13 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user }) => {
                 </div>
             </div>
             <AnimatePresence>
-                {!!bookingToCancel && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden max-h-[90vh] overflow-y-auto"
-                    >
-                        <div className="bg-slate-900 p-6 text-white flex justify-between items-start sticky top-0 z-10">
-                            <div>
-                                <h3 className="text-xl font-bold">Confirmar Reserva</h3>
-                                <p className="text-slate-400 text-sm mt-1">
-                                    {user ? `Reservando como ${user.name}` : 'Completa tus datos para reservar'}
-                                </p>
-                            </div>
-                            <button onClick={() => setBookingToCancel(null)} className="text-slate-400 hover:text-white">
-                                <X className="w-6 h-6" />
-                            </button>
-                        </div>
-                    </motion.div>
-                    </div>
+                {selectedBooking && (
+                    <CancellationModal
+                        booking={selectedBooking}
+                        court={courts.find(c => c.id === selectedBooking.courtId)!}
+                        onClose={() => setBookingToCancel(null)}
+                        onConfirm={handleCancelBooking}
+                    />
                 )}
             </AnimatePresence>
         </>
