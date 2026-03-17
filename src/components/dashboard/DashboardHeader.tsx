@@ -1,0 +1,61 @@
+import React from 'react';
+import { Settings, Star, Info } from 'lucide-react';
+import { UserProfile } from '../../types';
+
+interface DashboardHeaderProps {
+    user: UserProfile;
+}
+
+export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user }) => {
+    return (
+        <div className="flex flex-col gap-4 mb-8">
+            <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200 flex flex-col md:flex-row items-center gap-8">
+                <div className="relative">
+                    <img src={user.avatar} alt={user.name} className="w-32 h-32 rounded-full border-4 border-slate-100" />
+                    <div className="absolute bottom-0 right-0 bg-emerald-500 text-white p-2 rounded-full border-4 border-white">
+                        <Star className="w-5 h-5 fill-current" />
+                    </div>
+                </div>
+                <div className="text-center md:text-left flex-1">
+                    <h2 className="text-3xl font-bold text-slate-900 mb-2">Hola, {user.name}</h2>
+                    <p className="text-slate-500 mb-6">{user.email}</p>
+                    <div className="flex flex-wrap justify-center md:justify-start gap-4">
+                        <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100">
+                            <span className="block text-2xl font-bold text-slate-900">{user.stats?.matchesPlayed || 0}</span>
+                            <span className="text-sm text-slate-500">Reservas finalizadas</span>
+                        </div>                    
+                    </div>
+                </div>            
+            </div>
+
+            <div className="bg-white border border-slate-200 p-6 rounded-3xl flex flex-col gap-3">
+                <div className="flex items-center gap-2 text-emerald-800 font-bold mb-1">
+                    <Info className="w-5 h-5" />
+                    <span>Política de Cancelación</span>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="flex items-start gap-3">
+                        <span className="text-xl">✅</span>
+                        <p className="text-sm text-slate-700">
+                            <span className="font-bold text-slate-900 block">Hasta 6 horas antes:</span>
+                            recibirás <span className="font-bold text-emerald-600 text-base">100%</span> del pago.
+                        </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <span className="text-xl">⚡</span>
+                        <p className="text-sm text-slate-700">
+                            <span className="font-bold text-slate-900 block">Dentro de las 6 horas previas:</span>
+                            recibirás <span className="font-bold text-amber-600 text-base">90%</span> del pago.
+                        </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <span className="text-xl">ℹ️</span>
+                        <p className="text-sm text-slate-500 italic mt-1">
+                            Puedes cancelar tu reserva en cualquier momento y ver el reembolso correspondiente.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
