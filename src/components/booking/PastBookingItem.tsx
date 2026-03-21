@@ -13,7 +13,10 @@ export const PastBookingItem: React.FC<PastBookingItemProps> = ({ booking }) => 
                     {format(parseISO(booking.date), "d MMM yyyy")} {booking.hour ? `• ${booking.hour}:00 hrs` : ''}
                 </p>
                 <p className="text-xs text-slate-500">
-                    {booking.sport_center_name} • {booking.court_name}
+                    {booking.sportCenterName}
+                </p>
+                <p className="text-xs text-slate-500">
+                    {booking.courtName}
                 </p>
             </div>
             <span className="text-sm font-medium text-slate-600">

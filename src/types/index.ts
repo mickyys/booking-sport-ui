@@ -20,6 +20,8 @@ export interface SportCenter {
   phone: string;
   email: string;
   image: string;
+  cancellationHours?: number;
+  retentionPercent?: number;
 }
 
 export interface Court {
@@ -46,9 +48,13 @@ export interface Booking {
   courtId: string;
   centerId: string;
   date: string;
+  hour: number;
+  sportCenterName: string;
+  courtName: string;
   price: number;
-  status: 'confirmed' | 'cancelled';
-  createdAt: number;
+  fintocPaymentIntentId?: string;
+  status: 'confirmed' | 'cancelled' | 'pending';
+  createdAt: string;
   paymentMethod: 'mercadopago' | 'fintoc' | 'cash';
   userName: string;
   userEmail: string;
@@ -72,4 +78,32 @@ export interface GuestDetails {
     name: string;
     email: string;
     phone: string;
+}
+
+export interface BookingDetailResponse {
+    amount_paid: number;
+    booking_detail: {
+        booking_code: string;
+        court_id: string;
+        court_name: string;
+        created_at: string;
+        date: string;
+        hour: number;
+        id: string;
+        payment_method: string;
+        price: number;
+        sport_center_id: string;
+        sport_center_name: string;
+        status: 'confirmed' | 'cancelled' | 'pending';
+        updated_at: string;
+        user_id: string;
+    };
+    can_cancel: boolean;
+    cancellation_policy: {
+        limit_hours: number;
+        retention_percent: number;
+    };
+    hours_until_match: number;
+    max_refund_amount: number;
+    refund_percentage: number;
 }

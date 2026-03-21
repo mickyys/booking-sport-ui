@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { SportCenter, Court, CourtWithSchedule } from '../types';
 import api from '../api/axiosInstance';
 import { SPORT_CENTERS as MOCK_SPORT_CENTERS, COURTS as MOCK_COURTS } from '../data/mockData';
+import { getUserCancelledBookings } from '../api/bookingApi';
 
 interface BookingState {
   sportCenters: SportCenter[];
@@ -18,7 +19,9 @@ interface BookingState {
   fetchCourts: () => Promise<void>;
   fetchSchedules: (centerId: string, date?: string) => Promise<void>;
   fetchMyBookings: (getToken: (options?: any) => Promise<string>, isOld?: boolean) => Promise<void>;
+  fetchCancelledBookings: (getToken: (options?: any) => Promise<string>, page?: number, limit?: number) => Promise<any[]>;
   fetchConfirmedCount: (getToken: (options?: any) => Promise<string>) => Promise<number>;
+  fetchBookingDetail: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<any>;
   fetchBookingByCode: (code: string) => Promise<any>;
   createFintocPayment: (bookingData: any) => Promise<string>;
   cancelBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
@@ -27,6 +30,35 @@ interface BookingState {
 }
 
 export const useBookingStore = create<BookingState>((set, get) => ({
+    fetchCancelledBookings: async (getToken: (options?: any) => Promise<string>, page = 1, limit = 5) => {
+      set({ isLoading: true });
+      try {
+        const token = await getToken({
+          authorizationParams: {
+            audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+            scope: "openid profile email"
+          }
+        });
+        const result = await getUserCancelledBookings(token, page, limit);
+        // Mapeo de snake_case a camelCase si es necesario
+        const formatted = (result.data || []).map((b: any) => ({
+          ...b,
+          sportCenterName: b.sport_center_name,
+          courtName: b.court_name,
+          courtId: b.court_id,
+          centerId: b.sport_center_id,
+          paymentMethod: b.payment_method,
+          createdAt: b.created_at
+        }));
+        set({ error: null });
+        return formatted;
+      } catch (err) {
+        set({ error: 'Failed to fetch cancelled bookings' });
+        return [];
+      } finally {
+        set({ isLoading: false });
+      }
+    },
   sportCenters: [],
   courts: [],
   schedules: [],
@@ -46,23 +78,30 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   fetchMyBookings: async (getToken: (options?: any) => Promise<string>, isOld: boolean = false) => {
     set({ isLoading: true });
     try {
-      console.log("Attempting to fetch my bookings with token...", import.meta.env.VITE_APP_AUTH0_AUDIENCE);
       const token = await getToken({
         authorizationParams: {
           audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
-      console.log("Token obtained for fetching bookings:", token); 
       const { data } = await api.get(`/bookings/my-bookings${isOld ? '?old=true' : ''}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
-      // La API ahora retorna un objeto PagedResponse con { data, total, page, limit, total_pages }
-      set({ myBookings: data.data || [], error: null });
+      // Mapeo de snake_case (Backend) a camelCase (Frontend)
+      const formattedBookings = (data.data || []).map((b: any) => ({
+        ...b,
+        sportCenterName: b.sport_center_name,
+        courtName: b.court_name,
+        courtId: b.court_id,
+        centerId: b.sport_center_id,
+        paymentMethod: b.payment_method || 'fintoc', // Fintoc as default if not coming from backend
+        fintocPaymentIntentId: b.fintoc_payment_intent_id,
+        createdAt: b.created_at
+      }));
+      set({ myBookings: formattedBookings, error: null });
     } catch (err) {
-      console.error("Error fetching my bookings:", err);
       set({ error: 'Failed to fetch your bookings' });
     } finally {
       set({ isLoading: false });
@@ -86,6 +125,32 @@ export const useBookingStore = create<BookingState>((set, get) => ({
     } catch (err) {
       console.error("Error fetching confirmed count:", err);
       return 0;
+    }
+  },
+
+  fetchBookingDetail: async (bookingId: string, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+      const { data } = await api.get(`/bookings/${bookingId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      return data;
+    } catch (err) {
+      console.error("Error fetching booking detail:", err);
+      // Solo actualizamos el error en el store si realmente queremos que afecte el estado global
+      // set({ error: 'Failed to fetch booking detail' });
+      throw err;
+    } finally {
+      // Evitamos llamar a set si no hubo cambios reales que requieran un re-render global innecesario
+      // set({ isLoading: false });
     }
   },
 
@@ -118,7 +183,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
     }
   },
 
-  cancelBooking: async (bookingId: string, getToken: (options?: any) => Promise<string>) => {
+  cancelBooking: async (bookingId: string,  getToken: (options?: any) => Promise<string>) => {
     set({ isLoading: true });
     try {
       const token = await getToken({
@@ -155,7 +220,9 @@ export const useBookingStore = create<BookingState>((set, get) => ({
         address: c.address,
         phone: c.contact?.phone || '',
         email: c.contact?.email || '',
-        image: "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&q=80&w=1000"
+        image: "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&q=80&w=1000",
+        cancellationHours: c.cancellation_hours,
+        retentionPercent: c.retention_percent
       }));
       
       set({ sportCenters: centers, error: null });

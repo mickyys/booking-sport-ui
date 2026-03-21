@@ -1,46 +1,74 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Clock, Ban, DollarSign, CreditCard } from 'lucide-react';
+import { X, Clock, Ban, DollarSign, CreditCard, Calendar, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Booking, Court } from '../../types';
+import { Booking, Court, BookingDetailResponse } from '../../types';
 import { toast } from 'sonner';
+import { useBookingStore } from '../../store/useBookingStore';
+import { useAuth0 } from '@auth0/auth0-react';
 
 interface CancellationModalProps {
-    booking: Booking;
-    court: Court;
+    bookingId: string;
     onClose: () => void;
-    onConfirm: (refundPercentage: number) => void;
+    onConfirm: () => void;
 }
 
 export const CancellationModal: React.FC<CancellationModalProps> = ({
-    booking,
-    court,
+    bookingId,
     onClose,
     onConfirm
 }) => {
+    const { getAccessTokenSilently } = useAuth0();
+    const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
+    const [detail, setDetail] = useState<BookingDetailResponse | null>(null);
+    const { fetchBookingDetail } = useBookingStore(); // Solo para obtener la función fetchBookingDetail, no necesitamos el estado aquí
+
+    useEffect(() => {
+
+        const loadBookingDetail = async () => {
+            if (!bookingId) return;
+
+            try {
+                const data = await fetchBookingDetail(bookingId, getAccessTokenSilently);
+                setDetail(data);
+                setLoading(false);
+
+            } catch (error) {
+                console.error('Error loading booking detail:', error);
+                toast.error('Error al cargar información de la reserva');
+                onClose();
+            }
+        };
+        loadBookingDetail()
+    }, [fetchBookingDetail, getAccessTokenSilently]);
+
+    if (loading) {
+        return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                <div className="bg-white p-8 rounded-2xl flex flex-col items-center">
+                    <Loader2 className="w-10 h-10 text-red-500 animate-spin mb-4" />
+                    <p className="text-slate-600 font-medium">Cargando detalles...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!detail) return null;
+
+    const { booking_detail: booking, cancellation_policy, hours_until_match, can_cancel, refund_percentage, max_refund_amount } = detail;
 
     const bookingDate = parseISO(booking.date);
-    const now = new Date();
-    const hoursUntilMatch = (bookingDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-    // Calcular porcentaje de reembolso
-    // En este sistema, permitimos cancelar hasta 3 horas antes para 100% reembolso, 
-    // sino 90% si es antes del inicio.
-    const refundPercentage = hoursUntilMatch >= 3 ? 100 : 90;
-    const refundAmount = (booking.price * refundPercentage) / 100;
-    const fee = booking.price - refundAmount;
-
-    const canCancel = hoursUntilMatch > 0;
+    const fee = booking.price - max_refund_amount;
 
     const handleConfirm = async () => {
         setProcessing(true);
         try {
-            await onConfirm(refundPercentage);
+            await onConfirm();
 
             toast.success('¡Reserva cancelada exitosamente!', {
-                description: `El reembolso del ${refundPercentage}% ha sido procesado vía ${booking.paymentMethod}.`
+                description: `El reembolso del ${refund_percentage}% ha sido procesado vía ${booking.payment_method || 'fintoc'}.`
             });
         } catch (error: any) {
             console.error('Error al cancelar reserva:', error);
@@ -51,22 +79,6 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
         } finally {
             setProcessing(false);
         }
-    };
-
-    const getPaymentMethodIcon = (method: string) => {
-        switch (method.toLowerCase()) {
-            case 'mercadopago':
-            case 'fintoc':
-            case 'flow':
-                return 'bg-blue-100 text-blue-600';
-            default:
-                return 'bg-red-100 text-red-600';
-        }
-    };
-
-    const getPaymentMethodName = (method: string) => {
-        if (method.toLowerCase() === 'fintoc') return 'Fintoc / Flow';
-        return method.charAt(0).toUpperCase() + method.slice(1);
     };
 
     return (
@@ -91,26 +103,31 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                 <div className="p-6">
                     {/* Booking Details */}
                     <div className="flex items-center gap-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        {court.image && (
-                            <img src={court.image} alt={court.name} className="w-16 h-16 rounded-lg object-cover" />
-                        )}
                         <div className="flex-1">
-                            <p className="text-sm text-slate-500 uppercase font-semibold">{court.name}</p>
-                            <p className="font-bold text-slate-800">{format(bookingDate, "EEEE d 'de' MMMM", { locale: es })}</p>
-                            <p className="text-emerald-600 font-medium">
-                                {format(bookingDate, 'HH:mm')} hrs
-                            </p>
+                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">{booking.sport_center_name}</p>
+                            <p className="text-base text-slate-800 font-bold leading-tight">{booking.court_name}</p>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+                                <p className="font-medium text-slate-600 flex items-center gap-1.5 text-sm">
+                                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                    {format(bookingDate, "EEEE d 'de' MMMM", { locale: es })}
+                                </p>
+                                <p className="text-emerald-600 font-bold flex items-center gap-1.5 text-sm">
+                                    <Clock className="w-3.5 h-3.5" />
+                                    {booking.hour}:00 hrs
+                                </p>
+                            </div>
+                            <p className="text-[9px] text-slate-300 mt-2 font-mono">Código: {booking.booking_code}</p>
                         </div>
                     </div>
 
-                    {!canCancel ? (
+                    {!can_cancel ? (
                         <div className="p-4 bg-red-50 border border-red-200 rounded-xl mb-6">
                             <div className="flex items-start gap-3">
                                 <Ban className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                                 <div>
                                     <p className="font-bold text-red-900 mb-1">Cancelación no disponible</p>
                                     <p className="text-sm text-red-800">
-                                        El partido ya ha comenzado o ha finalizado. No es posible cancelar esta reserva.
+                                        El partido ya ha comenzado, está muy próximo o ha finalizado. No es posible cancelar esta reserva según las políticas del centro.
                                     </p>
                                 </div>
                             </div>
@@ -118,31 +135,31 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                     ) : (
                         <>
                             {/* Refund Information */}
-                            <div className={`p-5 rounded-xl mb-6 border-2 ${refundPercentage === 100
-                                    ? 'bg-emerald-50 border-emerald-200'
-                                    : 'bg-amber-50 border-amber-200'
+                            <div className={`p-5 rounded-xl mb-6 border-2 ${refund_percentage === 100
+                                ? 'bg-emerald-50 border-emerald-200'
+                                : 'bg-amber-50 border-amber-200'
                                 }`}>
                                 <div className="flex items-start gap-3 mb-4">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${refundPercentage === 100
-                                            ? 'bg-emerald-500'
-                                            : 'bg-amber-500'
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${refund_percentage === 100
+                                        ? 'bg-emerald-500'
+                                        : 'bg-amber-500'
                                         }`}>
                                         <DollarSign className="w-6 h-6 text-white" />
                                     </div>
                                     <div className="flex-1">
-                                        <h4 className={`font-bold mb-1 ${refundPercentage === 100
-                                                ? 'text-emerald-900'
-                                                : 'text-amber-900'
+                                        <h4 className={`font-bold mb-1 ${refund_percentage === 100
+                                            ? 'text-emerald-900'
+                                            : 'text-amber-900'
                                             }`}>
-                                            Reembolso del {refundPercentage}%
+                                            Reembolso del {refund_percentage}%
                                         </h4>
-                                        <p className={`text-sm ${refundPercentage === 100
-                                                ? 'text-emerald-800'
-                                                : 'text-amber-800'
+                                        <p className={`text-sm ${refund_percentage === 100
+                                            ? 'text-emerald-800'
+                                            : 'text-amber-800'
                                             }`}>
-                                            {refundPercentage === 100
-                                                ? `Estás cancelando con más de 3 horas de anticipación. Recibirás el reembolso completo.`
-                                                : `Estás cancelando con menos de 3 horas de anticipación. Se aplicará un cargo del 10% por cancelación tardía.`
+                                            {refund_percentage === 100
+                                                ? `Estás cancelando con más de ${cancellation_policy.limit_hours} horas de anticipación. Recibirás el reembolso completo.`
+                                                : `Estás cancelando con menos de ${cancellation_policy.limit_hours} horas de anticipación. Se aplicará un cargo del ${cancellation_policy.retention_percent}% por cancelación tardía.`
                                             }
                                         </p>
                                     </div>
@@ -153,15 +170,15 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                                         <span className="text-sm text-slate-600">Monto original</span>
                                         <span className="font-medium text-slate-900">${booking.price.toLocaleString('es-CL')}</span>
                                     </div>
-                                    {refundPercentage < 100 && (
+                                    {refund_percentage < 100 && (
                                         <div className="flex justify-between items-center">
-                                            <span className="text-sm text-slate-600">Cargo por cancelación (10%)</span>
+                                            <span className="text-sm text-slate-600">Cargo por cancelación ({cancellation_policy.retention_percent}%)</span>
                                             <span className="font-medium text-red-600">-${fee.toLocaleString('es-CL')}</span>
                                         </div>
                                     )}
                                     <div className="flex justify-between items-center pt-2 border-t border-slate-200">
                                         <span className="font-bold text-slate-900">Reembolso total</span>
-                                        <span className="text-2xl font-bold text-emerald-600">${refundAmount.toLocaleString('es-CL')}</span>
+                                        <span className="text-2xl font-bold text-emerald-600">${max_refund_amount.toLocaleString('es-CL')}</span>
                                     </div>
                                 </div>
                             </div>
@@ -175,7 +192,7 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                                             Tiempo restante hasta el partido
                                         </p>
                                         <p className="text-sm text-blue-800">
-                                            Faltan <strong>{Math.floor(hoursUntilMatch)} horas y {Math.round((hoursUntilMatch % 1) * 60)} minutos</strong> para el inicio.
+                                            Faltan <strong>{Math.floor(hours_until_match)} horas y {Math.round((hours_until_match % 1) * 60)} minutos</strong> para el inicio.
                                         </p>
                                     </div>
                                 </div>
@@ -185,11 +202,11 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                             <div className="p-4 bg-slate-50 rounded-xl mb-6">
                                 <p className="text-sm text-slate-600 mb-2">Método de reembolso</p>
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${getPaymentMethodIcon(booking.paymentMethod)}`}>
+                                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-100 text-blue-600">
                                         <CreditCard className="w-4 h-4" />
                                     </div>
                                     <span className="font-medium text-slate-900">
-                                        {getPaymentMethodName(booking.paymentMethod)}
+                                        {booking.payment_method || 'fintoc'}
                                     </span>
                                 </div>
                                 <p className="text-xs text-slate-500 mt-2">
@@ -200,16 +217,16 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex gap-3">
-                        {canCancel && (
+                    <div className="flex flex-col gap-3">
+                        {can_cancel && (
                             <button
                                 onClick={handleConfirm}
                                 disabled={processing}
-                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {processing ? (
                                     <>
-                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        <Loader2 className="w-5 h-5 animate-spin" />
                                         Procesando...
                                     </>
                                 ) : (
@@ -220,12 +237,13 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                                 )}
                             </button>
                         )}
+
                         <button
                             onClick={onClose}
                             disabled={processing}
-                            className="flex-1 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors disabled:opacity-50"
+                            className="w-full px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors disabled:opacity-50"
                         >
-                            {canCancel ? 'Mantener Reserva' : 'Cerrar'}
+                            {can_cancel ? 'Mantener Reserva' : 'Cerrar'}
                         </button>
                     </div>
                 </div>

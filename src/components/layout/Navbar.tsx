@@ -17,8 +17,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onViewChange, currentView }) => 
 
   // Lógica de administrador consistente con App.tsx
   const isAdministrator = userRole?.includes('administrator')
-  console.log("NAVBAR - User Role:", userRole, "Is Admin:", isAdministrator);
-  console.log("NAVBAR - Auth0 User:", auth0User);
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-700 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

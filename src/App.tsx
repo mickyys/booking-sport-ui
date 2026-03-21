@@ -93,10 +93,6 @@ export default function App() {
     }
   };
 
-
-  console.log("Sport Centers:", sportCenters);
-  console.log("Courts:", courts);
-
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-emerald-100">
       <Toaster richColors position="top-center" />

@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Clock, MapPin, XCircle } from 'lucide-react';
+import { Clock, MapPin } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Booking, Court } from '../../types';
-import { CancellationModal } from './CancellationModal';
 
 interface BookingCardProps {
     booking: Booking;
@@ -17,10 +16,10 @@ export const BookingCard: React.FC<BookingCardProps> = ({ booking, courts, isLoa
     const bookingDate = parseISO(booking.date);
 
     const court = courts.find(
-        (c) => c.id === booking.courtId || c.id === (booking as any).court_id
+        (c) => c.id === booking.courtId
     ) || { name: 'Cancha', image: '' } as Court;
 
-    const handleConfirmCancel = (refundPercentage: number) => {
+    const handleConfirmCancel = () => {
         onCancel(booking.id);
         setShowCancelModal(false);
     };
@@ -37,7 +36,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({ booking, courts, isLoa
                 <div className="min-w-0">
                     <p className="text-xs text-slate-500 mb-1 truncate">
                         <MapPin className="w-3 h-3 inline mr-1" />
-                        {booking.sport_center_name}
+                        {booking.sportCenterName}
                     </p>
 
                     <p className="font-bold text-lg text-slate-900">
@@ -45,10 +44,10 @@ export const BookingCard: React.FC<BookingCardProps> = ({ booking, courts, isLoa
                     </p>
 
                     <p className="text-slate-600">
-                        {(booking as any).hour !== undefined ? `${(booking as any).hour}:00` : format(bookingDate, "HH:mm")} hrs •{" "}
-                        {(booking as any).court_name || court.name}
+                        {booking.hour !== undefined ? `${booking.hour}:00` : format(bookingDate, "HH:mm")} hrs •{" "}
+                        {booking.courtName || court.name}
                     </p>
-                    {booking.price && (
+                    {booking.price !== undefined && (
                         <p className="font-bold text-emerald-700 mt-1">
                             ${booking.price.toLocaleString('es-CL')}
                         </p>
@@ -57,31 +56,22 @@ export const BookingCard: React.FC<BookingCardProps> = ({ booking, courts, isLoa
             </div>
 
             {/* Acciones */}
-            <div className="flex flex-col sm:items-end gap-2 mt-4 sm:mt-0">
-                <span className="px-4 py-2 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-sm border border-emerald-100 whitespace-nowrap">
+            <div className="flex flex-col gap-2 w-full sm:w-auto">
+                <span className="px-4 py-2 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-sm border border-emerald-100 text-center">
                     Confirmado
                 </span>
 
                 <button
-                    disabled={isLoading}
-                    onClick={() => setShowCancelModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 text-blue-700 bg-blue-50 rounded-lg border border-blue-100 hover:bg-blue-100 hover:text-blue-800 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Cancelar Reserva"
+                    onClick={() => {
+                        console.log('Botón cancelar presionado para ID:', booking.id);
+                        onCancel(booking.id);
+                    }}
+                    className="px-4 py-2 bg-red-50 text-red-600 font-bold rounded-lg text-sm border border-red-200 hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
                 >
-                    <XCircle className="w-4 h-4" />
-                    <span className="text-sm font-medium">Cancelar</span>
+                    Cancelar Reserva
                 </button>
+
             </div>
-
-            {showCancelModal && (
-                <CancellationModal 
-                    booking={booking}
-                    court={court}
-                    onClose={() => setShowCancelModal(false)}
-                    onConfirm={handleConfirmCancel}
-                />
-            )}
-
         </div>
     );
 };
