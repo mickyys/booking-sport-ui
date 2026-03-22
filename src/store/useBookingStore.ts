@@ -33,6 +33,8 @@ interface BookingState {
   updateAdminCourt: (courtId: string, courtData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
   deleteAdminCourt: (courtId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   updateAdminSchedule: (courtId: string, schedule: any[], getToken: (options?: any) => Promise<string>) => Promise<void>;
+  createInternalBooking: (bookingData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  deleteBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
 }
 
 export const useBookingStore = create<BookingState>((set, get) => ({
@@ -405,6 +407,54 @@ export const useBookingStore = create<BookingState>((set, get) => ({
     } catch (err) {
       console.error("Error updating schedule:", err);
       set({ error: 'Failed to update schedule' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  createInternalBooking: async (bookingData: any, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+      await api.post('/admin/bookings/internal', bookingData, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+    } catch (err) {
+      console.error("Error creating internal booking:", err);
+      set({ error: 'Failed to create internal booking' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  deleteBooking: async (bookingId: string, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+      await api.delete(`/admin/bookings/${bookingId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+    } catch (err) {
+      console.error("Error deleting booking:", err);
+      set({ error: 'Failed to delete booking' });
       throw err;
     } finally {
       set({ isLoading: false });

@@ -7,6 +7,7 @@ import { Booking } from '../../types';
 interface AdminDashboardProps {
     bookings: Booking[];
     onCancelBooking: (booking: Booking) => void;
+    onNewBooking: () => void;
     // We use any[] for courts as it was not typed in the original file
     courts: any[];
 }
@@ -14,6 +15,7 @@ interface AdminDashboardProps {
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
     bookings, 
     onCancelBooking, 
+    onNewBooking,
     courts 
 }) => {
     const today = startOfToday();
@@ -23,6 +25,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     return (
         <div className="space-y-8">
+            <div className="flex justify-between items-center">
+                <h2 className="text-3xl font-bold text-slate-900">Dashboard</h2>
+                <button 
+                    onClick={onNewBooking}
+                    className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+                >
+                    + Nueva Reserva Interna
+                </button>
+            </div>
+
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">

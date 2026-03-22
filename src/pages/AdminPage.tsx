@@ -135,7 +135,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             }`}
                         >
                             <CalendarRange size={18} />
-                            Gestionar Bloques
+                            Calendario y Reservas
                         </button>
                     </div>
                 </div>
@@ -144,6 +144,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <AdminDashboard
                         bookings={bookings}
                         onCancelBooking={onCancelBooking}
+                        onNewBooking={() => setView('calendar')}
                         courts={courts}
                     />
                 )}
@@ -166,9 +167,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 {view === 'calendar' && (
                     <AdminCalendar
-                        slots={slots}
                         courts={courts}
-                        onBlockSlot={onBlockSlot}
                     />
                 )}
             </div>

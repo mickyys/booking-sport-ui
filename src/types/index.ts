@@ -1,9 +1,11 @@
-export type SlotStatus = 'available' | 'reserved' | 'user-reserved' | 'maintenance';
+export type SlotStatus = 'available' | 'reserved' | 'user-reserved' | 'maintenance' | 'booked' | 'closed';
 
 export interface ScheduleSlot {
   hour: number;
+  minutes: number;
   price: number;
   status: SlotStatus;
+  booking_id?: string;
 }
 
 export interface CourtWithSchedule {
