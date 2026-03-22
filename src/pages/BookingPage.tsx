@@ -56,12 +56,19 @@ export const BookingView: React.FC<BookingViewProps> = ({
     schedules.forEach(courtSchedule => {
       courtSchedule.schedule.forEach(slot => {
         const date = setMinutes(setHours(selectedDay, slot.hour), 0);
+        let status = slot.status;
+        
+        // Check if the slot has already passed
+        if (date < new Date() && status === 'available') {
+          status = 'passed';
+        }
+
         slots.push({
           id: `${courtSchedule.id}-${format(date, 'yyyy-MM-dd')}-${slot.hour}`,
           courtId: courtSchedule.id,
           centerId: selectedCenter || '',
           date,
-          status: slot.status,
+          status: status,
           price: slot.price
         });
       });
@@ -72,6 +79,34 @@ export const BookingView: React.FC<BookingViewProps> = ({
   const filteredSlots = useMemo(() => {
     return apiSlots.filter(s => s.courtId === selectedCourtId);
   }, [apiSlots, selectedCourtId]);
+
+  // Auto-scroll al primer horario disponible
+  useEffect(() => {
+    if (!isLoading && apiSlots.length > 0) {
+      // Pequeño delay para asegurar que el DOM se ha renderizado
+      const timer = setTimeout(() => {
+        let elementId = '';
+        if (viewMode === 'single') {
+          const firstAvailable = filteredSlots.find(s => s.status === 'available');
+          if (firstAvailable) elementId = `slot-${firstAvailable.id}`;
+        } else {
+          // En modo 'all' buscamos la primera hora que tenga al menos una cancha disponible
+          const firstAvailableHour = hours.find(h => 
+            apiSlots.some(s => s.date.getHours() === h && s.status === 'available')
+          );
+          if (firstAvailableHour !== undefined) elementId = `hour-${firstAvailableHour}`;
+        }
+
+        if (elementId) {
+          const element = document.getElementById(elementId);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, selectedDay, selectedCenter, viewMode, selectedCourtId]); // Se activa al cargar o cambiar filtros
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(startOfToday(), i));
   const hours = Array.from({ length: 19 }, (_, i) => 6 + i); // 6 to 24
@@ -194,6 +229,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
                   return (
                     <motion.div 
                         key={slot.id}
+                        id={`slot-${slot.id}`}
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         className={`relative p-6 rounded-2xl border-2 transition-all ${
@@ -211,7 +247,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
                           <span className={`text-xs font-bold px-2 py-1 rounded-full uppercase ${
                               slot.status === 'available' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'
                           }`}>
-                              {slot.status === 'available' ? 'Disponible' : 'Reservado'}
+                              {slot.status === 'available' ? 'Disponible' : (slot.status === 'passed' ? 'No disponible' : 'Reservado')}
                           </span>
                         </div>
                         </div>
@@ -258,7 +294,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
                    <tbody className="divide-y divide-slate-100">
                        {hours.map(hour => {                         
                          return (
-                           <tr key={hour} className="hover:bg-slate-50/50">
+                           <tr key={hour} id={`hour-${hour}`} className="hover:bg-slate-50/50">
                                <td className="p-4 font-mono font-medium text-slate-500 border-r border-slate-100">
                                    <div>{hour}:00</div>
                                </td>
@@ -278,7 +314,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
                                                          : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                                    }`}
                                                >
-                                                   {isAvailable ? 'Disponible' : 'Reservado'}
+                                                   {isAvailable ? 'Disponible' : (slot?.status === 'passed' ? 'No disp.' : 'Reservado')}
                                                </button>
                                            ) : (
                                                <span className="text-slate-300">-</span>

@@ -14,6 +14,7 @@ interface BookingState {
   isLoading: boolean;
   error: string | null;
   adminCourts: any[];
+  adminDashboardData: any | null;
 
   // Actions
   fetchSportCenters: () => Promise<void>;
@@ -29,6 +30,7 @@ interface BookingState {
   setSelectedCenterId: (id: string | null) => void;
   initialize: () => Promise<void>;
   fetchAdminCourts: (getToken: (options?: any) => Promise<string>) => Promise<void>;
+  fetchAdminDashboard: (getToken: (options?: any) => Promise<string>, page?: number, limit?: number, date?: string, name?: string) => Promise<void>;
   createAdminCourt: (courtData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
   updateAdminCourt: (courtId: string, courtData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
   deleteAdminCourt: (courtId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
@@ -76,6 +78,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   isLoading: false,
   error: null,
   adminCourts: [],
+  adminDashboardData: null,
 
   setSelectedCenterId: (id: string | null) => {
     set({ selectedCenterId: id });
@@ -301,6 +304,57 @@ export const useBookingStore = create<BookingState>((set, get) => ({
     } catch (err) {
       console.error("Error fetching admin courts:", err);
       set({ error: 'Failed to fetch admin courts' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  fetchAdminDashboard: async (getToken: (options?: any) => Promise<string>, page: number = 1, limit: number = 10, date: string = '', name: string = '') => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        date,
+        name
+      });
+
+      const { data } = await api.get(`/admin/dashboard?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      // Map snake_case from backend to camelCase for frontend
+      const formattedData = {
+        todayBookingsCount: data.today_bookings_count,
+        todayRevenue: data.today_revenue,
+        totalRevenue: data.total_revenue,
+        cancelledCount: data.cancelled_count,
+        recentBookings: (data.recent_bookings || []).map((b: any) => ({
+          ...b,
+          sportCenterName: b.sport_center_name,
+          courtName: b.court_name,
+          userName: b.user_name,
+          isGuest: b.is_guest,
+          paymentMethod: b.payment_method,
+          cancelledBy: b.cancelled_by,
+          createdAt: b.created_at
+        })),
+        totalRecentCount: data.total_recent_count
+      };
+
+      set({ adminDashboardData: formattedData, error: null });
+    } catch (err) {
+      console.error("Error fetching admin dashboard data:", err);
+      set({ error: 'Failed to fetch dashboard data' });
     } finally {
       set({ isLoading: false });
     }

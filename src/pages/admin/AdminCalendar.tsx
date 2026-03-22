@@ -134,6 +134,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {slots.map((slot, index) => {
                     const isBooked = slot.status === 'booked' || slot.status === 'reserved';
+                    const isPassed = slot.status === 'passed';
                     const isClosed = slot.status === 'closed';
 
                     return (
@@ -141,7 +142,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                             key={index}
                             className={`p-4 rounded-3xl border transition-all duration-300 ${isBooked
                                     ? 'bg-slate-50 border-slate-200'
-                                    : isClosed
+                                    : isClosed || isPassed
                                         ? 'bg-red-50 border-red-100 grayscale opacity-60'
                                         : 'bg-white border-slate-100 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-500/5 group'
                                 }`}
@@ -158,8 +159,8 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                                     >
                                         <Unlock className="w-3 h-3" /> Desbloquear
                                     </button>
-                                ) : isClosed ? (
-                                    <span className="text-xs font-bold text-red-400 py-2">Cerrado</span>
+                                ) : isClosed || isPassed ? (
+                                    <span className="text-xs font-bold text-red-400 py-2">{isPassed ? 'Pasado' : 'Cerrado'}</span>
                                 ) : (
                                     <div className="flex flex-col w-full gap-2">
                                         <button

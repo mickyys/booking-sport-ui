@@ -25,12 +25,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     onBlockSlot
 }) => {
     const [view, setView] = useState<'dashboard' | 'courts' | 'schedules' | 'calendar'>('dashboard');
+    const [dashboardPage, setDashboardPage] = useState(1);
+    const [dashboardNameFilter, setDashboardNameFilter] = useState('');
+    const [dashboardDateFilter, setDashboardDateFilter] = useState('');
     const { getAccessTokenSilently } = useAuth0();
-    const { fetchAdminCourts, adminCourts, deleteAdminCourt, updateAdminSchedule } = useBookingStore();
+    const { 
+        fetchAdminCourts, 
+        adminCourts, 
+        deleteAdminCourt, 
+        updateAdminSchedule, 
+        fetchAdminDashboard, 
+        adminDashboardData,
+        cancelBooking: storeCancelBooking // Use real cancelBooking
+    } = useBookingStore();
 
     useEffect(() => {
         fetchAdminCourts(getAccessTokenSilently);
     }, [fetchAdminCourts, getAccessTokenSilently]);
+
+    useEffect(() => {
+        fetchAdminDashboard(getAccessTokenSilently, dashboardPage, 10, dashboardDateFilter, dashboardNameFilter);
+    }, [fetchAdminDashboard, getAccessTokenSilently, dashboardPage, dashboardDateFilter, dashboardNameFilter]);
 
     // Flatten backend courts
     const backendCourts = adminCourts ? adminCourts.flatMap((ac: any) => ac.courts?.map((c: any) => ({
@@ -81,6 +96,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             toast.success("Horario actualizado con éxito");
         } catch (error) {
             toast.error("Error al actualizar horario");
+        }
+    };
+
+    const handleDashboardCancel = async (booking: any) => {
+        try {
+            await storeCancelBooking(booking.id, getAccessTokenSilently);
+            toast.success("Reserva cancelada con éxito");
+            fetchAdminDashboard(getAccessTokenSilently);
+        } catch (error) {
+            toast.error("Error al cancelar la reserva");
         }
     };
 
@@ -142,10 +167,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 {view === 'dashboard' && (
                     <AdminDashboard
-                        bookings={bookings}
-                        onCancelBooking={onCancelBooking}
+                        dashboardData={adminDashboardData}
+                        onCancelBooking={handleDashboardCancel}
                         onNewBooking={() => setView('calendar')}
                         courts={courts}
+                        filters={{
+                            page: dashboardPage,
+                            name: dashboardNameFilter,
+                            date: dashboardDateFilter
+                        }}
+                        onFilterChange={(newFilters: any) => {
+                            if (newFilters.page !== undefined) setDashboardPage(newFilters.page);
+                            if (newFilters.name !== undefined) {
+                                setDashboardNameFilter(newFilters.name);
+                                setDashboardPage(1); // Reset to page 1 on search
+                            }
+                            if (newFilters.date !== undefined) {
+                                setDashboardDateFilter(newFilters.date);
+                                setDashboardPage(1); // Reset to page 1 on search
+                            }
+                        }}
                     />
                 )}
 

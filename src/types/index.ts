@@ -1,4 +1,4 @@
-export type SlotStatus = 'available' | 'reserved' | 'user-reserved' | 'maintenance' | 'booked' | 'closed';
+export type SlotStatus = 'available' | 'reserved' | 'user-reserved' | 'maintenance' | 'booked' | 'closed' | 'passed';
 
 export interface ScheduleSlot {
   hour: number;

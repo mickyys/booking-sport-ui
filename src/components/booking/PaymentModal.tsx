@@ -23,7 +23,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 }) => {
   const center = SPORT_CENTERS.find(c => c.id === slot.centerId);
   const [processing, setProcessing] = useState<null | 'fintoc'>(null);
-  const [guestDetails, setGuestDetails] = useState<GuestDetails>({ name: '', email: '', phone: '' });
+  const [guestDetails, setGuestDetails] = useState<GuestDetails>({ 
+    name: user?.name || '', 
+    email: user?.email || '', 
+    phone: '' 
+  });
   const [errors, setErrors] = useState<Partial<GuestDetails>>({});
   const hour = slot.date.getHours();
 
@@ -42,7 +46,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
     setProcessing(method);
     setTimeout(() => {
-      onConfirm(method, user ? undefined : guestDetails);
+      onConfirm(method, guestDetails);
     }, 1000);
   };
 
