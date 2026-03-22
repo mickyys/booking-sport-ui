@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
-import { Calendar, DollarSign, AlertCircle, Ban } from 'lucide-react';
-import { format, parseISO, isSameDay, startOfToday } from 'date-fns';
-import { es } from 'date-fns/locale';
+import React, { useState, useEffect } from 'react';
 import { Booking, TimeSlot } from '../types';
-import { SPORT_CENTERS, COURTS } from '../data/mockData';
+import { COURTS } from '../data/mockData';
+import { useAuth0 } from '@auth0/auth0-react';
+import { useBookingStore } from '../store/useBookingStore';
+import { toast } from 'sonner';
+
+import { AdminDashboard } from './admin/AdminDashboard';
+import { AdminCourts } from './admin/AdminCourts';
+import { AdminSchedules } from './admin/AdminSchedules';
+import { AdminCalendar } from './admin/AdminCalendar';
+import { LayoutDashboard, Trophy, Clock, CalendarRange } from 'lucide-react';
 
 interface AdminPanelProps {
     bookings: Booking[];
@@ -12,169 +18,167 @@ interface AdminPanelProps {
     onBlockSlot: (slot: TimeSlot) => void;
 }
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ 
-    bookings, 
-    slots, 
-    onCancelBooking, 
-    onBlockSlot 
+export const AdminPanel: React.FC<AdminPanelProps> = ({
+    bookings,
+    slots,
+    onCancelBooking,
+    onBlockSlot
 }) => {
-    const [view, setView] = useState<'dashboard' | 'calendar'>('dashboard');
-    const today = startOfToday();
+    const [view, setView] = useState<'dashboard' | 'courts' | 'schedules' | 'calendar'>('dashboard');
+    const { getAccessTokenSilently } = useAuth0();
+    const { fetchAdminCourts, adminCourts, deleteAdminCourt, updateAdminPrices, updateAdminSchedule } = useBookingStore();
+
+    useEffect(() => {
+        fetchAdminCourts(getAccessTokenSilently);
+    }, [fetchAdminCourts, getAccessTokenSilently]);
+
+    // Flatten backend courts
+    const backendCourts = adminCourts ? adminCourts.flatMap((ac: any) => ac.courts?.map((c: any) => ({
+        ...c,
+        id: c.id || c._id,
+        image: c.image || '/images/cancha1.jpeg',
+        centerName: ac.sport_center?.name,
+        centerId: ac.sport_center?.id || ac.sport_center?._id,
+    })) || []) : [];
+
+    // Use backend courts if available, otherwise mock
+    const courts = backendCourts.length > 0 ? backendCourts : COURTS;
+
+    // Build real schedules from backend data
+    const schedules = backendCourts.map(c => ({
+        courtId: c.id,
+        slots: c.schedule?.map((s: any) => ({
+            hour: s.hour,
+            priceType: s.price_type || 'normal',
+            enabled: s.status === 'available'
+        })) || []
+    }));
+
+    // For simplicity, take prices from the first center
+    const prices = adminCourts?.[0]?.sport_center?.prices || { economic: 0, normal: 0, prime: 0 };
     
-    // Stats
-    const todayBookings = bookings.filter(b => isSameDay(parseISO(b.date), today) && b.status === 'confirmed');
-    const totalRevenue = bookings.filter(b => b.status === 'confirmed').reduce((acc, curr) => acc + curr.price, 0);
-    const cancelledCount = bookings.filter(b => b.status === 'cancelled').length;
+    // Actions
+    const onSaveCourt = (court: any) => fetchAdminCourts(getAccessTokenSilently);
+    const onDeleteCourt = async (id: any) => {
+        try {
+            await deleteAdminCourt(id, getAccessTokenSilently);
+            await fetchAdminCourts(getAccessTokenSilently);
+            toast.success("Cancha eliminada con éxito");
+        } catch (error) {
+            toast.error("Hubo un error al eliminar la cancha");
+        }
+    };
+    
+    const onUpdatePrices = async (newPrices: any) => {
+        try {
+            const centerId = adminCourts?.[0]?.sport_center?.id || adminCourts?.[0]?.sport_center?._id;
+            if (!centerId) return;
+            await updateAdminPrices(centerId, newPrices, getAccessTokenSilently);
+            await fetchAdminCourts(getAccessTokenSilently);
+            toast.success("Precios actualizados con éxito");
+        } catch (error) {
+            toast.error("Error al actualizar precios");
+        }
+    };
+
+    const onUpdateSchedule = async (schedule: any) => {
+        try {
+            await updateAdminSchedule(schedule.courtId, schedule.slots, getAccessTokenSilently);
+            await fetchAdminCourts(getAccessTokenSilently);
+            toast.success("Horario actualizado con éxito");
+        } catch (error) {
+            toast.error("Error al actualizar horario");
+        }
+    };
 
     return (
         <div className="min-h-screen bg-slate-100 p-4 lg:p-8">
             <div className="max-w-7xl mx-auto">
-                <div className="flex justify-between items-center mb-8">
-                    <h2 className="text-3xl font-bold text-slate-900">Panel de Administración</h2>
-                    <div className="flex space-x-2 bg-white p-1 rounded-lg shadow-sm border border-slate-200">
-                        <button 
+                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-6 mb-8">
+                    <h2 className="text-3xl font-bold text-slate-800 tracking-tight">
+                        Panel de Administración
+                    </h2>
+                    
+                    <div className="flex bg-white/80 backdrop-blur-sm p-1.5 rounded-2xl shadow-sm border border-slate-200 overflow-x-auto no-scrollbar scroll-smooth">
+                        <button
                             onClick={() => setView('dashboard')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${view === 'dashboard' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
+                                view === 'dashboard' 
+                                ? 'bg-slate-900 text-white shadow-lg shadow-slate-200 translate-y-[-1px]' 
+                                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                            }`}
                         >
+                            <LayoutDashboard size={18} />
                             Dashboard
                         </button>
-                        <button 
-                            onClick={() => setView('calendar')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${view === 'calendar' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}
+                        <button
+                            onClick={() => setView('courts')}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
+                                view === 'courts' 
+                                ? 'bg-slate-900 text-white shadow-lg shadow-slate-200 translate-y-[-1px]' 
+                                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                            }`}
                         >
-                            Gestionar Canchas
+                            <Trophy size={18} />
+                            Canchas
+                        </button>
+                        <button
+                            onClick={() => setView('schedules')}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
+                                view === 'schedules' 
+                                ? 'bg-slate-900 text-white shadow-lg shadow-slate-200 translate-y-[-1px]' 
+                                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                            }`}
+                        >
+                            <Clock size={18} />
+                            Horarios y Tarifas
+                        </button>
+                        <button
+                            onClick={() => setView('calendar')}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
+                                view === 'calendar' 
+                                ? 'bg-slate-900 text-white shadow-lg shadow-slate-200 translate-y-[-1px]' 
+                                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                            }`}
+                        >
+                            <CalendarRange size={18} />
+                            Gestionar Bloques
                         </button>
                     </div>
                 </div>
 
                 {view === 'dashboard' && (
-                    <div className="space-y-8">
-                        {/* Stats Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                                <div className="flex items-center gap-4 mb-4">
-                                    <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
-                                        <Calendar className="w-6 h-6" />
-                                    </div>
-                                    <span className="text-slate-500 font-medium">Reservas Hoy</span>
-                                </div>
-                                <p className="text-4xl font-bold text-slate-900">{todayBookings.length}</p>
-                            </div>
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                                <div className="flex items-center gap-4 mb-4">
-                                    <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
-                                        <DollarSign className="w-6 h-6" />
-                                    </div>
-                                    <span className="text-slate-500 font-medium">Ingresos Totales</span>
-                                </div>
-                                <p className="text-4xl font-bold text-slate-900">${totalRevenue.toLocaleString('es-CL')}</p>
-                            </div>
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                                <div className="flex items-center gap-4 mb-4">
-                                    <div className="p-3 bg-red-100 text-red-600 rounded-xl">
-                                        <AlertCircle className="w-6 h-6" />
-                                    </div>
-                                    <span className="text-slate-500 font-medium">Cancelaciones</span>
-                                </div>
-                                <p className="text-4xl font-bold text-slate-900">{cancelledCount}</p>
-                            </div>
-                        </div>
+                    <AdminDashboard
+                        bookings={bookings}
+                        onCancelBooking={onCancelBooking}
+                        courts={courts}
+                    />
+                )}
 
-                        {/* Recent Bookings Table */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                            <div className="p-6 border-b border-slate-100">
-                                <h3 className="text-lg font-bold text-slate-900">Últimas Reservas</h3>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-slate-50 text-slate-500">
-                                        <tr>
-                                            <th className="px-6 py-4 font-medium">Cliente</th>
-                                            <th className="px-6 py-4 font-medium">Centro</th>
-                                            <th className="px-6 py-4 font-medium">Cancha</th>
-                                            <th className="px-6 py-4 font-medium">Fecha y Hora</th>
-                                            <th className="px-6 py-4 font-medium">Pago</th>
-                                            <th className="px-6 py-4 font-medium">Estado</th>
-                                            <th className="px-6 py-4 font-medium text-right">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {bookings.map((booking) => (
-                                            <tr key={booking.id} className="hover:bg-slate-50/50">
-                                                <td className="px-6 py-4 font-medium text-slate-900">
-                                                    {booking.userName}
-                                                    {booking.isGuest && <span className="ml-2 px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-xs">Invitado</span>}
-                                                </td>
-                                                <td className="px-6 py-4 text-slate-600">
-                                                    {SPORT_CENTERS.find(c => c.id === booking.centerId)?.location}
-                                                </td>
-                                                <td className="px-6 py-4 text-slate-600">
-                                                    {COURTS.find(c => c.id === booking.courtId)?.name}
-                                                </td>
-                                                <td className="px-6 py-4 text-slate-600">
-                                                    {format(parseISO(booking.date), "d MMM, HH:mm", { locale: es })}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                                                        booking.paymentMethod === 'mercadopago' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
-                                                    }`}>
-                                                        {booking.paymentMethod === 'mercadopago' ? 'MercadoPago' : 'Webpay'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                                                        booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-                                                    }`}>
-                                                        {booking.status === 'confirmed' ? 'Confirmado' : 'Cancelado'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    {booking.status === 'confirmed' && (
-                                                        <button 
-                                                            onClick={() => onCancelBooking(booking)}
-                                                            className="text-red-600 hover:text-red-800 font-medium text-xs border border-red-200 px-3 py-1 rounded hover:bg-red-50"
-                                                        >
-                                                            Cancelar
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
+                {view === 'courts' && (
+                    <AdminCourts
+                        courts={courts}
+                        onSaveCourt={onSaveCourt}
+                        onDeleteCourt={onDeleteCourt}
+                    />
+                )}
+
+                {view === 'schedules' && (
+                    <AdminSchedules
+                        courts={courts}
+                        schedules={schedules}
+                        prices={prices}
+                        onUpdatePrices={onUpdatePrices}
+                        onUpdateSchedule={onUpdateSchedule}
+                    />
                 )}
 
                 {view === 'calendar' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {slots.slice(0, 30).map(slot => (
-                            <div key={slot.id} className={`p-4 rounded-xl border ${slot.status === 'available' ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200 opacity-75'}`}>
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="font-bold text-slate-900">{format(slot.date, "d MMM, HH:mm")}</span>
-                                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                                        slot.status === 'available' ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'
-                                    }`}>
-                                        {slot.status}
-                                    </span>
-                                </div>
-                                <p className="text-xs text-slate-500 mb-4">{COURTS.find(c => c.id === slot.courtId)?.name}</p>
-                                {slot.status === 'available' ? (
-                                    <button 
-                                        onClick={() => onBlockSlot(slot)}
-                                        className="w-full py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-800 flex justify-center items-center gap-2"
-                                    >
-                                        <Ban className="w-3 h-3" /> Bloquear
-                                    </button>
-                                ) : (
-                                    <button disabled className="w-full py-2 bg-slate-200 text-slate-400 rounded-lg text-sm cursor-not-allowed">
-                                        No disponible
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
+                    <AdminCalendar
+                        slots={slots}
+                        courts={courts}
+                        onBlockSlot={onBlockSlot}
+                    />
                 )}
             </div>
         </div>

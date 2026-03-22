@@ -13,6 +13,7 @@ interface BookingState {
   selectedCenterId: string | null;
   isLoading: boolean;
   error: string | null;
+  adminCourts: any[];
 
   // Actions
   fetchSportCenters: () => Promise<void>;
@@ -27,6 +28,12 @@ interface BookingState {
   cancelBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   setSelectedCenterId: (id: string | null) => void;
   initialize: () => Promise<void>;
+  fetchAdminCourts: (getToken: (options?: any) => Promise<string>) => Promise<void>;
+  createAdminCourt: (courtData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
+  updateAdminCourt: (courtId: string, courtData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
+  deleteAdminCourt: (courtId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  updateAdminPrices: (centerId: string, prices: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  updateAdminSchedule: (courtId: string, schedule: any[], getToken: (options?: any) => Promise<string>) => Promise<void>;
 }
 
 export const useBookingStore = create<BookingState>((set, get) => ({
@@ -67,6 +74,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   selectedCenterId: null,
   isLoading: false,
   error: null,
+  adminCourts: [],
 
   setSelectedCenterId: (id: string | null) => {
     set({ selectedCenterId: id });
@@ -247,7 +255,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
         name: c.name,
         shortName: c.name.split(' ')[0],
         type: c.description || 'Pasto Sintético',
-        image: "https://images.unsplash.com/photo-1647118868186-70d38e10b0dc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080",
+        image: c.image || '/images/cancha1.jpeg',
         centerId: c.sport_center_id
       }));
       set({ courts: allCourts });
@@ -269,6 +277,159 @@ export const useBookingStore = create<BookingState>((set, get) => ({
     } catch (err) {
       console.error("Error fetching schedules:", err);
       set({ error: 'Failed to fetch schedules' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  fetchAdminCourts: async (getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+      const { data } = await api.get('/admin/courts', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ adminCourts: data, error: null });
+    } catch (err) {
+      console.error("Error fetching admin courts:", err);
+      set({ error: 'Failed to fetch admin courts' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  createAdminCourt: async (courtData: any, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+      const res = await api.post('/admin/courts', courtData, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+      return res.data;
+    } catch (err) {
+      console.error("Error creating admin court:", err);
+      set({ error: 'Failed to create court' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  updateAdminCourt: async (courtId: string, courtData: any, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+      const res = await api.put(`/admin/courts/${courtId}`, courtData, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+      return res.data;
+    } catch (err) {
+      console.error("Error updating admin court:", err);
+      set({ error: 'Failed to update court' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  deleteAdminCourt: async (courtId: string, getToken: (options?: any) => Promise<string>) => {
+    // ... existing delete logic ...
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+      await api.delete(`/admin/courts/${courtId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+    } catch (err) {
+      console.error("Error deleting admin court:", err);
+      set({ error: 'Failed to delete court' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  updateAdminPrices: async (centerId: string, prices: any, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+      await api.put(`/admin/sport-centers/${centerId}`, { prices }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+    } catch (err) {
+      console.error("Error updating prices:", err);
+      set({ error: 'Failed to update prices' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  updateAdminSchedule: async (courtId: string, schedule: any[], getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+      // Convert hour string to number if needed, and ensure structure matches Backend
+      const formattedSchedule = schedule.map(s => ({
+        hour: Number(s.hour),
+        price_type: s.priceType,
+        status: s.enabled ? 'available' : 'closed'
+      }));
+
+      await api.put(`/admin/courts/${courtId}/schedule`, formattedSchedule, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+    } catch (err) {
+      console.error("Error updating schedule:", err);
+      set({ error: 'Failed to update schedule' });
+      throw err;
     } finally {
       set({ isLoading: false });
     }

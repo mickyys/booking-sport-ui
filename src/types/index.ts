@@ -27,7 +27,7 @@ export interface SportCenter {
 export interface Court {
   id: string;
   name: string;
-  shortName: string;
+  shortName?: string;
   type: string;
   image: string;
   centerId: string;

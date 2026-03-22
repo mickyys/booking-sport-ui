@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Calendar, DollarSign, AlertCircle, Ban, Plus, Edit, Trash2, Save } from 'lucide-react';
-import { format, parseISO, isSameDay, startOfToday } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { Booking, TimeSlot, Court } from '../../types';
+import { Save } from 'lucide-react';
+import { Court } from '../../types';
+import { useAuth0 } from '@auth0/auth0-react';
+import { useBookingStore } from '../../store/useBookingStore';
+import { toast } from 'sonner';
 
 interface CourtFormModalProps {
   court: Court | null;
@@ -11,24 +12,71 @@ interface CourtFormModalProps {
 }
 
 const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave }) => {
+  const { adminCourts, createAdminCourt, updateAdminCourt } = useBookingStore();
+  const { getAccessTokenSilently } = useAuth0();
+
+  // Handle default centerId logic safely dealing with different ID formats
+  const getDefaultCenterId = () => {
+    if (adminCourts && adminCourts.length > 0) {
+      return adminCourts[0].sport_center?.id || adminCourts[0].sport_center?._id || '';
+    }
+    return '';
+  };
+
   const [formData, setFormData] = useState<Court>(
     court || {
       id: Date.now().toString(),
       name: '',
-      shortName: '',
       type: '',
       image: '',
-      centerId: ''
+      centerId: getDefaultCenterId()
     }
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.shortName || !formData.type) {
-      alert('Por favor completa todos los campos');
+    if (!formData.name || !formData.type || !formData.centerId) {
+      toast.error('Por favor completa todos los campos requeridos');
       return;
     }
-    onSave(formData);
+
+    try {
+      const token = await getAccessTokenSilently({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+
+      if (court) {
+        const payload = {
+          name: formData.name,
+          description: formData.type
+        };
+        await updateAdminCourt(court.id, payload, getAccessTokenSilently);
+        onSave(formData);
+        toast.success('Cancha editada exitosamente');
+      } else {
+        // Enlazar con el backend real para creación a través del store
+        const payload = {
+          sport_center_id: formData.centerId,
+          name: formData.name,
+          description: formData.type // Usamos type como description para hacer coincidir el esquema
+        };
+
+        const savedCourt = await createAdminCourt(payload, getAccessTokenSilently);
+
+        // Pasamos el nuevo court que retorna el backend o el form temporal (enrutando el nuevo ID)
+        onSave({
+          ...formData,
+          id: savedCourt.id || savedCourt._id,
+        });
+        toast.success('Cancha creada y vinculada al centro con éxito');
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.response?.data?.error || 'Error al guardar la cancha en el servidor');
+    }
   };
 
   return (
@@ -42,6 +90,27 @@ const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave 
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Centro Deportivo</label>
+            <select
+              disabled={!!court}
+              className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-emerald-200 outline-none bg-white disabled:bg-slate-50"
+              value={formData.centerId}
+              onChange={e => setFormData({ ...formData, centerId: e.target.value })}
+            >
+              {(!adminCourts || adminCourts.length === 0) && (
+                <option value="">No hay centros disponibles</option>
+              )}
+              {adminCourts?.map((ac: any) => {
+                const id = ac.sport_center?.id || ac.sport_center?._id;
+                return (
+                  <option key={id} value={id}>
+                    {ac.sport_center?.name}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+          <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Nombre Completo</label>
             <input
               type="text"
@@ -52,23 +121,13 @@ const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave 
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Nombre Corto</label>
-            <input
-              type="text"
-              className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-emerald-200 outline-none"
-              value={formData.shortName}
-              onChange={e => setFormData({ ...formData, shortName: e.target.value })}
-              placeholder="ej: Cancha 1"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Superficie</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
             <input
               type="text"
               className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-emerald-200 outline-none"
               value={formData.type}
               onChange={e => setFormData({ ...formData, type: e.target.value })}
-              placeholder="ej: Pasto Sintético PRO"
+              placeholder="ej: Cancha de pasto sintético con iluminación profesional"
             />
           </div>
           <div>
