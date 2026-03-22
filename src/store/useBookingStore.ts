@@ -32,7 +32,6 @@ interface BookingState {
   createAdminCourt: (courtData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
   updateAdminCourt: (courtId: string, courtData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
   deleteAdminCourt: (courtId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
-  updateAdminPrices: (centerId: string, prices: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   updateAdminSchedule: (courtId: string, schedule: any[], getToken: (options?: any) => Promise<string>) => Promise<void>;
 }
 
@@ -380,30 +379,6 @@ export const useBookingStore = create<BookingState>((set, get) => ({
     }
   },
 
-  updateAdminPrices: async (centerId: string, prices: any, getToken: (options?: any) => Promise<string>) => {
-    set({ isLoading: true });
-    try {
-      const token = await getToken({
-        authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
-          scope: "openid profile email"
-        }
-      });
-      await api.put(`/admin/sport-centers/${centerId}`, { prices }, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      set({ error: null });
-    } catch (err) {
-      console.error("Error updating prices:", err);
-      set({ error: 'Failed to update prices' });
-      throw err;
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-
   updateAdminSchedule: async (courtId: string, schedule: any[], getToken: (options?: any) => Promise<string>) => {
     set({ isLoading: true });
     try {
@@ -413,10 +388,11 @@ export const useBookingStore = create<BookingState>((set, get) => ({
           scope: "openid profile email"
         }
       });
-      // Convert hour string to number if needed, and ensure structure matches Backend
+
       const formattedSchedule = schedule.map(s => ({
         hour: Number(s.hour),
-        price_type: s.priceType,
+        minutes: Number(s.minutes || 0),
+        price: Number(s.price),
         status: s.enabled ? 'available' : 'closed'
       }));
 

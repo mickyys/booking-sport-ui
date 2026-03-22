@@ -26,7 +26,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 }) => {
     const [view, setView] = useState<'dashboard' | 'courts' | 'schedules' | 'calendar'>('dashboard');
     const { getAccessTokenSilently } = useAuth0();
-    const { fetchAdminCourts, adminCourts, deleteAdminCourt, updateAdminPrices, updateAdminSchedule } = useBookingStore();
+    const { fetchAdminCourts, adminCourts, deleteAdminCourt, updateAdminSchedule } = useBookingStore();
 
     useEffect(() => {
         fetchAdminCourts(getAccessTokenSilently);
@@ -49,13 +49,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         courtId: c.id,
         slots: c.schedule?.map((s: any) => ({
             hour: s.hour,
-            priceType: s.price_type || 'normal',
+            minutes: s.minutes || 0,
+            price: s.price || 0,
             enabled: s.status === 'available'
         })) || []
     }));
 
     // For simplicity, take prices from the first center
-    const prices = adminCourts?.[0]?.sport_center?.prices || { economic: 0, normal: 0, prime: 0 };
+    const prices = {}; // No longer used
     
     // Actions
     const onSaveCourt = (court: any) => fetchAdminCourts(getAccessTokenSilently);
@@ -70,15 +71,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     };
     
     const onUpdatePrices = async (newPrices: any) => {
-        try {
-            const centerId = adminCourts?.[0]?.sport_center?.id || adminCourts?.[0]?.sport_center?._id;
-            if (!centerId) return;
-            await updateAdminPrices(centerId, newPrices, getAccessTokenSilently);
-            await fetchAdminCourts(getAccessTokenSilently);
-            toast.success("Precios actualizados con éxito");
-        } catch (error) {
-            toast.error("Error al actualizar precios");
-        }
+        // No longer used
     };
 
     const onUpdateSchedule = async (schedule: any) => {
@@ -167,8 +160,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <AdminSchedules
                         courts={courts}
                         schedules={schedules}
-                        prices={prices}
-                        onUpdatePrices={onUpdatePrices}
                         onUpdateSchedule={onUpdateSchedule}
                     />
                 )}
