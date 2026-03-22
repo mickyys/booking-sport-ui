@@ -15,7 +15,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
-    const [newSlot, setNewSlot] = useState({ time: '08:00', price: '' });
+    const [newSlot, setNewSlot] = useState({ time: '08:00', price: 0 });
     const [collapsedCourts, setCollapsedCourts] = useState<Record<string, boolean>>({});
 
     const toggleCollapse = (courtId: string) => {
@@ -240,8 +240,8 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                                             disabled={!slot.enabled}
                                                             placeholder="0"
                                                             className={`w-full text-base font-bold pl-8 pr-4 py-3 rounded-2xl border-2 transition-all outline-none ${slot.enabled
-                                                                    ? 'bg-emerald-50/50 border-emerald-100 focus:border-emerald-500 focus:bg-white text-emerald-900'
-                                                                    : 'bg-slate-100 border-slate-200 text-slate-400'
+                                                                ? 'bg-emerald-50/50 border-emerald-100 focus:border-emerald-500 focus:bg-white text-emerald-900'
+                                                                : 'bg-slate-100 border-slate-200 text-slate-400'
                                                                 }`}
                                                         />
                                                     </div>
