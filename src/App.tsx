@@ -20,7 +20,8 @@ export default function App() {
   const [currentView, setCurrentView] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
-    if (code) return 'booking-status';
+    const state = params.get('state');
+    if (code && !state) return 'booking-status';
 
     const path = window.location.pathname;
     if (path === '/booking/success') return 'booking-success';
@@ -29,7 +30,12 @@ export default function App() {
   });
   const [bookingCode, setBookingCode] = useState<string | null>(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('code');
+    const code = params.get('code');
+    const state = params.get('state');
+    // Auth0 always sends both code AND state on redirect. 
+    // Booking codes from Fintoc only have 'code' (or we only care about 'code' there).
+    if (code && state) return null;
+    return code;
   });
 
   const { user, isAdministrator } = useAuth();
@@ -43,8 +49,50 @@ export default function App() {
     fetchBookingByCode,
     createFintocPayment,
     setSelectedCenterId,
+    fetchSportCenterBySlug,
     initialize
   } = useBookingStore();
+
+  useEffect(() => {
+    const hostname = window.location.hostname;
+    // For local dev, we might use a query param 'slug' for testing
+    const params = new URLSearchParams(window.location.search);
+    const slugQuery = params.get('slug');
+
+    const parts = hostname.split('.');
+    let slug = '';
+
+    console.log('hostname', hostname);
+    console.log('parts', parts);
+    console.log('slugQuery', slugQuery);
+
+    // Logic for orellana.reservaloya.cl or orellana.localhost
+    if (parts.length >= 2 && hostname.endsWith('.localhost')) {
+      slug = parts[0];
+    } else if (parts.length >= 3) {
+      slug = parts[0];
+      if (slug === 'www') slug = '';
+    }
+
+    // Si no se detectó por host, usamos el query param
+    if (!slug && slugQuery) {
+      slug = slugQuery;
+    }
+
+    console.log('slug', slug);
+
+    if (slug) {
+      fetchSportCenterBySlug(slug).then(center => {
+        console.log('center', center);
+        if (center) {
+          // If we are on home and have a valid subdomain, go to book view
+          if (currentView === 'home') {
+            setCurrentView('book');
+          }
+        }
+      });
+    }
+  }, [fetchSportCenterBySlug, currentView]);
 
   useEffect(() => {
     initialize();

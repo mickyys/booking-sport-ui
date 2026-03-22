@@ -9,7 +9,8 @@ import { AdminDashboard } from './admin/AdminDashboard';
 import { AdminCourts } from './admin/AdminCourts';
 import { AdminSchedules } from './admin/AdminSchedules';
 import { AdminCalendar } from './admin/AdminCalendar';
-import { LayoutDashboard, Trophy, Clock, CalendarRange } from 'lucide-react';
+import { AdminSettings } from './admin/AdminSettings';
+import { LayoutDashboard, Trophy, Clock, CalendarRange, Settings } from 'lucide-react';
 
 interface AdminPanelProps {
     bookings: Booking[];
@@ -24,7 +25,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     onCancelBooking,
     onBlockSlot
 }) => {
-    const [view, setView] = useState<'dashboard' | 'courts' | 'schedules' | 'calendar'>('dashboard');
+    const [view, setView] = useState<'dashboard' | 'courts' | 'schedules' | 'calendar' | 'settings'>('dashboard');
     const [dashboardPage, setDashboardPage] = useState(1);
     const [dashboardNameFilter, setDashboardNameFilter] = useState('');
     const [dashboardDateFilter, setDashboardDateFilter] = useState('');
@@ -55,6 +56,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         centerName: ac.sport_center?.name,
         centerId: ac.sport_center?.id || ac.sport_center?._id,
     })) || []) : [];
+
+    const currentSportCenter = adminCourts && adminCourts.length > 0 ? adminCourts[0].sport_center : null;
+
 
     // Use backend courts if available, otherwise mock
     const courts = backendCourts.length > 0 ? backendCourts : COURTS;
@@ -162,6 +166,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             <CalendarRange size={18} />
                             Calendario y Reservas
                         </button>
+                        <button
+                            onClick={() => setView('settings')}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
+                                view === 'settings' 
+                                ? 'bg-slate-900 text-white shadow-lg shadow-slate-200 translate-y-[-1px]' 
+                                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                            }`}
+                        >
+                            <Settings size={18} />
+                            Configuración
+                        </button>
                     </div>
                 </div>
 
@@ -209,6 +224,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 {view === 'calendar' && (
                     <AdminCalendar
                         courts={courts}
+                    />
+                )}
+
+                {view === 'settings' && (
+                    <AdminSettings
+                        sportCenter={currentSportCenter}
+                        onSave={() => fetchAdminCourts(getAccessTokenSilently)}
                     />
                 )}
             </div>

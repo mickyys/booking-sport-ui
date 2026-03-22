@@ -15,6 +15,8 @@ interface BookingState {
   error: string | null;
   adminCourts: any[];
   adminDashboardData: any | null;
+  sportCenterBySlug: SportCenter | null;
+
 
   // Actions
   fetchSportCenters: () => Promise<void>;
@@ -37,6 +39,8 @@ interface BookingState {
   updateAdminSchedule: (courtId: string, schedule: any[], getToken: (options?: any) => Promise<string>) => Promise<void>;
   createInternalBooking: (bookingData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   deleteBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  fetchSportCenterBySlug: (slug: string) => Promise<SportCenter | null>;
+  updateSportCenter: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
 }
 
 export const useBookingStore = create<BookingState>((set, get) => ({
@@ -79,6 +83,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   error: null,
   adminCourts: [],
   adminDashboardData: null,
+  sportCenterBySlug: null,
 
   setSelectedCenterId: (id: string | null) => {
     set({ selectedCenterId: id });
@@ -228,6 +233,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
       const centers: SportCenter[] = centersData.map((c: any) => ({
         id: c.id || c._id,
         name: c.name,
+        slug: c.slug || '',
         location: c.address,
         address: c.address,
         phone: c.contact?.phone || '',
@@ -245,6 +251,58 @@ export const useBookingStore = create<BookingState>((set, get) => ({
     } catch (err) {
       console.error("Error fetching sport centers:", err);
       set({ error: 'Failed to fetch sport centers' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  fetchSportCenterBySlug: async (slug: string) => {
+    set({ isLoading: true });
+    try {
+      const { data } = await api.get(`/sport-centers/slug/${slug}`);
+      const c = data;
+      const center: SportCenter = {
+        id: c.id || c._id,
+        name: c.name,
+        slug: c.slug,
+        location: c.address,
+        address: c.address,
+        phone: c.contact?.phone || '',
+        email: c.contact?.email || '',
+        image: "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&q=80&w=1000",
+        cancellationHours: c.cancellation_hours,
+        retentionPercent: c.retention_percent
+      };
+      set({ sportCenterBySlug: center, selectedCenterId: center.id, error: null });
+      return center;
+    } catch (err) {
+      console.error("Error fetching sport center by slug:", err);
+      return null;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  updateSportCenter: async (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+      await api.put(`/admin/sport-centers/${id}`, centerData, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      // Refresh local data
+      await get().fetchSportCenters();
+    } catch (err) {
+      console.error("Error updating sport center:", err);
+      set({ error: 'Failed to update sport center' });
+      throw err;
     } finally {
       set({ isLoading: false });
     }

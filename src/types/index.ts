@@ -17,6 +17,7 @@ export interface CourtWithSchedule {
 export interface SportCenter {
   id: string;
   name: string;
+  slug: string;
   location: string;
   address: string;
   phone: string;
