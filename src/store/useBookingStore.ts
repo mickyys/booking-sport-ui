@@ -37,6 +37,8 @@ interface BookingState {
   updateAdminCourt: (courtId: string, courtData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
   deleteAdminCourt: (courtId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   updateAdminSchedule: (courtId: string, schedule: any[], getToken: (options?: any) => Promise<string>) => Promise<void>;
+  updateAgentSportCenter?: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  createBooking: (bookingData: any) => Promise<void>;
   createInternalBooking: (bookingData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   deleteBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchSportCenterBySlug: (slug: string) => Promise<SportCenter | null>;
@@ -200,6 +202,20 @@ export const useBookingStore = create<BookingState>((set, get) => ({
     }
   },
 
+  createBooking: async (bookingData: any) => {
+    set({ isLoading: true });
+    try {
+      await api.post('/bookings', bookingData);
+      set({ error: null });
+    } catch (err) {
+      console.error("Error creating booking:", err);
+      set({ error: 'Failed to create booking' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
   cancelBooking: async (bookingId: string,  getToken: (options?: any) => Promise<string>) => {
     set({ isLoading: true });
     try {
@@ -335,7 +351,17 @@ export const useBookingStore = create<BookingState>((set, get) => ({
       if (date) params.append('date', date);
       
       const { data } = await api.get(`${baseUrl}?${params.toString()}`);
-      set({ schedules: data, error: null });
+      
+      // Asegurarse de que payment_required se asigne correctamente a paymentRequired
+      const formattedData = (data || []).map((court: any) => ({
+        ...court,
+        schedule: (court.schedule || []).map((slot: any) => ({
+          ...slot,
+          paymentRequired: slot.payment_required
+        }))
+      }));
+
+      set({ schedules: formattedData, error: null });
     } catch (err) {
       console.error("Error fetching schedules:", err);
       set({ error: 'Failed to fetch schedules' });
@@ -469,7 +495,6 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   },
 
   deleteAdminCourt: async (courtId: string, getToken: (options?: any) => Promise<string>) => {
-    // ... existing delete logic ...
     set({ isLoading: true });
     try {
       const token = await getToken({
@@ -507,7 +532,8 @@ export const useBookingStore = create<BookingState>((set, get) => ({
         hour: Number(s.hour),
         minutes: Number(s.minutes || 0),
         price: Number(s.price),
-        status: s.enabled ? 'available' : 'closed'
+        status: s.enabled ? 'available' : 'closed',
+        payment_required: !!s.paymentRequired
       }));
 
       await api.put(`/admin/courts/${courtId}/schedule`, formattedSchedule, {

@@ -48,6 +48,7 @@ export default function App() {
     isLoading: storeLoading,
     fetchBookingByCode,
     createFintocPayment,
+    createBooking,
     setSelectedCenterId,
     fetchSportCenterBySlug,
     initialize
@@ -115,7 +116,7 @@ export default function App() {
     setSelectedSlot
   } = useBooking(user);
 
-  const handleConfirmBooking = async (method: 'fintoc' | 'cash', guestDetails?: any) => {
+  const handleConfirmBooking = async (method: 'fintoc' | 'venue' | 'cash', guestDetails?: any) => {
     if (method === 'fintoc' && selectedSlot) {
       try {
         const redirect_url = await createFintocPayment({
@@ -135,7 +136,27 @@ export default function App() {
       return;
     }
 
-    const booking = confirmBooking(method, guestDetails);
+    if (method === 'venue' && selectedSlot) {
+      try {
+        await createBooking({
+          court_id: selectedSlot.courtId,
+          date: selectedSlot.date.toISOString(),
+          hour: selectedSlot.date.getHours(),
+          guest_details: guestDetails,
+          user_id: user?.id,
+        });
+        
+        toast.success("¡Reserva confirmada exitosamente!");
+        setCurrentView('home');
+        setSelectedSlot(null);
+        // Podríamos redirigir a una página de éxito o al dashboard
+      } catch (error) {
+        toast.error("Error al confirmar la reserva.");
+      }
+      return;
+    }
+
+    const booking = confirmBooking(method as any, guestDetails);
     if (booking && user) {
       setCurrentView('client-dashboard');
     }

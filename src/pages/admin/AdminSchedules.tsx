@@ -15,7 +15,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
-    const [newSlot, setNewSlot] = useState({ time: '08:00', price: 0 });
+    const [newSlot, setNewSlot] = useState({ time: '08:00', price: 0, paymentRequired: true });
     const [collapsedCourts, setCollapsedCourts] = useState<Record<string, boolean>>({});
 
     const toggleCollapse = (courtId: string) => {
@@ -34,6 +34,19 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
         const newSlots = schedule.slots.map((slot: any) =>
             (slot.hour === hour && (slot.minutes || 0) === minutes)
                 ? { ...slot, enabled: !slot.enabled }
+                : slot
+        );
+
+        onUpdateSchedule({ ...schedule, slots: newSlots });
+    };
+
+    const handleTogglePaymentRequired = (courtId: string, hour: number, minutes: number) => {
+        const schedule = schedules.find(s => s.courtId === courtId);
+        if (!schedule) return;
+
+        const newSlots = schedule.slots.map((slot: any) =>
+            (slot.hour === hour && (slot.minutes || 0) === minutes)
+                ? { ...slot, paymentRequired: !slot.paymentRequired }
                 : slot
         );
 
@@ -89,7 +102,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
 
     const openCreateModal = (courtId: string) => {
         setSelectedCourtId(courtId);
-        setNewSlot({ time: '08:00', price: 0 });
+        setNewSlot({ time: '08:00', price: 0, paymentRequired: true });
         setIsModalOpen(true);
     };
 
@@ -106,7 +119,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
             return;
         }
 
-        const newSlots = [...schedule.slots, { hour: h, minutes: m, price: newSlot.price, enabled: true }]
+        const newSlots = [...schedule.slots, { hour: h, minutes: m, price: newSlot.price, enabled: true, paymentRequired: newSlot.paymentRequired }]
             .sort((a, b) => (a.hour * 60 + (a.minutes || 0)) - (b.hour * 60 + (b.minutes || 0)));
 
         onUpdateSchedule({ ...schedule, slots: newSlots });
@@ -245,6 +258,21 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                                                 }`}
                                                         />
                                                     </div>
+
+                                                    {/* Payment Required Toggle */}
+                                                    <div className="flex items-center justify-between px-1">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Requiere Pago</label>
+                                                        <label className="relative inline-flex items-center cursor-pointer scale-90">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={slot.paymentRequired}
+                                                                onChange={() => handleTogglePaymentRequired(court.id, slot.hour, slot.minutes || 0)}
+                                                                className="sr-only peer"
+                                                                disabled={!slot.enabled}
+                                                            />
+                                                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                                                        </label>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -304,6 +332,22 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl py-4 pl-12 pr-6 text-xl font-black focus:border-emerald-500 focus:bg-white outline-none transition-all shadow-sm"
                                     />
                                 </div>
+                            </div>
+
+                            <div className="flex items-center justify-between bg-slate-50 p-4 rounded-3xl border border-slate-100">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 italic">Requiere Pago previo</label>
+                                    <p className="text-xs text-slate-500">Muestra la pasarela de pago al reservar</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={newSlot.paymentRequired}
+                                        onChange={e => setNewSlot({ ...newSlot, paymentRequired: e.target.checked })}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                </label>
                             </div>
 
                             <button

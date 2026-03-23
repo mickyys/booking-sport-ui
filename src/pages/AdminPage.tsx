@@ -70,7 +70,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             hour: s.hour,
             minutes: s.minutes || 0,
             price: s.price || 0,
-            enabled: s.status === 'available'
+            enabled: s.status === 'available',
+            paymentRequired: s.payment_required
         })) || []
     }));
 
