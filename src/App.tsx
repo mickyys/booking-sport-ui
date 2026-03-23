@@ -43,16 +43,16 @@ export default function App() {
   // Dynamic page title
   useEffect(() => {
     const titles: Record<string, string> = {
-      'home': 'ReservaLoya',
-      'book': 'Reservar Cancha | ReservaLoya',
-      'info': 'Información | ReservaLoya',
-      'booking-status': 'Estado de Reserva | ReservaLoya',
-      'booking-success': '¡Reserva Confirmada! | ReservaLoya',
-      'booking-failure': 'Error en Reserva | ReservaLoya',
-      'client-dashboard': 'Mis Reservas | ReservaLoya',
-      'admin': 'Panel de Administración | ReservaLoya',
+      'home': 'ReservaloYA',
+      'book': 'Reservar Cancha | ReservaloYA',
+      'info': 'Información | ReservaloYA',
+      'booking-status': 'Estado de Reserva | ReservaloYA',
+      'booking-success': '¡Reserva Confirmada! | ReservaloYA',
+      'booking-failure': 'Error en Reserva | ReservaloYA',
+      'client-dashboard': 'Mis Reservas | ReservaloYA',
+      'admin': 'Panel de Administración | ReservaloYA',
     };
-    document.title = titles[currentView] || 'ReservaLoya';
+    document.title = titles[currentView] || 'ReservaloYA';
   }, [currentView]);
 
   const {
@@ -160,7 +160,7 @@ export default function App() {
           guest_details: guestDetails,
           user_id: user?.id,
         });
-        
+
         toast.success("¡Reserva confirmada exitosamente!");
         setCurrentView('home');
         setSelectedSlot(null);
