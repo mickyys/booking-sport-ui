@@ -311,13 +311,17 @@ export default function App() {
           />
         )}
 
-        {currentView === 'admin' && isAdministrator && (
-          <AdminPanel
-            bookings={bookings}
-            slots={slots}
-            onCancelBooking={cancelBooking}
-            onBlockSlot={blockSlot}
-          />
+        {currentView === 'admin' && (
+          isAdministrator
+            ? <AdminPanel
+                bookings={bookings}
+                slots={slots}
+                onCancelBooking={cancelBooking}
+                onBlockSlot={blockSlot}
+              />
+            : <div className="flex items-center justify-center min-h-[60vh]">
+                <p className="text-slate-500 text-lg font-medium">Acceso restringido</p>
+              </div>
         )}
       </main>
 
