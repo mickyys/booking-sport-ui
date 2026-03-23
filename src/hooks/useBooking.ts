@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { format, addDays, startOfToday, setHours, setMinutes } from 'date-fns';
 import { toast } from 'sonner';
-import { TimeSlot, Booking, SlotStatus, UserProfile, GuestDetails } from '../types';
-import { COURTS } from '../data/mockData';
+import { TimeSlot, Booking, SlotStatus, UserProfile, GuestDetails, Court, SportCenter } from '../types';
+import { COURTS, SPORT_CENTERS } from '../data/mockData';
 
 const getPriceForHour = (hour: number): number => {
     if (hour >= 18 && hour < 22) return 45000;
@@ -55,15 +55,21 @@ export const useBooking = (user: UserProfile | null) => {
     const confirmBooking = (method: 'mercadopago' | 'fintoc' | 'cash', guestDetails?: GuestDetails) => {
         if (!selectedSlot) return;
 
+        const court = COURTS.find((c: Court) => c.id === selectedSlot.courtId);
+        const sportCenter = SPORT_CENTERS.find((s: SportCenter) => s.id === selectedSlot.centerId);
+
         const newBooking: Booking = {
             id: Math.random().toString(36).substr(2, 9),
             slotId: selectedSlot.id,
             courtId: selectedSlot.courtId,
             centerId: selectedSlot.centerId,
             date: selectedSlot.date.toISOString(),
+            hour: selectedSlot.date.getHours(),
+            sportCenterName: sportCenter?.name || '',
+            courtName: court?.name || '',
             price: selectedSlot.price,
             status: 'confirmed',
-            createdAt: Date.now(),
+            createdAt: new Date().toISOString(),
             paymentMethod: method,
             userName: user ? user.name : (guestDetails?.name || 'Invitado'),
             userEmail: user ? user.email : (guestDetails?.email || ''),
