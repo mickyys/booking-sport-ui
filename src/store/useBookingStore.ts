@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { SportCenter, Court, CourtWithSchedule } from '../types';
 import api from '../api/axiosInstance';
 import { SPORT_CENTERS as MOCK_SPORT_CENTERS, COURTS as MOCK_COURTS } from '../data/mockData';
@@ -45,7 +46,9 @@ interface BookingState {
   updateSportCenter: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
 }
 
-export const useBookingStore = create<BookingState>((set, get) => ({
+export const useBookingStore = create<BookingState, [["zustand/persist", Partial<BookingState>]]>(
+  persist(
+    (set, get) => ({
     fetchCancelledBookings: async (getToken: (options?: any) => Promise<string>, page = 1, limit = 5) => {
       set({ isLoading: true });
       try {
@@ -605,4 +608,14 @@ export const useBookingStore = create<BookingState>((set, get) => ({
       get().fetchCourts()
     ]);
   }
-}));
+  }),
+  {
+    name: 'booking-store',
+    partialize: (state: BookingState) => ({
+      sportCenters: state.sportCenters,
+      courts: state.courts,
+      selectedCenterId: state.selectedCenterId,
+    }),
+  }
+  )
+);
