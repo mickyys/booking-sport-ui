@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { CheckCircle, Calendar, ArrowRight, Info, AlertCircle, Phone, Mail, Loader2 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
-import { es } from 'date-fns/locale';
-import axios from 'axios';
+import { CheckCircle, Calendar, ArrowRight, Info, AlertCircle, Loader2 } from 'lucide-react';
 import { useBookingStore } from '../../store/useBookingStore';
 
 interface SuccessPageProps {
-    onGoHome: () => void;
-    onGoToProfile: () => void;
+    onGoHome?: () => void;
+    onGoToProfile?: () => void;
 }
 
 export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfile }) => {
+    const navigate = useNavigate();
     const [booking, setBooking] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const { courts } = useBookingStore();
@@ -134,14 +133,14 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
                         {/* Action Buttons */}
                         <div className="flex flex-col sm:flex-row gap-3">
                             <button 
-                                onClick={onGoToProfile}
+                                onClick={onGoToProfile || (() => navigate('/mis-reservas'))}
                                 className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors"
                             >
                                 <Calendar className="w-5 h-5" />
                                 Ver Mis Reservas
                             </button>
                             <button 
-                                onClick={onGoHome}
+                                onClick={onGoHome || (() => navigate('/'))}
                                 className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors"
                             >
                                 <ArrowRight className="w-5 h-5" />

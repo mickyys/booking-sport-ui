@@ -3,10 +3,10 @@ import { MapPin, Info, Car, ShowerHead, Clock, Phone, Mail } from 'lucide-react'
 import { SPORT_CENTERS } from '../data/mockData';
 
 interface LocationServicesProps {
-  selectedCenter: string | null;
+  selectedCenter?: string | null;
 }
 
-export const LocationServices: React.FC<LocationServicesProps> = ({ selectedCenter }) => {
+export const LocationServices: React.FC<LocationServicesProps> = ({ selectedCenter = null }) => {
     const [currentCenter, setCurrentCenter] = useState(selectedCenter);
     const center = SPORT_CENTERS.find(c => c.id === currentCenter) || SPORT_CENTERS[0];
     

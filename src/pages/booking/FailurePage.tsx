@@ -1,13 +1,16 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { XCircle, Info, Phone, Mail, CreditCard, ArrowRight } from 'lucide-react';
 
 interface FailurePageProps {
-    onRetry: () => void;
-    onGoHome: () => void;
+    onRetry?: () => void;
+    onGoHome?: () => void;
 }
 
-export const FailurePage: React.FC<FailurePageProps> = ({ onRetry, onGoHome }) => (
+export const FailurePage: React.FC<FailurePageProps> = ({ onRetry, onGoHome }) => {
+    const navigate = useNavigate();
+    return (
     <div className="min-h-screen bg-slate-50 pt-8 pb-20 px-4">
         <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -85,14 +88,14 @@ export const FailurePage: React.FC<FailurePageProps> = ({ onRetry, onGoHome }) =
                     {/* Action Buttons */}
                     <div className="flex flex-col sm:flex-row gap-3">
                         <button 
-                            onClick={onRetry}
+                            onClick={onRetry || (() => navigate('/reservar'))}
                             className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors"
                         >
                             <CreditCard className="w-5 h-5" />
                             Intentar Nuevamente
                         </button>
                         <button 
-                            onClick={onGoHome}
+                            onClick={onGoHome || (() => navigate('/'))}
                             className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors"
                         >
                             <ArrowRight className="w-5 h-5" />
@@ -104,3 +107,4 @@ export const FailurePage: React.FC<FailurePageProps> = ({ onRetry, onGoHome }) =
         </motion.div>
     </div>
 );
+};
