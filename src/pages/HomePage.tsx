@@ -4,9 +4,6 @@ import { motion } from 'motion/react';
 import { Calendar, MapPin } from 'lucide-react';
 import { useBookingStore } from '../store/useBookingStore';
 
-// Keep the old Hero export for backward compatibility (used in App.tsx)
-export { Hero } from './HomePage.legacy';
-
 export default function HomePage() {
   const navigate = useNavigate();
   const { sportCenters, courts, selectedCenterId, setSelectedCenterId } = useBookingStore();
@@ -102,7 +99,3 @@ export default function HomePage() {
   );
 }
 
-// Keep legacy named export so old App.tsx doesn't break during transition
-export const Hero = ({ onCtaClick, selectedCenter, onCenterChange, sportCenters }: any) => {
-  return null; // Will be removed once App.tsx is fully migrated
-};
