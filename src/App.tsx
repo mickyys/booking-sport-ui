@@ -38,7 +38,7 @@ export default function App() {
     return code;
   });
 
-  const { user, isAdministrator } = useAuth();
+  const { user, isAdministrator, isLoading: authLoading } = useAuth();
 
   // Dynamic page title
   useEffect(() => {
@@ -312,16 +312,20 @@ export default function App() {
         )}
 
         {currentView === 'admin' && (
-          isAdministrator
-            ? <AdminPanel
-                bookings={bookings}
-                slots={slots}
-                onCancelBooking={cancelBooking}
-                onBlockSlot={blockSlot}
-              />
-            : <div className="flex items-center justify-center min-h-[60vh]">
-                <p className="text-slate-500 text-lg font-medium">Acceso restringido</p>
+          authLoading
+            ? <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
               </div>
+            : isAdministrator
+              ? <AdminPanel
+                  bookings={bookings}
+                  slots={slots}
+                  onCancelBooking={cancelBooking}
+                  onBlockSlot={blockSlot}
+                />
+              : <div className="flex items-center justify-center min-h-[60vh]">
+                  <p className="text-slate-500 text-lg font-medium">Acceso restringido</p>
+                </div>
         )}
       </main>
 
