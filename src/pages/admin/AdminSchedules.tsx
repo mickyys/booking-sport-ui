@@ -1,6 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Save, Plus, Trash2, Clock, AlertCircle, X, DollarSign, ChevronDown, ChevronUp, Layers } from 'lucide-react';
 import { toast } from 'sonner';
+
+const PriceInput: React.FC<{
+    value: number;
+    onChange: (val: number) => void;
+    disabled?: boolean;
+    className?: string;
+    placeholder?: string;
+    debounceMs?: number;
+}> = ({ value, onChange, disabled, className, placeholder, debounceMs = 500 }) => {
+    const [localValue, setLocalValue] = useState<string>(value === 0 ? '' : value.toString());
+    const timeoutRef = useRef<any>(null);
+
+    useEffect(() => {
+        const numericLocal = localValue === '' ? 0 : parseInt(localValue, 10);
+        if (value !== numericLocal) {
+            setLocalValue(value === 0 ? '' : value.toString());
+        }
+    }, [value]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        // Only allow integers
+        if (val !== '' && !/^\d+$/.test(val)) return;
+
+        setLocalValue(val);
+
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+        if (debounceMs === 0) {
+            onChange(val === '' ? 0 : parseInt(val, 10));
+        } else {
+            timeoutRef.current = setTimeout(() => {
+                onChange(val === '' ? 0 : parseInt(val, 10));
+            }, debounceMs);
+        }
+    };
+
+    return (
+        <input
+            type="text"
+            inputMode="numeric"
+            value={localValue}
+            onChange={handleChange}
+            disabled={disabled}
+            placeholder={placeholder}
+            className={className}
+        />
+    );
+};
 
 interface AdminSchedulesProps {
     courts: any[];
@@ -246,12 +295,11 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                                         <div className={`absolute left-4 top-1/2 -translate-y-1/2 font-bold transition-colors ${slot.enabled ? 'text-emerald-500' : 'text-slate-400'}`}>
                                                             $
                                                         </div>
-                                                        <input
-                                                            type="number"
+                                                        <PriceInput
                                                             value={slot.price}
-                                                            onChange={e => handlePriceChange(court.id, slot.hour, slot.minutes || 0, Number(e.target.value))}
+                                                            onChange={val => handlePriceChange(court.id, slot.hour, slot.minutes || 0, val)}
                                                             disabled={!slot.enabled}
-                                                            placeholder="0"
+                                                            placeholder="Ingrese valor"
                                                             className={`w-full text-base font-bold pl-8 pr-4 py-3 rounded-2xl border-2 transition-all outline-none ${slot.enabled
                                                                 ? 'bg-emerald-50/50 border-emerald-100 focus:border-emerald-500 focus:bg-white text-emerald-900'
                                                                 : 'bg-slate-100 border-slate-200 text-slate-400'
@@ -324,10 +372,10 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500 font-black text-xl">
                                         $
                                     </div>
-                                    <input
-                                        type="number"
+                                    <PriceInput
                                         value={newSlot.price}
-                                        onChange={e => setNewSlot({ ...newSlot, price: Number(e.target.value) })}
+                                        onChange={val => setNewSlot({ ...newSlot, price: val })}
+                                        debounceMs={0}
                                         placeholder="Ingrese el valor"
                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl py-4 pl-12 pr-6 text-xl font-black focus:border-emerald-500 focus:bg-white outline-none transition-all shadow-sm"
                                     />
