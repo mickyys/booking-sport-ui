@@ -40,6 +40,21 @@ export default function App() {
 
   const { user, isAdministrator } = useAuth();
 
+  // Dynamic page title
+  useEffect(() => {
+    const titles: Record<string, string> = {
+      'home': 'ReservaLoya',
+      'book': 'Reservar Cancha | ReservaLoya',
+      'info': 'Información | ReservaLoya',
+      'booking-status': 'Estado de Reserva | ReservaLoya',
+      'booking-success': '¡Reserva Confirmada! | ReservaLoya',
+      'booking-failure': 'Error en Reserva | ReservaLoya',
+      'client-dashboard': 'Mis Reservas | ReservaLoya',
+      'admin': 'Panel de Administración | ReservaLoya',
+    };
+    document.title = titles[currentView] || 'ReservaLoya';
+  }, [currentView]);
+
   const {
     sportCenters,
     courts,
