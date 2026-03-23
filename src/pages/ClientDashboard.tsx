@@ -13,13 +13,16 @@ import { CancelledBookingList } from '../components/booking/CancelledBookingList
 import { DashboardHeader } from '../components/dashboard/DashboardHeader';
 import { CancellationModal } from '../components/booking/CancellationModal';
 import { AnimatePresence, motion } from 'motion/react';
+import { useAuth } from '../hooks/useAuth';
 
 
 interface ClientDashboardProps {
-    user: UserProfile;
+    user?: UserProfile | null;
 }
 
-export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user }) => {
+export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user: userProp }) => {
+    const { user: authUser } = useAuth();
+    const user = userProp || authUser;
     const { myBookings, fetchMyBookings, fetchCancelledBookings, fetchConfirmedCount, cancelBooking, sportCenters, courts, isLoading } = useBookingStore();
     const { getAccessTokenSilently } = useAuth0();
     const [bookingToCancel, setBookingToCancel] = useState<string | null>(null);
@@ -31,6 +34,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user }) => {
     const [isCancelledLoading, setIsCancelledLoading] = useState(false);
 
     useEffect(() => {
+        if (!user) return;
         fetchMyBookings(getAccessTokenSilently);
 
         // Fetch confirmed count
@@ -84,7 +88,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user }) => {
             }
         };
         fetchCancelled();
-    }, [fetchMyBookings, fetchCancelledBookings, getAccessTokenSilently, user.name]);
+    }, [fetchMyBookings, fetchCancelledBookings, getAccessTokenSilently, user?.name]);
 
     const handleCancelBooking = async () => {
         if (!bookingToCancel) return;
@@ -109,6 +113,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user }) => {
 
     // Past bookings are now fetched separately via old=true
     console.log('bookingToCancel ========>', bookingToCancel)
+    if (!user) return null;
+
     return (
         <>
 
@@ -118,8 +124,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user }) => {
                         ...user,
                         stats: {
                             matchesPlayed: confirmedCount,
-                            points: user.stats?.points ?? 0,
-                            rank: user.stats?.rank ?? 'Principiante'
+                            points: user?.stats?.points ?? 0,
+                            rank: user?.stats?.rank ?? 'Principiante'
                         }
                     }} />
 

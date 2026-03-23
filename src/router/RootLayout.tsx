@@ -5,38 +5,62 @@ import { AnimatePresence } from 'motion/react';
 import { Navbar } from '../components/layout/Navbar';
 import { PaymentModal } from '../components/booking/PaymentModal';
 import { useBookingStore } from '../store/useBookingStore';
-import { useBooking } from '../hooks/useBooking';
+import { useBookingActions } from '../hooks/useBookingActions';
 import { useAuth } from '../hooks/useAuth';
 import { COURTS as MOCK_COURTS } from '../data/mockData';
-import { toast } from 'sonner';
 
 export const RootLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, isAdministrator, isLoading: authLoading } = useAuth();
 
   const {
     courts,
     initialize,
-    createFintocPayment,
-    createBooking,
     fetchSportCenterBySlug,
-    setSelectedCenterId,
   } = useBookingStore();
 
   const {
+    slots,
+    bookings,
     selectedSlot,
     handleBookSlot,
-    confirmBooking,
+    handleConfirmBooking,
     cancelBooking,
     blockSlot,
     setSelectedSlot,
-  } = useBooking(user);
+  } = useBookingActions(user);
 
   // Initialize store on mount
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // Dynamic page title
+  useEffect(() => {
+    const titles: Record<string, string> = {
+      '/': 'ReservaloYA',
+      '/reservar': 'Reservar Cancha | ReservaloYA',
+      '/ubicacion': 'Información | ReservaloYA',
+      '/booking/status': 'Estado de Reserva | ReservaloYA',
+      '/booking/success': '¡Reserva Confirmada! | ReservaloYA',
+      '/booking/failure': 'Error en Reserva | ReservaloYA',
+      '/mis-reservas': 'Mis Reservas | ReservaloYA',
+      '/admin': 'Panel de Administración | ReservaloYA',
+    };
+    document.title = titles[location.pathname] || 'ReservaloYA';
+  }, [location.pathname]);
+
+  // Fintoc redirect detection (code without state)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const state = params.get('state');
+
+    if (code && !state && !location.pathname.startsWith('/booking/')) {
+      navigate(`/booking/status${window.location.search}`, { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   // Subdomain / slug detection
   useEffect(() => {
@@ -64,51 +88,22 @@ export const RootLayout: React.FC = () => {
     }
   }, [fetchSportCenterBySlug, navigate, location.pathname]);
 
-  const handleConfirmBooking = async (method: 'fintoc' | 'venue', guestDetails?: any) => {
-    if (method === 'fintoc' && selectedSlot) {
-      try {
-        const redirect_url = await createFintocPayment({
-          court_id: selectedSlot.courtId,
-          date: selectedSlot.date.toISOString(),
-          hour: selectedSlot.date.getHours(),
-          guest_details: guestDetails,
-          user_id: user?.id,
-        });
-        window.location.href = redirect_url;
-      } catch {
-        toast.error('Error al iniciar el pago con Fintoc.');
-      }
-      return;
-    }
-
-    if (method === 'venue' && selectedSlot) {
-      try {
-        await createBooking({
-          court_id: selectedSlot.courtId,
-          date: selectedSlot.date.toISOString(),
-          hour: selectedSlot.date.getHours(),
-          guest_details: guestDetails,
-          user_id: user?.id,
-        });
-        toast.success('¡Reserva confirmada exitosamente!');
-        setSelectedSlot(null);
-        navigate('/');
-      } catch {
-        toast.error('Error al confirmar la reserva.');
-      }
-      return;
-    }
-
-    const booking = confirmBooking(method as any, guestDetails);
-    if (booking && user) navigate('/mis-reservas');
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-emerald-100">
       <Toaster richColors position="top-center" />
-      <Navbar currentView={location.pathname} />
+      <Navbar />
       <main className="pt-16">
-        <Outlet context={{ handleBookSlot, cancelBooking, blockSlot, user }} />
+        <Outlet context={{
+          handleBookSlot,
+          handleConfirmBooking,
+          cancelBooking,
+          blockSlot,
+          user,
+          isAdministrator,
+          authLoading,
+          slots,
+          bookings
+        }} />
       </main>
 
       <AnimatePresence>
