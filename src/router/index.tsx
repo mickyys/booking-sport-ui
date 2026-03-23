@@ -22,17 +22,17 @@ export const router = createBrowserRouter([
       // Public routes
       { index: true, element: <HomePage /> },
       { path: 'reservar', element: <BookingPageWrapper /> },
-      { path: 'ubicacion', element: <LocationServices selectedCenter={null} /> },
-      { path: 'booking/success', element: <SuccessPage onGoHome={() => {}} onGoToProfile={() => {}} /> },
-      { path: 'booking/failure', element: <FailurePage onRetry={() => {}} onGoHome={() => {}} /> },
-      { path: 'booking', element: <BookingStatusPage /> },
+      { path: 'ubicacion', element: <LocationServices /> },
+      { path: 'booking/success', element: <SuccessPage /> },
+      { path: 'booking/failure', element: <FailurePage /> },
+      { path: 'booking/status', element: <BookingStatusPage /> },
 
       // Protected routes (must be logged in)
       {
         path: 'mis-reservas',
         element: (
           <ProtectedRoute>
-            <ClientDashboard user={null} />
+            <ClientDashboard />
           </ProtectedRoute>
         ),
       },
