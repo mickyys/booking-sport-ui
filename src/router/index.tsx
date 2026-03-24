@@ -23,9 +23,14 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'reservar', element: <BookingPageWrapper /> },
       { path: 'ubicacion', element: <LocationServices /> },
-      { path: 'booking/success', element: <SuccessPage /> },
-      { path: 'booking/failure', element: <FailurePage /> },
-      { path: 'booking/status', element: <BookingStatusPage /> },
+      {
+        path: 'booking', element: <BookingStatusPage />,
+        children: [
+          { path: 'success', element: <SuccessPage /> },
+          { path: 'failure', element: <FailurePage /> },
+          { path: 'status', element: <BookingStatusPage /> }
+        ]
+      },
 
       // Protected routes (must be logged in)
       {
