@@ -57,6 +57,9 @@ export const RootLayout: React.FC = () => {
     const code = params.get('code');
     const state = params.get('state');
 
+    console.log('URL Search Params:', { code, state, pathname: location.pathname });
+    console.log('Current params:', params.toString());
+
     if (code && !state && !location.pathname.startsWith('/booking/')) {
       navigate(`/booking/status${window.location.search}`, { replace: true });
     }
@@ -70,7 +73,7 @@ export const RootLayout: React.FC = () => {
     const parts = hostname.split('.');
     let slug = '';
 
-    if (parts.length >= 2 && hostname.endsWith('.localhost')) {
+    if (parts.length >= 2 && hostname.endsWith('.reservaloya.cl')) {
       slug = parts[0];
     } else if (parts.length >= 3) {
       slug = parts[0];
