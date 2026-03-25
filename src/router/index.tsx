@@ -12,6 +12,7 @@ import AdminPageWrapper from '../pages/AdminPageWrapper';
 import { SuccessPage } from '../pages/booking/SuccessPage';
 import { FailurePage } from '../pages/booking/FailurePage';
 import BookingStatusPage from '../pages/BookingStatusPage';
+import CancelBookingPage from '../pages/CancelBookingPage';
 import NotFoundPage from '../pages/NotFoundPage';
 
 export const router = createBrowserRouter([
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
       { path: 'booking/success', element: <SuccessPage /> },
       { path: 'booking/failure', element: <FailurePage /> },
       { path: 'booking/status', element: <BookingStatusPage /> },
+      { path: 'booking/cancel', element: <CancelBookingPage /> },
 
       // Protected routes (must be logged in)
       {
