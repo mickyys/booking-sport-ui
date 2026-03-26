@@ -7,6 +7,7 @@ export interface ScheduleSlot {
   status: SlotStatus;
   booking_id?: string;
   paymentRequired?: boolean;
+  paymentOptional?: boolean;
 }
 
 export interface CourtWithSchedule {
@@ -45,6 +46,7 @@ export interface TimeSlot {
   status: SlotStatus;
   price: number;
   paymentRequired?: boolean;
+  paymentOptional?: boolean;
 }
 
 export interface Booking {

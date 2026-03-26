@@ -130,48 +130,92 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
           <div className="space-y-3 pt-2 border-t border-slate-100">
             <p className="text-sm font-medium text-slate-700 mb-2">
-              {slot.paymentRequired ? 'Selecciona medio de pago:' : 'Confirma tu reserva:'}
-            </p>
+                {slot.paymentRequired ? 'Selecciona medio de pago:' : slot.paymentOptional ? 'Pago opcional — puedes pagar ahora o confirmar sin pagar' : 'Confirma tu reserva:'}
+              </p>
 
-            {slot.paymentRequired ? (
-              <button
-                disabled={processing !== null}
-                onClick={() => handlePayment('fintoc')}
-                className={`w-full group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all ${processing === 'fintoc'
-                  ? 'border-indigo-500 bg-indigo-50'
-                  : 'border-slate-100 hover:border-indigo-500 hover:bg-indigo-50/30'
-                  }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
-                    <CreditCard className="w-5 h-5" />
+              {slot.paymentRequired && (
+                <button
+                  disabled={processing !== null}
+                  onClick={() => handlePayment('fintoc')}
+                  className={`w-full group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all ${processing === 'fintoc'
+                    ? 'border-indigo-500 bg-indigo-50'
+                    : 'border-slate-100 hover:border-indigo-500 hover:bg-indigo-50/30'
+                    }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <span className="block font-bold text-slate-800 group-hover:text-indigo-700">Fintoc</span>
+                      <span className="text-xs text-slate-500">Transferencia bancaria directa</span>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <span className="block font-bold text-slate-800 group-hover:text-indigo-700">Fintoc</span>
-                    <span className="text-xs text-slate-500">Transferencia bancaria directa</span>
-                  </div>
+                  {processing === 'fintoc' ? (
+                    <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <ChevronRight className="text-slate-300 group-hover:text-indigo-500" />
+                  )}
+                </button>
+              )}
+
+              {slot.paymentOptional && !slot.paymentRequired && (
+                <div className="space-y-3">
+                  <button
+                    disabled={processing !== null}
+                    onClick={() => handlePayment('fintoc')}
+                    className={`w-full group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all ${processing === 'fintoc'
+                      ? 'border-indigo-500 bg-indigo-50'
+                      : 'border-slate-100 hover:border-indigo-500 hover:bg-indigo-50/30'
+                      }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                        <CreditCard className="w-5 h-5" />
+                      </div>
+                      <div className="text-left">
+                        <span className="block font-bold text-slate-800 group-hover:text-indigo-700">Pagar (opcional)</span>
+                        <span className="text-xs text-slate-500">Paga ahora y asegura tu reserva</span>
+                      </div>
+                    </div>
+                    {processing === 'fintoc' ? (
+                      <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <ChevronRight className="text-slate-300 group-hover:text-indigo-500" />
+                    )}
+                  </button>
+
+                  <button
+                    disabled={processing !== null}
+                    onClick={() => handlePayment('venue')}
+                    className={`w-full group relative flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white ${processing === 'venue' ? 'opacity-70' : ''
+                      }`}
+                  >
+                    <span className="font-bold text-lg">Confirmar Reserva (sin pagar)</span>
+                    {processing === 'venue' ? (
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <ChevronRight className="w-5 h-5" />
+                    )}
+                  </button>
                 </div>
-                {processing === 'fintoc' ? (
-                  <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <ChevronRight className="text-slate-300 group-hover:text-indigo-500" />
-                )}
-              </button>
-            ) : (
-              <button
-                disabled={processing !== null}
-                onClick={() => handlePayment('venue')}
-                className={`w-full group relative flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white ${processing === 'venue' ? 'opacity-70' : ''
-                  }`}
-              >
-                <span className="font-bold text-lg">Confirmar Reserva</span>
-                {processing === 'venue' ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <ChevronRight className="w-5 h-5" />
-                )}
-              </button>
-            )}
+              )}
+
+              {!slot.paymentRequired && !slot.paymentOptional && (
+                <button
+                  disabled={processing !== null}
+                  onClick={() => handlePayment('venue')}
+                  className={`w-full group relative flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white ${processing === 'venue' ? 'opacity-70' : ''
+                    }`}
+                >
+                  <span className="font-bold text-lg">Confirmar Reserva</span>
+                  {processing === 'venue' ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5" />
+                  )}
+                </button>
+              )}
           </div>
 
           <div className="mt-6 flex items-start gap-2 text-xs text-slate-400 bg-slate-50 p-3 rounded-lg">

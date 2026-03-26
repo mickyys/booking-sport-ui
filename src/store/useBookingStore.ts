@@ -360,7 +360,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         ...court,
         schedule: (court.schedule || []).map((slot: any) => ({
           ...slot,
-          paymentRequired: slot.payment_required
+          paymentRequired: slot.payment_required,
+          paymentOptional: slot.payment_optional
         }))
       }));
 
@@ -536,7 +537,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         minutes: Number(s.minutes || 0),
         price: Number(s.price),
         status: s.enabled ? 'available' : 'closed',
-        payment_required: !!s.paymentRequired
+        payment_required: !!s.paymentRequired,
+        payment_optional: !!s.paymentOptional
       }));
 
       await api.put(`/admin/courts/${courtId}/schedule`, formattedSchedule, {

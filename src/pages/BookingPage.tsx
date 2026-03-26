@@ -70,7 +70,8 @@ export const BookingView: React.FC<BookingViewProps> = ({
           date,
           status: status,
           price: slot.price,
-          paymentRequired: slot.paymentRequired
+          paymentRequired: slot.paymentRequired,
+          paymentOptional: slot.paymentOptional
         });
       });
     });
@@ -239,6 +240,11 @@ export const BookingView: React.FC<BookingViewProps> = ({
                       {slot.status === 'available' && slot.paymentRequired && (
                         <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full flex items-center gap-1 tracking-tighter border border-indigo-100 italic">
                           <CreditCard className="w-3 h-3" /> Pago requerido para reservar
+                        </span>
+                      )}
+                      {slot.status === 'available' && !slot.paymentRequired && slot.paymentOptional && (
+                        <span className="text-[10px] font-black text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full flex items-center gap-1 tracking-tighter border border-amber-100 italic">
+                          <CreditCard className="w-3 h-3" /> Pago opcional
                         </span>
                       )}
                     </div>
