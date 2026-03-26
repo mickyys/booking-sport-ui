@@ -97,13 +97,6 @@ export const BookingView: React.FC<BookingViewProps> = ({
           );
           if (firstAvailableHour !== undefined) elementId = `hour-${firstAvailableHour}`;
         }
-
-        if (elementId) {
-          const element = document.getElementById(elementId);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }
       }, 500);
       return () => clearTimeout(timer);
     }

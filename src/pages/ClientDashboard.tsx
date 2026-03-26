@@ -90,22 +90,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user: userProp
         fetchCancelled();
     }, [fetchMyBookings, fetchCancelledBookings, getAccessTokenSilently, user?.name]);
 
-    const handleCancelBooking = async () => {
-        if (!bookingToCancel) return;
-
-        try {
-            await cancelBooking(bookingToCancel, getAccessTokenSilently);
-            // Refrescar las listas de bookings
-            await fetchMyBookings(getAccessTokenSilently, false);
-            await fetchMyBookings(getAccessTokenSilently, true);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setBookingToCancel(null);
-        }
-    };
-
-
     // Simplification: just show future bookings
     const futureBookings = myBookings
         .filter(b => b.status === 'confirmed' && new Date(b.date) > new Date())
@@ -206,7 +190,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user: userProp
                             setBookingToCancel(null)
                             await fetchMyBookings(getAccessTokenSilently, false);
                         }}
-                        onConfirm={handleCancelBooking}
                     />
                 )}
             </AnimatePresence>

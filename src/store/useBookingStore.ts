@@ -1,16 +1,17 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { SportCenter, Court, CourtWithSchedule } from '../types';
+import { SportCenter, Court, CourtWithSchedule, Booking, BookingDTO } from '../types';
 import api from '../api/axiosInstance';
 import { SPORT_CENTERS as MOCK_SPORT_CENTERS, COURTS as MOCK_COURTS } from '../data/mockData';
 import { getUserCancelledBookings } from '../api/bookingApi';
+import { mapBooking } from '../mapper/mapBooking';
 
 interface BookingState {
   sportCenters: SportCenter[];
   courts: Court[];
   schedules: CourtWithSchedule[];
   myBookings: any[];
-  currentBooking: any | null;
+  currentBooking: Booking | null;
   selectedCenterId: string | null;
   isLoading: boolean;
   error: string | null;
@@ -180,12 +181,11 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     set({ isLoading: true });
     try {
       const { data } = await api.get(`/bookings/code/${code}`);
-      set({ currentBooking: data, error: null });
+      // Return same shape as fetchBookingDetail (backend returns booking_detail + metadata)
       return data;
     } catch (err) {
       console.error("Error fetching booking by code:", err);
-      set({ error: 'Failed to fetch booking' });
-      return null;
+      throw err;
     } finally {
       set({ isLoading: false });
     }

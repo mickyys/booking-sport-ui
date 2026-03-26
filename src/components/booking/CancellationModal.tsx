@@ -9,29 +9,35 @@ import { useBookingStore } from '../../store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
 
 interface CancellationModalProps {
-    bookingId: string;
+    bookingId?: string;
+    bookingCode?: string;
     onClose: () => void;
-    onConfirm: () => void;
 }
 
 export const CancellationModal: React.FC<CancellationModalProps> = ({
     bookingId,
+    bookingCode,
     onClose,
-    onConfirm
 }) => {
     const { getAccessTokenSilently } = useAuth0();
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
     const [detail, setDetail] = useState<BookingDetailResponse | null>(null);
-    const { fetchBookingDetail } = useBookingStore(); // Solo para obtener la función fetchBookingDetail, no necesitamos el estado aquí
+    const { fetchBookingDetail, fetchBookingByCode, fetchMyBookings, cancelBooking } = useBookingStore(); // Solo para obtener las funciones necesarias
 
     useEffect(() => {
 
         const loadBookingDetail = async () => {
-            if (!bookingId) return;
+            if (!bookingId && !bookingCode) return;
 
             try {
-                const data = await fetchBookingDetail(bookingId, getAccessTokenSilently);
+                let data;
+                if (bookingId) {
+                    data = await fetchBookingDetail(bookingId, getAccessTokenSilently);
+                } else if (bookingCode) {
+                    data = await fetchBookingByCode(bookingCode);
+                }
+
                 setDetail(data);
                 setLoading(false);
 
@@ -41,8 +47,8 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                 onClose();
             }
         };
-        loadBookingDetail()
-    }, [fetchBookingDetail, getAccessTokenSilently]);
+        loadBookingDetail();
+    }, [bookingId, bookingCode, fetchBookingDetail, fetchBookingByCode, getAccessTokenSilently]);
 
     if (loading) {
         return (
@@ -65,11 +71,11 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
     const handleConfirm = async () => {
         setProcessing(true);
         try {
-            await onConfirm();
-
-            toast.success('¡Reserva cancelada exitosamente!', {
-                description: `El reembolso del ${refund_percentage}% ha sido procesado vía ${booking.payment_method || 'fintoc'}.`
-            });
+             await cancelBooking(booking.id, getAccessTokenSilently);
+            // Refrescar las listas de bookings
+            await fetchMyBookings(getAccessTokenSilently, false);
+            await fetchMyBookings(getAccessTokenSilently, true);
+            onClose();
         } catch (error: any) {
             console.error('Error al cancelar reserva:', error);
             const errorMessage = error.response?.data?.error || 'No se pudo procesar la cancelación. Intenta más tarde.';
@@ -80,7 +86,7 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
             setProcessing(false);
         }
     };
-
+    
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
             <motion.div

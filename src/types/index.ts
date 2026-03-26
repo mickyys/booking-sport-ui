@@ -48,22 +48,52 @@ export interface TimeSlot {
 }
 
 export interface Booking {
-  id: string;
-  slotId: string;
-  courtId: string;
-  centerId: string;
-  date: string;
-  hour: number;
-  sportCenterName: string;
-  courtName: string;
-  price: number;
-  fintocPaymentIntentId?: string;
-  status: 'confirmed' | 'cancelled' | 'pending';
-  createdAt: string;
-  paymentMethod: 'mercadopago' | 'fintoc' | 'cash';
-  userName: string;
-  userEmail: string;
-  isGuest: boolean;
+  id: string
+
+  // relaciones
+  slotId: string
+  courtId: string
+  centerId: string
+  userId: string
+
+  // nombres descriptivos
+  courtName: string
+  sportCenterName: string
+
+  // fecha reserva
+  date: string
+  hour: number
+
+  // precios
+  price: number
+  finalPrice: number
+
+  // estado
+  status: 'confirmed' | 'cancelled' | 'pending'
+
+  // pago
+  paymentMethod: 'mercadopago' | 'fintoc' | 'cash'
+  fintocPaymentIntentId?: string
+
+  // cliente
+  customerName: string
+  customerPhone: string
+  customerEmail?: string
+
+  // invitado
+  isGuest: boolean
+  guestDetails?: {
+    name: string
+    email: string
+    phone: string
+  }
+
+  // código de reserva
+  bookingCode: string
+
+  // auditoría
+  createdAt: string
+  updatedAt: string
 }
 
 export interface UserProfile {
@@ -111,4 +141,30 @@ export interface BookingDetailResponse {
     hours_until_match: number;
     max_refund_amount: number;
     refund_percentage: number;
+}
+
+
+export interface BookingDTO {
+  id: string
+  court_id: string
+  sport_center_id: string
+  court_name: string
+  sport_center_name: string
+  user_id: string
+  guest_details?: {
+    name: string
+    email: string
+    phone: string
+  }
+  date: string
+  hour: number
+  final_price: number
+  price: number
+  status: 'confirmed' | 'cancelled' | 'pending'
+  booking_code: string
+  payment_method: 'venue' | 'mercadopago' | 'fintoc'
+  customer_name: string
+  customer_phone: string
+  created_at: string
+  updated_at: string
 }
