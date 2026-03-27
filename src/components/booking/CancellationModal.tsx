@@ -107,38 +107,36 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                     </button>
                 </div>
                 <div className="p-6 overflow-y-auto flex-1">
-                </div>
+                    {/* Booking Details */}
+                    <div className="flex items-center gap-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div className="flex-1">
+                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">{booking.sport_center_name}</p>
+                            <p className="text-base text-slate-800 font-bold leading-tight">{booking.court_name}</p>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+                                <p className="font-medium text-slate-600 flex items-center gap-1.5 text-sm">
+                                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                    {format(bookingDate, "EEEE d 'de' MMMM", { locale: es })}
+                                </p>
+                                <p className="text-emerald-600 font-bold flex items-center gap-1.5 text-sm">
+                                    <Clock className="w-3.5 h-3.5" />
+                                    {booking.hour}:00 hrs
+                                </p>
+                            </div>
+                            <p className="text-[9px] text-slate-300 mt-2 font-mono">Código: {booking.booking_code}</p>
+                        </div>
+                    </div>
 
-                {/* Footer - fixed actions */}
-                <div className="p-4 bg-white border-t flex flex-col gap-3">
-                    {can_cancel && (
-                        <button
-                            onClick={handleConfirm}
-                            disabled={processing}
-                            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {processing ? (
-                                <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    Procesando...
-                                </>
-                            ) : (
-                                <>
-                                    <Ban className="w-5 h-5" />
-                                    Confirmar Cancelación
-                                </>
-                            )}
-                        </button>
-                    )}
-
-                    <button
-                        onClick={onClose}
-                        disabled={processing}
-                        className="w-full px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors disabled:opacity-50"
-                    >
-                        {can_cancel ? 'Mantener Reserva' : 'Cerrar'}
-                    </button>
-                </div>
+                    {!can_cancel ? (
+                        <div className="p-4 bg-red-50 border border-red-200 rounded-xl mb-6">
+                            <div className="flex items-start gap-3">
+                                <Ban className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-bold text-red-900 mb-1">Cancelación no disponible</p>
+                                    <p className="text-sm text-red-800">
+                                        El partido ya ha comenzado, está muy próximo o ha finalizado. No es posible cancelar esta reserva según las políticas del centro.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     ) : (
                         <>
@@ -195,75 +193,77 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
 
                             {/* Time remaining info */}
                             {booking.payment_method !== 'venue' && (
-                            <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl mb-6">
-                                <div className="flex items-start gap-3">
-                                    <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                                    <div>
-                                        <p className="text-sm text-blue-900 font-medium mb-1">
-                                            Tiempo restante hasta el partido
-                                        </p>
-                                        <p className="text-sm text-blue-800">
-                                            Faltan <strong>{Math.floor(hours_until_match)} horas y {Math.round((hours_until_match % 1) * 60)} minutos</strong> para el inicio.
-                                        </p>
+                                <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl mb-6">
+                                    <div className="flex items-start gap-3">
+                                        <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-sm text-blue-900 font-medium mb-1">
+                                                Tiempo restante hasta el partido
+                                            </p>
+                                            <p className="text-sm text-blue-800">
+                                                Faltan <strong>{Math.floor(hours_until_match)} horas y {Math.round((hours_until_match % 1) * 60)} minutos</strong> para el inicio.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>)}
+                            )}
 
                             {/* Payment method refund */}
                             {booking.payment_method !== 'venue' && (
-                            <div className="p-4 bg-slate-50 rounded-xl mb-6">
-                                <p className="text-sm text-slate-600 mb-2">Método de reembolso</p>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-100 text-blue-600">
-                                        <CreditCard className="w-4 h-4" />
+                                <div className="p-4 bg-slate-50 rounded-xl mb-6">
+                                    <p className="text-sm text-slate-600 mb-2">Método de reembolso</p>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-100 text-blue-600">
+                                            <CreditCard className="w-4 h-4" />
+                                        </div>
+                                        <span className="font-medium text-slate-900">
+                                            { booking.payment_method === 'venue' ? 'Presencial' : 'Fintoc'}
+                                        </span>
                                     </div>
-                                    <span className="font-medium text-slate-900">
-                                        { booking.payment_method === 'venue' ? 'Presencial' : 'Fintoc'}
-                                    </span>
+                                    {booking.payment_method !== 'venue' ? (
+                                        <p className="text-xs text-slate-500 mt-2">
+                                            El reembolso se procesará de forma automática en 3-5 días hábiles a través de la plataforma de pago original.
+                                        </p>
+                                    ) : (
+                                        <p className="text-xs text-slate-500 mt-2">
+                                            El reembolso para pagos presenciales se gestiona directamente con el centro deportivo.
+                                        </p>
+                                    )}
                                 </div>
-                                {booking.payment_method !== 'venue' ? (
-                                    <p className="text-xs text-slate-500 mt-2">
-                                        El reembolso se procesará de forma automática en 3-5 días hábiles a través de la plataforma de pago original.
-                                    </p>
-                                ) : (
-                                    <p className="text-xs text-slate-500 mt-2">
-                                        El reembolso para pagos presenciales se gestiona directamente con el centro deportivo.
-                                    </p>
-                                )}
-                            </div>)}
+                            )}
                         </>
                     )}
+                </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex flex-col gap-3">
-                        {can_cancel && (
-                            <button
-                                onClick={handleConfirm}
-                                disabled={processing}
-                                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {processing ? (
-                                    <>
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                        Procesando...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Ban className="w-5 h-5" />
-                                        Confirmar Cancelación
-                                    </>
-                                )}
-                            </button>
-                        )}
-
+                {/* Footer - fixed actions */}
+                <div className="p-4 bg-white border-t flex flex-col gap-3">
+                    {can_cancel && (
                         <button
-                            onClick={onClose}
+                            onClick={handleConfirm}
                             disabled={processing}
-                            className="w-full px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors disabled:opacity-50"
+                            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {can_cancel ? 'Mantener Reserva' : 'Cerrar'}
+                            {processing ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    Procesando...
+                                </>
+                            ) : (
+                                <>
+                                    <Ban className="w-5 h-5" />
+                                    Confirmar Cancelación
+                                </>
+                            )}
                         </button>
-                    </div>
+                    )}
+
+                    <button
+                        onClick={onClose}
+                        disabled={processing}
+                        className="w-full px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors disabled:opacity-50"
+                    >
+                        {can_cancel ? 'Mantener Reserva' : 'Cerrar'}
+                    </button>
                 </div>
             </motion.div>
         </div>
