@@ -94,7 +94,7 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
+                className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden"
             >
                 {/* Header */}
                 <div className="bg-gradient-to-r from-red-500 to-red-600 p-6 text-white flex justify-between items-start">
@@ -106,38 +106,39 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                         <X className="w-6 h-6" />
                     </button>
                 </div>
+                <div className="p-6 overflow-y-auto flex-1">
+                </div>
 
-                <div className="p-6">
-                    {/* Booking Details */}
-                    <div className="flex items-center gap-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        <div className="flex-1">
-                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">{booking.sport_center_name}</p>
-                            <p className="text-base text-slate-800 font-bold leading-tight">{booking.court_name}</p>
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-                                <p className="font-medium text-slate-600 flex items-center gap-1.5 text-sm">
-                                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                                    {format(bookingDate, "EEEE d 'de' MMMM", { locale: es })}
-                                </p>
-                                <p className="text-emerald-600 font-bold flex items-center gap-1.5 text-sm">
-                                    <Clock className="w-3.5 h-3.5" />
-                                    {booking.hour}:00 hrs
-                                </p>
-                            </div>
-                            <p className="text-[9px] text-slate-300 mt-2 font-mono">Código: {booking.booking_code}</p>
-                        </div>
-                    </div>
+                {/* Footer - fixed actions */}
+                <div className="p-4 bg-white border-t flex flex-col gap-3">
+                    {can_cancel && (
+                        <button
+                            onClick={handleConfirm}
+                            disabled={processing}
+                            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {processing ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    Procesando...
+                                </>
+                            ) : (
+                                <>
+                                    <Ban className="w-5 h-5" />
+                                    Confirmar Cancelación
+                                </>
+                            )}
+                        </button>
+                    )}
 
-                    {!can_cancel ? (
-                        <div className="p-4 bg-red-50 border border-red-200 rounded-xl mb-6">
-                            <div className="flex items-start gap-3">
-                                <Ban className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                                <div>
-                                    <p className="font-bold text-red-900 mb-1">Cancelación no disponible</p>
-                                    <p className="text-sm text-red-800">
-                                        El partido ya ha comenzado, está muy próximo o ha finalizado. No es posible cancelar esta reserva según las políticas del centro.
-                                    </p>
-                                </div>
-                            </div>
+                    <button
+                        onClick={onClose}
+                        disabled={processing}
+                        className="w-full px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors disabled:opacity-50"
+                    >
+                        {can_cancel ? 'Mantener Reserva' : 'Cerrar'}
+                    </button>
+                </div>
                         </div>
                     ) : (
                         <>
