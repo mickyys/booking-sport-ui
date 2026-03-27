@@ -41,7 +41,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user: userProp
         };
         getCount();
 
-        // Fetch past bookings independientemente
         const fetchPast = async () => {
             setIsPastLoading(true);
             try {
@@ -82,7 +81,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user: userProp
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     if (!user) return null;
-
     return (
         <>
             <div className="min-h-screen bg-slate-50 pt-8 pb-20 px-4">

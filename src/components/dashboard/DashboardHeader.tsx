@@ -23,7 +23,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, cancella
                     </div>
                 </div>
                 <div className="text-center md:text-left flex-1">
-                    <h2 className="text-3xl font-bold text-slate-900 mb-2">Hola, {user.name}</h2>
+                    <h2 className="capitalize text-3xl font-bold text-slate-900 mb-2">Hola, {user.name}</h2>
                     <p className="text-slate-500 mb-6">{user.email}</p>
                     <div className="flex flex-wrap justify-center md:justify-start gap-4">
                         <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100">

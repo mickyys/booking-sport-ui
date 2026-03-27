@@ -8,7 +8,6 @@ export default function BookingStatusPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const code = searchParams.get('code');
-  console.log('Booking code from URL:', code);
   const { currentBooking, isLoading, fetchBookingByCode } = useBookingStore();
 
   useEffect(() => {

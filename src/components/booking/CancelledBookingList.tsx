@@ -9,7 +9,6 @@ interface CancelledBookingListProps {
 }
 
 export const CancelledBookingList: React.FC<CancelledBookingListProps> = ({ bookings, isLoading }) => {
-    console.log("Bookings recibidas en CancelledBookingList:", bookings);
   return (
     <div>
       <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">

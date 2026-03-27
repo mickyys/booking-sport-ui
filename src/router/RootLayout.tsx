@@ -57,9 +57,6 @@ export const RootLayout: React.FC = () => {
     const code = params.get('code');
     const state = params.get('state');
 
-    console.log('URL Search Params:', { code, state, pathname: location.pathname });
-    console.log('Current params:', params.toString());
-
     if (code && !state && !location.pathname.startsWith('/booking/')) {
       navigate(`/booking/status${window.location.search}`, { replace: true });
     }

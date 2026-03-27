@@ -62,7 +62,6 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
     }
 
     if (!detail) return null;
-    console.log('Booking detail:', detail);
     const { booking_detail: booking, cancellation_policy, hours_until_match, can_cancel, refund_percentage, max_refund_amount } = detail;
 
     const bookingDate = parseISO(booking.date);

@@ -63,7 +63,6 @@ export const BookingCard: React.FC<BookingCardProps> = ({ booking, courts, isLoa
 
                 <button
                     onClick={() => {
-                        console.log('Botón cancelar presionado para ID:', booking.id);
                         onCancel(booking.id);
                     }}
                     className="px-4 py-2 bg-red-50 text-red-600 font-bold rounded-lg text-sm border border-red-200 hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
