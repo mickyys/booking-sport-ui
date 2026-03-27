@@ -25,7 +25,7 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             className="text-5xl md:text-6xl font-extrabold text-white mb-6 drop-shadow-lg"
           >
-            Listas para tu Equipo
+            Canchas Profesionales <br /><span className="text-emerald-400">Listas para tu Equipo</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
