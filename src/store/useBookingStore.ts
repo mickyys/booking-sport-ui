@@ -11,6 +11,8 @@ interface BookingState {
   courts: Court[];
   schedules: CourtWithSchedule[];
   myBookings: any[];
+  cancelledBookings: any[];
+  isCancelledLoading: boolean;
   currentBooking: Booking | null;
   selectedCenterId: string | null;
   isLoading: boolean;
@@ -51,7 +53,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
   persist(
     (set, get) => ({
     fetchCancelledBookings: async (getToken: (options?: any) => Promise<string>, page = 1, limit = 5) => {
-      set({ isLoading: true });
+      set({ isCancelledLoading: true });
       try {
         const token = await getToken({
           authorizationParams: {
@@ -70,19 +72,21 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           paymentMethod: b.payment_method,
           createdAt: b.created_at
         }));
-        set({ error: null });
+        set({ error: null, cancelledBookings: formatted });
         return formatted;
       } catch (err) {
-        set({ error: 'Failed to fetch cancelled bookings' });
+        set({ error: 'Failed to fetch cancelled bookings', cancelledBookings: [] });
         return [];
       } finally {
-        set({ isLoading: false });
+        set({ isCancelledLoading: false });
       }
     },
   sportCenters: [],
   courts: [],
   schedules: [],
   myBookings: [],
+  cancelledBookings: [],
+  isCancelledLoading: false,
   currentBooking: null,
   selectedCenterId: null,
   isLoading: false,
@@ -182,6 +186,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const { data } = await api.get(`/bookings/code/${code}`);
       // Return same shape as fetchBookingDetail (backend returns booking_detail + metadata)
+      set({ currentBooking: data.booking_detail, error: null });
       return data;
     } catch (err) {
       console.error("Error fetching booking by code:", err);
@@ -255,11 +260,12 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         slug: c.slug || '',
         location: c.address,
         address: c.address,
-        phone: c.contact?.phone || '',
-        email: c.contact?.email || '',
+        contact: c.contact || { phone: '', email: '' },
         image: "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&q=80&w=1000",
         cancellationHours: c.cancellation_hours,
-        retentionPercent: c.retention_percent
+        retentionPercent: c.retention_percent,
+        services: c.services || []
+
       }));
       
       set({ sportCenters: centers, error: null });
@@ -286,11 +292,12 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         slug: c.slug,
         location: c.address,
         address: c.address,
-        phone: c.contact?.phone || '',
-        email: c.contact?.email || '',
+        contact: c.contact || { phone: '', email: '' }, 
         image: "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&q=80&w=1000",
         cancellationHours: c.cancellation_hours,
-        retentionPercent: c.retention_percent
+        retentionPercent: c.retention_percent,
+        services: c.services || [],
+        coordinates: c.coordinates || { lat: 0, lng: 0 }
       };
       set({ sportCenterBySlug: center, selectedCenterId: center.id, error: null });
       return center;

@@ -1,14 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapPin, Info, Car, ShowerHead, Clock, Phone, Mail } from 'lucide-react';
-import { SPORT_CENTERS } from '../data/mockData';
+import { useBookingStore } from '../store/useBookingStore';
+import { SportCenter } from '../types';
 
 interface LocationServicesProps {
   selectedCenter?: string | null;
 }
 
 export const LocationServices: React.FC<LocationServicesProps> = ({ selectedCenter = null }) => {
-    const [currentCenter, setCurrentCenter] = useState(selectedCenter);
-    const center = SPORT_CENTERS.find(c => c.id === currentCenter) || SPORT_CENTERS[0];
+    
+    const { sportCenters, fetchSportCenters, isLoading, error } = useBookingStore(state => state);
+    const [sportCenter, setSportCenter] = useState<SportCenter>(); // For forcing re-render when sport centers are loaded, if needed
+
+    useEffect(() => {
+        if (!sportCenters || sportCenters.length === 0) {
+            fetchSportCenters();
+        }
+    }, []);
     
     return (
         <div className="max-w-6xl mx-auto px-4 py-12">
@@ -16,12 +24,12 @@ export const LocationServices: React.FC<LocationServicesProps> = ({ selectedCent
             
             {/* Center Selector */}
             <div className="flex flex-wrap justify-center gap-3 mb-8">
-                {SPORT_CENTERS.map(c => (
+                {sportCenters.map(c => (
                     <button
                         key={c.id}
-                        onClick={() => setCurrentCenter(c.id)}
+                        onClick={() => setSportCenter(c)}
                         className={`px-4 py-2 rounded-xl font-medium transition-all ${
-                            currentCenter === c.id
+                            (sportCenter?.id || '') === c.id
                                 ? 'bg-emerald-500 text-white shadow-md'
                                 : 'bg-white text-slate-700 border border-slate-200 hover:border-emerald-300'
                         }`}
@@ -39,8 +47,11 @@ export const LocationServices: React.FC<LocationServicesProps> = ({ selectedCent
                         Cómo llegar
                     </h3>
                     <p className="text-slate-600 mb-4">
-                        {center.address}
+                        {isLoading ? 'Cargando dirección...' : (sportCenter?.address || '')}
                     </p>
+                    {error && (
+                        <p className="text-sm text-red-500 mt-2">{error}</p>
+                    )}
                     <div className="aspect-video bg-slate-100 rounded-xl overflow-hidden relative">
                         <div className="absolute inset-0 flex items-center justify-center text-slate-400 bg-slate-100">
                             <MapPin className="w-12 h-12 mb-2 opacity-20" />
@@ -61,49 +72,76 @@ export const LocationServices: React.FC<LocationServicesProps> = ({ selectedCent
                             Servicios Incluidos
                         </h3>
                         <ul className="space-y-4">
-                            <li className="flex items-start gap-3">
-                                <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
-                                    <Car className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <span className="font-bold block text-slate-900">Estacionamiento Privado</span>
-                                    <span className="text-sm text-slate-500">Gratuito para jugadores (30 cupos).</span>
-                                </div>
-                            </li>
-                            <li className="flex items-start gap-3">
-                                <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
-                                    <ShowerHead className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <span className="font-bold block text-slate-900">Camarines y Duchas</span>
-                                    <span className="text-sm text-slate-500">Agua caliente y lockers disponibles.</span>
-                                </div>
-                            </li>
-                            <li className="flex items-start gap-3">
-                                <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
-                                    <Clock className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <span className="font-bold block text-slate-900">Horario Extendido</span>
-                                    <span className="text-sm text-slate-500">Lunes a Domingo, 09:00 a 23:00 hrs.</span>
-                                </div>
-                            </li>
+                            {(sportCenter?.services && sportCenter.services.length > 0) ? (
+                                sportCenter.services.map((s, idx) => {
+                                    const label = s;
+                                    let Icon = Info;
+                                    const l = s.toLowerCase();
+                                    if (l.includes('estacion')) Icon = Car;
+                                    else if (l.includes('duch') || l.includes('camar')) Icon = ShowerHead;
+                                    else if (l.includes('horar') || l.includes('turno')) Icon = Clock;
+
+                                    return (
+                                        <li key={idx} className="flex items-start gap-3">
+                                            <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
+                                                <Icon className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <span className="font-bold block text-slate-900">{label}</span>
+                                            </div>
+                                        </li>
+                                    );
+                                })
+                            ) : (
+                                <>
+                                    <li className="flex items-start gap-3">
+                                        <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
+                                            <Car className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <span className="font-bold block text-slate-900">Estacionamiento Privado</span>
+                                            <span className="text-sm text-slate-500">Gratuito para jugadores (30 cupos).</span>
+                                        </div>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
+                                            <ShowerHead className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <span className="font-bold block text-slate-900">Camarines y Duchas</span>
+                                            <span className="text-sm text-slate-500">Agua caliente y lockers disponibles.</span>
+                                        </div>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
+                                            <Clock className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <span className="font-bold block text-slate-900">Horario Extendido</span>
+                                            <span className="text-sm text-slate-500">Lunes a Domingo, 09:00 a 23:00 hrs.</span>
+                                        </div>
+                                    </li>
+                                </>
+                            )}
                         </ul>
                     </div>
 
-                    <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-sm">
-                        <h3 className="text-xl font-bold mb-4">Contacto</h3>
-                        <div className="space-y-3">
-                            <p className="flex items-center gap-3">
-                                <Phone className="w-5 h-5 text-emerald-400" />
-                                <span>{center.phone}</span>
-                            </p>
-                            <p className="flex items-center gap-3">
-                                <Mail className="w-5 h-5 text-emerald-400" />
-                                <span>{center.email}</span>
-                            </p>
+
+                    {sportCenter?.contact && (
+                        <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-sm">
+                            <h3 className="text-xl font-bold mb-4">Contacto</h3>
+                            <div className="space-y-3">
+                                <p className="flex items-center gap-3">
+                                    <Phone className="w-5 h-5 text-emerald-400" />
+                                    <span>{sportCenter.contact.phone}</span>
+                                </p>
+                                <p className="flex items-center gap-3">
+                                    <Mail className="w-5 h-5 text-emerald-400" />
+                                    <span>{sportCenter.contact.email}</span>
+                                </p>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>

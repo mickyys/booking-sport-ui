@@ -2,11 +2,17 @@ import React from 'react';
 import { Settings, Star, Info } from 'lucide-react';
 import { UserProfile } from '../../types';
 
-interface DashboardHeaderProps {
-    user: UserProfile;
+interface CancellationPolicy {
+    hours: number;
+    retention_percent: number;
 }
 
-export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user }) => {
+interface DashboardHeaderProps {
+    user: UserProfile;
+    cancellationPolicy?: CancellationPolicy | null;
+}
+
+export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, cancellationPolicy = null }) => {
     return (
         <div className="flex flex-col gap-4 mb-8">
             <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200 flex flex-col md:flex-row items-center gap-8">
@@ -28,34 +34,36 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user }) => {
                 </div>            
             </div>
 
-            <div className="bg-white border border-slate-200 p-6 rounded-3xl flex flex-col gap-3">
-                <div className="flex items-center gap-2 text-emerald-800 font-bold mb-1">
-                    <Info className="w-5 h-5" />
-                    <span>Política de Cancelación</span>
+            {cancellationPolicy && cancellationPolicy.hours > 0 && cancellationPolicy.retention_percent > 0 && (
+                <div className="bg-white border border-slate-200 p-6 rounded-3xl flex flex-col gap-3">
+                    <div className="flex items-center gap-2 text-emerald-800 font-bold mb-1">
+                        <Info className="w-5 h-5" />
+                        <span>Política de Cancelación</span>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="flex items-start gap-3">
+                            <span className="text-xl">✅</span>
+                            <p className="text-sm text-slate-700">
+                                <span className="font-bold text-slate-900 block">Hasta {cancellationPolicy.hours} horas antes:</span>
+                                recibirás <span className="font-bold text-emerald-600 text-base">100%</span> del pago.
+                            </p>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <span className="text-xl">⚡</span>
+                            <p className="text-sm text-slate-700">
+                                <span className="font-bold text-slate-900 block">Dentro de las {cancellationPolicy.hours} horas previas:</span>
+                                recibirás <span className="font-bold text-amber-600 text-base">{100 - cancellationPolicy.retention_percent}%</span> del pago.
+                            </p>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <span className="text-xl">ℹ️</span>
+                            <p className="text-sm text-slate-500 italic mt-1">
+                                Puedes cancelar tu reserva en cualquier momento y ver el reembolso correspondiente.
+                            </p>
+                        </div>
+                    </div>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <div className="flex items-start gap-3">
-                        <span className="text-xl">✅</span>
-                        <p className="text-sm text-slate-700">
-                            <span className="font-bold text-slate-900 block">Hasta 6 horas antes:</span>
-                            recibirás <span className="font-bold text-emerald-600 text-base">100%</span> del pago.
-                        </p>
-                    </div>
-                    <div className="flex items-start gap-3">
-                        <span className="text-xl">⚡</span>
-                        <p className="text-sm text-slate-700">
-                            <span className="font-bold text-slate-900 block">Dentro de las 6 horas previas:</span>
-                            recibirás <span className="font-bold text-amber-600 text-base">90%</span> del pago.
-                        </p>
-                    </div>
-                    <div className="flex items-start gap-3">
-                        <span className="text-xl">ℹ️</span>
-                        <p className="text-sm text-slate-500 italic mt-1">
-                            Puedes cancelar tu reserva en cualquier momento y ver el reembolso correspondiente.
-                        </p>
-                    </div>
-                </div>
-            </div>
+            )}
         </div>
     );
 };

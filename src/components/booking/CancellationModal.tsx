@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { X, Clock, Ban, DollarSign, CreditCard, Calendar, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Booking, Court, BookingDetailResponse } from '../../types';
+import { BookingDetailResponse } from '../../types';
 import { toast } from 'sonner';
 import { useBookingStore } from '../../store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
@@ -23,7 +23,7 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
     const [detail, setDetail] = useState<BookingDetailResponse | null>(null);
-    const { fetchBookingDetail, fetchBookingByCode, fetchMyBookings, cancelBooking } = useBookingStore(); // Solo para obtener las funciones necesarias
+    const { fetchBookingDetail, fetchCancelledBookings, fetchBookingByCode, fetchMyBookings, cancelBooking } = useBookingStore(); // Solo para obtener las funciones necesarias
 
     useEffect(() => {
 
@@ -62,7 +62,7 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
     }
 
     if (!detail) return null;
-
+    console.log('Booking detail:', detail);
     const { booking_detail: booking, cancellation_policy, hours_until_match, can_cancel, refund_percentage, max_refund_amount } = detail;
 
     const bookingDate = parseISO(booking.date);
@@ -75,6 +75,7 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
             // Refrescar las listas de bookings
             await fetchMyBookings(getAccessTokenSilently, false);
             await fetchMyBookings(getAccessTokenSilently, true);
+            await fetchCancelledBookings(getAccessTokenSilently, 1, 5);
             onClose();
         } catch (error: any) {
             console.error('Error al cancelar reserva:', error);
@@ -140,56 +141,59 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                         </div>
                     ) : (
                         <>
-                            {/* Refund Information */}
-                            <div className={`p-5 rounded-xl mb-6 border-2 ${refund_percentage === 100
-                                ? 'bg-emerald-50 border-emerald-200'
-                                : 'bg-amber-50 border-amber-200'
-                                }`}>
-                                <div className="flex items-start gap-3 mb-4">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${refund_percentage === 100
-                                        ? 'bg-emerald-500'
-                                        : 'bg-amber-500'
-                                        }`}>
-                                        <DollarSign className="w-6 h-6 text-white" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h4 className={`font-bold mb-1 ${refund_percentage === 100
-                                            ? 'text-emerald-900'
-                                            : 'text-amber-900'
+                            {/* Refund Information - hide when payment was made 'venue' (presencial) */}
+                            {booking.payment_method !== 'venue' && (
+                                <div className={`p-5 rounded-xl mb-6 border-2 ${refund_percentage === 100
+                                    ? 'bg-emerald-50 border-emerald-200'
+                                    : 'bg-amber-50 border-amber-200'
+                                    }`}>
+                                    <div className="flex items-start gap-3 mb-4">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${refund_percentage === 100
+                                            ? 'bg-emerald-500'
+                                            : 'bg-amber-500'
                                             }`}>
-                                            Reembolso del {refund_percentage}%
-                                        </h4>
-                                        <p className={`text-sm ${refund_percentage === 100
-                                            ? 'text-emerald-800'
-                                            : 'text-amber-800'
-                                            }`}>
-                                            {refund_percentage === 100
-                                                ? `Estás cancelando con más de ${cancellation_policy.limit_hours} horas de anticipación. Recibirás el reembolso completo.`
-                                                : `Estás cancelando con menos de ${cancellation_policy.limit_hours} horas de anticipación. Se aplicará un cargo del ${cancellation_policy.retention_percent}% por cancelación tardía.`
-                                            }
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2 pt-3 border-t border-slate-200">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm text-slate-600">Monto original</span>
-                                        <span className="font-medium text-slate-900">${booking.price.toLocaleString('es-CL')}</span>
-                                    </div>
-                                    {refund_percentage < 100 && (
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-sm text-slate-600">Cargo por cancelación ({cancellation_policy.retention_percent}%)</span>
-                                            <span className="font-medium text-red-600">-${fee.toLocaleString('es-CL')}</span>
+                                            <DollarSign className="w-6 h-6 text-white" />
                                         </div>
-                                    )}
-                                    <div className="flex justify-between items-center pt-2 border-t border-slate-200">
-                                        <span className="font-bold text-slate-900">Reembolso total</span>
-                                        <span className="text-2xl font-bold text-emerald-600">${max_refund_amount.toLocaleString('es-CL')}</span>
+                                        <div className="flex-1">
+                                            <h4 className={`font-bold mb-1 ${refund_percentage === 100
+                                                ? 'text-emerald-900'
+                                                : 'text-amber-900'
+                                                }`}>
+                                                Reembolso del {refund_percentage}%
+                                            </h4>
+                                            <p className={`text-sm ${refund_percentage === 100
+                                                ? 'text-emerald-800'
+                                                : 'text-amber-800'
+                                                }`}>
+                                                {refund_percentage === 100
+                                                    ? `Estás cancelando con más de ${cancellation_policy.limit_hours} horas de anticipación. Recibirás el reembolso completo.`
+                                                    : `Estás cancelando con menos de ${cancellation_policy.limit_hours} horas de anticipación. Se aplicará un cargo del ${cancellation_policy.retention_percent}% por cancelación tardía.`
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2 pt-3 border-t border-slate-200">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm text-slate-600">Monto original</span>
+                                            <span className="font-medium text-slate-900">${booking.price.toLocaleString('es-CL')}</span>
+                                        </div>
+                                        {refund_percentage < 100 && (
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm text-slate-600">Cargo por cancelación ({cancellation_policy.retention_percent}%)</span>
+                                                <span className="font-medium text-red-600">-${fee.toLocaleString('es-CL')}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+                                            <span className="font-bold text-slate-900">Reembolso total</span>
+                                            <span className="text-2xl font-bold text-emerald-600">${max_refund_amount.toLocaleString('es-CL')}</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Time remaining info */}
+                            {booking.payment_method !== 'venue' && (
                             <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl mb-6">
                                 <div className="flex items-start gap-3">
                                     <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -202,9 +206,10 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                                         </p>
                                     </div>
                                 </div>
-                            </div>
+                            </div>)}
 
                             {/* Payment method refund */}
+                            {booking.payment_method !== 'venue' && (
                             <div className="p-4 bg-slate-50 rounded-xl mb-6">
                                 <p className="text-sm text-slate-600 mb-2">Método de reembolso</p>
                                 <div className="flex items-center gap-3">
@@ -212,13 +217,19 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                                         <CreditCard className="w-4 h-4" />
                                     </div>
                                     <span className="font-medium text-slate-900">
-                                        {booking.payment_method || 'fintoc'}
+                                        { booking.payment_method === 'venue' ? 'Presencial' : 'Fintoc'}
                                     </span>
                                 </div>
-                                <p className="text-xs text-slate-500 mt-2">
-                                    El reembolso se procesará de forma automática en 3-5 días hábiles a través de la plataforma de pago original.
-                                </p>
-                            </div>
+                                {booking.payment_method !== 'venue' ? (
+                                    <p className="text-xs text-slate-500 mt-2">
+                                        El reembolso se procesará de forma automática en 3-5 días hábiles a través de la plataforma de pago original.
+                                    </p>
+                                ) : (
+                                    <p className="text-xs text-slate-500 mt-2">
+                                        El reembolso para pagos presenciales se gestiona directamente con el centro deportivo.
+                                    </p>
+                                )}
+                            </div>)}
                         </>
                     )}
 

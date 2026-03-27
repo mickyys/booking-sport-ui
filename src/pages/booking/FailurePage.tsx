@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { XCircle, Info, Phone, Mail, CreditCard, ArrowRight } from 'lucide-react';
+import { XCircle, CreditCard, ArrowRight } from 'lucide-react';
 
 interface FailurePageProps {
     onRetry?: () => void;
@@ -54,29 +54,7 @@ export const FailurePage: React.FC<FailurePageProps> = ({ onRetry, onGoHome }) =
                                     <span>Problema temporal con el banco o Fintoc</span>
                                 </li>
                             </ul>
-                        </div>
-
-                        <div className="p-6 bg-blue-50 rounded-xl border border-blue-100">
-                            <div className="flex items-start gap-3">
-                                <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                                <div>
-                                    <p className="text-sm text-blue-900 font-medium mb-1">¿Necesitas ayuda?</p>
-                                    <p className="text-sm text-blue-800 mb-3">
-                                        Si el problema persiste, contáctanos y te ayudaremos a completar tu reserva.
-                                    </p>
-                                    <div className="space-y-1">
-                                        <p className="text-sm text-blue-800 flex items-center gap-2">
-                                            <Phone className="w-4 h-4" />
-                                            +56 9 1234 5678
-                                        </p>
-                                        <p className="text-sm text-blue-800 flex items-center gap-2">
-                                            <Mail className="w-4 h-4" />
-                                            contacto@ejemplo.com
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        </div>                        
 
                         <div className="p-4 bg-slate-50 rounded-xl">
                             <p className="text-sm text-slate-600 text-center">

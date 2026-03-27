@@ -23,15 +23,12 @@ interface ClientDashboardProps {
 export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user: userProp }) => {
     const { user: authUser } = useAuth();
     const user = userProp || authUser;
-    const { myBookings, fetchMyBookings, fetchCancelledBookings, fetchConfirmedCount, cancelBooking, sportCenters, courts, isLoading } = useBookingStore();
+    const { myBookings, fetchMyBookings, fetchCancelledBookings, fetchConfirmedCount, sportCenters, courts, isLoading, cancelledBookings, isCancelledLoading } = useBookingStore();
     const { getAccessTokenSilently } = useAuth0();
     const [bookingToCancel, setBookingToCancel] = useState<string | null>(null);
     const [isPastLoading, setIsPastLoading] = useState(false);
     const [pastBookings, setPastBookings] = useState<any[]>([]);
     const [confirmedCount, setConfirmedCount] = useState(0);
-    // Estado para reservas canceladas
-    const [cancelledBookings, setCancelledBookings] = useState<any[]>([]);
-    const [isCancelledLoading, setIsCancelledLoading] = useState(false);
 
     useEffect(() => {
         if (!user) return;
@@ -75,19 +72,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user: userProp
         };
         fetchPast();
 
-        // Fetch cancelled bookings
-        const fetchCancelled = async () => {
-            setIsCancelledLoading(true);
-            try {
-                const result = await fetchCancelledBookings(getAccessTokenSilently, 1, 5);
-                setCancelledBookings(result);
-            } catch (err) {
-                setCancelledBookings([]);
-            } finally {
-                setIsCancelledLoading(false);
-            }
-        };
-        fetchCancelled();
+        // Fetch cancelled bookings (store maneja el estado)
+        fetchCancelledBookings(getAccessTokenSilently, 1, 5);
     }, [fetchMyBookings, fetchCancelledBookings, getAccessTokenSilently, user?.name]);
 
     // Simplification: just show future bookings
@@ -95,13 +81,10 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user: userProp
         .filter(b => b.status === 'confirmed' && new Date(b.date) > new Date())
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    // Past bookings are now fetched separately via old=true
-    console.log('bookingToCancel ========>', bookingToCancel)
     if (!user) return null;
 
     return (
         <>
-
             <div className="min-h-screen bg-slate-50 pt-8 pb-20 px-4">
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                     <DashboardHeader user={{
@@ -111,7 +94,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user: userProp
                             points: user?.stats?.points ?? 0,
                             rank: user?.stats?.rank ?? 'Principiante'
                         }
-                    }} />
+                    }} cancellationPolicy={sportCenters && sportCenters.length > 0 ? { hours: sportCenters[0].cancellationHours || 0, retention_percent: sportCenters[0].retentionPercent || 0 } : null} />
 
                     <div className="mt-6 grid gap-6 md:grid-cols-2">
                         {/* Próximos Partidos */}
