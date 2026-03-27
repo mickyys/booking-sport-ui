@@ -53,7 +53,7 @@ export default function HomePage() {
                   }`}
               >
                 <MapPin className="w-4 h-4 inline mr-2" />
-                {center.location}
+                {center.name}
               </button>
             ))}
           </motion.div>
