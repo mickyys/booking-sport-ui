@@ -254,19 +254,32 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const { data } = await api.get('/sport-centers');
       const centersData = data.data || data;
-      const centers: SportCenter[] = centersData.map((c: any) => ({
-        id: c.id || c._id,
-        name: c.name,
-        slug: c.slug || '',
-        location: c.address,
-        address: c.address,
-        contact: c.contact || { phone: '', email: '' },
-        image: "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&q=80&w=1000",
-        cancellationHours: c.cancellation_hours,
-        retentionPercent: c.retention_percent,
-        services: c.services || []
+      const centers: SportCenter[] = centersData.map((c: any) => {
+        // Normalize coordinates: backend might send { lat, lng } or [lng, lat]
+        let coordinates = { lat: -33.5922, lng: -71.6127 };
+        if (c.coordinates) {
+          if (Array.isArray(c.coordinates)) {
+            // assume [lng, lat]
+            coordinates = { lat: c.coordinates[1] || -33.5922, lng: c.coordinates[0] || -71.6127 };
+          } else if (typeof c.coordinates === 'object') {
+            coordinates = { lat: c.coordinates.lat ?? c.coordinates[1] ?? -33.5922, lng: c.coordinates.lng ?? c.coordinates[0] ?? -71.6127 };
+          }
+        }
 
-      }));
+        return {
+          id: c.id || c._id,
+          name: c.name,
+          slug: c.slug || '',
+          location: c.address,
+          address: c.address,
+          contact: c.contact || { phone: '', email: '' },
+          image: "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&q=80&w=1000",
+          cancellationHours: c.cancellation_hours,
+          retentionPercent: c.retention_percent,
+          services: c.services || [],
+          coordinates
+        } as SportCenter;
+      });
       
       set({ sportCenters: centers, error: null });
       

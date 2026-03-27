@@ -54,7 +54,7 @@ const PriceInput: React.FC<{
 interface AdminSchedulesProps {
     courts: any[];
     schedules: any[];
-    onUpdateSchedule: (schedule: any) => void;
+    onUpdateSchedule: (schedule: any) => Promise<void>;
 }
 
 export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
@@ -62,6 +62,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
     schedules,
     onUpdateSchedule
 }) => {
+    const [loadingSlots, setLoadingSlots] = useState<Record<string, boolean>>({});
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
     const [newSlot, setNewSlot] = useState({ time: '08:00', price: 0, paymentRequired: true, paymentOptional: false });
@@ -102,9 +103,12 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
         onUpdateSchedule({ ...schedule, slots: newSlots });
     };
 
-    const handleTogglePaymentOptional = (courtId: string, hour: number, minutes: number) => {
+    const handleTogglePaymentOptional = async (courtId: string, hour: number, minutes: number) => {
         const schedule = schedules.find(s => s.courtId === courtId);
         if (!schedule) return;
+
+        const key = `${courtId}-${hour}-${minutes || 0}`;
+        setLoadingSlots(prev => ({ ...prev, [key]: true }));
 
         const newSlots = schedule.slots.map((slot: any) =>
             (slot.hour === hour && (slot.minutes || 0) === minutes)
@@ -112,7 +116,13 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                 : slot
         );
 
-        onUpdateSchedule({ ...schedule, slots: newSlots });
+        try {
+            await onUpdateSchedule({ ...schedule, slots: newSlots });
+        } catch (err) {
+            // onUpdateSchedule should handle toasts/errors; just ensure spinner is removed
+        } finally {
+            setLoadingSlots(prev => ({ ...prev, [key]: false }));
+        }
     };
 
     const handlePriceChange = (courtId: string, hour: number, minutes: number, price: number) => {
@@ -259,7 +269,11 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                         </div>
                                     ) : (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                            {schedule.slots.map((slot: any, index: number) => (
+                                            {schedule.slots.map((slot: any, index: number) => {
+                                                const slotKey = `${court.id}-${slot.hour}-${slot.minutes || 0}`;
+                                                const isLoading = !!loadingSlots[slotKey];
+
+                                                return (
                                                 <div
                                                     key={`${index}-${slot.hour}-${slot.minutes}`}
                                                     className={`group/slot relative flex flex-col gap-5 p-6 rounded-[2rem] border-2 transition-all duration-300 ${slot.enabled
@@ -343,15 +357,18 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                                                 checked={slot.paymentOptional}
                                                                 onChange={() => handleTogglePaymentOptional(court.id, slot.hour, slot.minutes || 0)}
                                                                 className="sr-only peer"
-                                                                disabled={!slot.enabled}
+                                                                disabled={!slot.enabled || isLoading}
                                                             />
                                                             <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
                                                         </label>
+                                                        {isLoading && (
+                                                            <div className="ml-3 w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                                                        )}
                                                     </div>
                                                 </div>
-                                            ))}
+                                            )})}
                                         </div>
-                                    )}
+                                    )}                                    
                                 </div>
                             )}
                         </div>
