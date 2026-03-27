@@ -25,7 +25,7 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             className="text-5xl md:text-6xl font-extrabold text-white mb-6 drop-shadow-lg"
           >
-            Canchas disponibles <br /><span className="text-emerald-400">en {sportCenters.length} Ubicaciones</span>
+            Listas para tu Equipo
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
