@@ -1,8 +1,7 @@
 import React from 'react';
 import { Calendar, DollarSign, AlertCircle } from 'lucide-react';
-import { format, parseISO, isSameDay, startOfToday } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Booking } from '../../types';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -44,13 +43,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     return (
         <div className="space-y-8">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                 <h2 className="text-3xl font-bold text-slate-900">Dashboard</h2>
                 <button 
                     onClick={onNewBooking}
-                    className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+                    className="mt-3 sm:mt-0 w-full sm:w-auto bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
                 >
-                    + Nueva Reserva Interna
+                    Nueva Reserva Interna
                 </button>
             </div>
 
@@ -98,12 +97,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             value={filters.name}
                             onChange={(e) => onFilterChange({ name: e.target.value })}
                         />
-                        <input
-                            type="date"
-                            className="pl-4 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-slate-200"
-                            value={filters.date}
-                            onChange={(e) => onFilterChange({ date: e.target.value })}
-                        />
+                        {/* Date range: stored in filters.date as "from|to" */}
+                        {(() => {
+                            const [from, to] = (filters.date || '').split('|');
+                            return (
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="date"
+
+                                        className="pl-4 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-slate-200"
+                                        value={from || ''}
+                                        onChange={(e) => onFilterChange({ date: `${e.target.value || ''}|${to || ''}` })}
+                                    />
+                                    <span className="text-slate-400">a</span>
+                                    <input
+                                        type="date"
+                                        className="pl-4 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-slate-200"
+                                        value={to || ''}
+                                        onChange={(e) => onFilterChange({ date: `${from || ''}|${e.target.value || ''}` })}
+                                    />
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
                 <div className="overflow-x-auto">
@@ -175,7 +190,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {/* Pagination */}
                 <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <p className="text-xs text-slate-500 font-medium px-2">
-                        Reservas: <span className="text-slate-900">{recentBookings.length}</span> de <span className="text-slate-900">{dashboardData.totalRecentCount || 0}</span>
+                        {(() => {
+                            const perPage = 10;
+                            const total = dashboardData.totalRecentCount || 0;
+                            if (total === 0) return <>Reservas: <span className="text-slate-900">0</span> de <span className="text-slate-900">0</span></>;
+                            const start = (filters.page - 1) * perPage + 1;
+                            return <>Reservas: <span className="text-slate-900">{start}</span> de <span className="text-slate-900">{total}</span></>;
+                        })()}
                     </p>
                     <div className="flex items-center gap-2">
                         <button

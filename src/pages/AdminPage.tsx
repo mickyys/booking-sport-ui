@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { format, addDays } from 'date-fns';
 import { Booking, TimeSlot } from '../types';
 import { COURTS } from '../data/mockData';
 import { useAuth0 } from '@auth0/auth0-react';
@@ -28,7 +29,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const [view, setView] = useState<'dashboard' | 'courts' | 'schedules' | 'calendar' | 'settings'>('dashboard');
     const [dashboardPage, setDashboardPage] = useState(1);
     const [dashboardNameFilter, setDashboardNameFilter] = useState('');
-    const [dashboardDateFilter, setDashboardDateFilter] = useState('');
+    const [dashboardDateFilter, setDashboardDateFilter] = useState<string>(() => {
+        const from = format(new Date(), 'yyyy-MM-dd');
+        const to = format(addDays(new Date(), 6), 'yyyy-MM-dd');
+        return `${from}|${to}`;
+    });
     const { getAccessTokenSilently } = useAuth0();
     const { 
         fetchAdminCourts, 
@@ -45,8 +50,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }, [fetchAdminCourts, getAccessTokenSilently]);
 
     useEffect(() => {
-        fetchAdminDashboard(getAccessTokenSilently, dashboardPage, 10, dashboardDateFilter, dashboardNameFilter);
-    }, [fetchAdminDashboard, getAccessTokenSilently, dashboardPage, dashboardDateFilter, dashboardNameFilter]);
+        fetchAdminDashboard(
+            getAccessTokenSilently,
+            dashboardPage,
+            10,
+            dashboardDateFilter,
+            dashboardNameFilter
+        );
+    }, [
+        fetchAdminDashboard,
+        getAccessTokenSilently,
+        dashboardPage,
+        dashboardDateFilter,
+        dashboardNameFilter
+    ]);
 
     // Flatten backend courts
     const backendCourts = adminCourts ? adminCourts.flatMap((ac: any) => ac.courts?.map((c: any) => ({
@@ -91,10 +108,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         }
     };
     
-    const onUpdatePrices = async (newPrices: any) => {
-        // No longer used
-    };
-
     const onUpdateSchedule = async (schedule: any) => {
         try {
             await updateAdminSchedule(schedule.courtId, schedule.slots, getAccessTokenSilently);
@@ -194,7 +207,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             date: dashboardDateFilter
                         }}
                         onFilterChange={(newFilters: any) => {
-                            if (newFilters.page !== undefined) setDashboardPage(newFilters.page);
+                            if (newFilters.page !== undefined) {
+                                setDashboardPage(newFilters.page);
+                            }
                             if (newFilters.name !== undefined) {
                                 setDashboardNameFilter(newFilters.name);
                                 setDashboardPage(1); // Reset to page 1 on search
