@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { MapPin, Clock, Grid, List, CheckCircle, CreditCard } from 'lucide-react';
+import { MapPin, Clock, Grid, List, CheckCircle, CreditCard, Loader2 } from 'lucide-react';
 import { format, startOfToday, addDays, setHours, setMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TimeSlot, UserProfile, SportCenter, Court, CourtWithSchedule } from '../types';
@@ -217,123 +217,134 @@ export const BookingView: React.FC<BookingViewProps> = ({
             ))}
           </div>
 
-          {/* Grid de Horarios */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredSlots.map((slot) => {
-              return (
-                <motion.div
-                  key={slot.id}
-                  id={`slot-${slot.id}`}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className={`relative p-6 rounded-2xl border-2 transition-all ${slot.status === 'available'
-                      ? 'bg-white border-slate-200 hover:border-emerald-400 hover:shadow-lg cursor-pointer group'
-                      : 'bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed'
-                    }`}
-                  onClick={() => handleSlotClick(slot)}
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className={`p-2 rounded-lg ${slot.status === 'available' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
-                      <Clock className="w-6 h-6" />
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className={`text-xs font-bold px-2 py-1 rounded-full uppercase ${slot.status === 'available' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'
-                        }`}>
-                        {slot.status === 'available' ? 'Disponible' : (slot.status === 'passed' ? 'No disponible' : 'Reservado')}
-                      </span>
-                      {slot.status === 'available' && slot.paymentRequired && (
-                        <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full flex items-center gap-1 tracking-tighter border border-indigo-100 italic">
-                          <CreditCard className="w-3 h-3" /> Pago requerido para reservar
-                        </span>
-                      )}
-                      {slot.status === 'available' && !slot.paymentRequired && slot.paymentOptional && (
-                        <span className="text-[10px] font-black text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full flex items-center gap-1 tracking-tighter border border-amber-100 italic">
-                          <CreditCard className="w-3 h-3" /> Pago opcional
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <h3 className="text-2xl font-bold text-slate-900 mb-1">
-                    {format(slot.date, 'HH:mm')}
-                  </h3>
-                  <p className="text-slate-500 text-sm mb-4">
-                    {courts.find(c => c.id === slot.courtId)?.name}
-                  </p>
-
-                  <div className="flex items-center justify-between mt-auto">
-                    <span className="font-bold text-slate-900 text-lg">${slot.price.toLocaleString('es-CL')}</span>
-                    {slot.status === 'available' && (
-                      <span className="text-emerald-500 font-medium group-hover:translate-x-1 transition-transform flex items-center">
-                        Reservar →
-                      </span>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-          {filteredSlots.length === 0 && (
-            <div className="text-center py-12 text-slate-400">
-              No hay horarios disponibles para este día.
+          {/* Grid de Horarios o Loading */}
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
+              <p className="text-slate-500 font-medium animate-pulse">Buscando horarios disponibles...</p>
             </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredSlots.map((slot) => {
+                  return (
+                    <motion.div
+                      key={slot.id}
+                      id={`slot-${slot.id}`}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className={`relative p-6 rounded-2xl border-2 transition-all ${slot.status === 'available'
+                          ? 'bg-white border-slate-200 hover:border-emerald-400 hover:shadow-lg cursor-pointer group'
+                          : 'bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed'
+                        }`}
+                      onClick={() => handleSlotClick(slot)}
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div className={`p-2 rounded-lg ${slot.status === 'available' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
+                          <Clock className="w-6 h-6" />
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`text-xs font-bold px-2 py-1 rounded-full uppercase ${slot.status === 'available' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'
+                            }`}>
+                            {slot.status === 'available' ? 'Disponible' : (slot.status === 'passed' ? 'No disponible' : 'Reservado')}
+                          </span>
+                          {slot.status === 'available' && slot.paymentRequired && (
+                            <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full flex items-center gap-1 tracking-tighter border border-indigo-100 italic">
+                              <CreditCard className="w-3 h-3" /> Pago requerido para reservar
+                            </span>
+                          )}
+                          {slot.status === 'available' && !slot.paymentRequired && slot.paymentOptional && (
+                            <span className="text-[10px] font-black text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full flex items-center gap-1 tracking-tighter border border-amber-100 italic">
+                              <CreditCard className="w-3 h-3" /> Pago opcional
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <h3 className="text-2xl font-bold text-slate-900 mb-1">
+                        {format(slot.date, 'HH:mm')}
+                      </h3>
+                      <p className="text-slate-500 text-sm mb-4">
+                        {courts.find(c => c.id === slot.courtId)?.name}
+                      </p>
+
+                      <div className="flex items-center justify-between mt-auto">
+                        <span className="font-bold text-slate-900 text-lg">${slot.price.toLocaleString('es-CL')}</span>
+                        {slot.status === 'available' && (
+                          <span className="text-emerald-500 font-medium group-hover:translate-x-1 transition-transform flex items-center">
+                            Reservar →
+                          </span>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+              {filteredSlots.length === 0 && (
+                <div className="text-center py-12 text-slate-400">
+                  No hay horarios disponibles para este día.
+                </div>
+              )}
+            </>
           )}
         </>
       ) : (
-        <div className="overflow-x-auto bg-white rounded-2xl border border-slate-200 shadow-sm">
-          <table className="w-full text-center">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="p-4 text-slate-500 font-medium w-24">Horario</th>
-                {courtsForCenter.map(court => (
-                  <th key={court.id} className="p-4 text-slate-900 font-bold min-w-[200px]">
-                    {court.shortName}
-                    <div className="text-xs font-normal text-slate-500">{court.type}</div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {hours.map(hour => {
-                return (
-                  <tr key={hour} id={`hour-${hour}`} className="hover:bg-slate-50/50">
-                    <td className="p-4 font-mono font-medium text-slate-500 border-r border-slate-100">
-                      <div>{hour}:00</div>
-                    </td>
-                    {courtsForCenter.map(court => {
-                      const slot = apiSlots.find(s => s.courtId === court.id && s.date.getHours() === hour);
-                      const isAvailable = slot?.status === 'available';
+        isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
+            <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
+            <p className="text-slate-500 font-medium animate-pulse">Buscando horarios disponibles...</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto bg-white rounded-2xl border border-slate-200 shadow-sm">
+            <table className="w-full text-center">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="p-4 text-slate-500 font-medium w-24">Horario</th>
+                  {courtsForCenter.map(court => (
+                    <th key={court.id} className="p-4 text-slate-900 font-bold min-w-[200px]">
+                      {court.shortName}
+                      <div className="text-xs font-normal text-slate-500">{court.type}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {hours.map(hour => {
+                  return (
+                    <tr key={hour} id={`hour-${hour}`} className="hover:bg-slate-50/50">
+                      <td className="p-4 font-mono font-medium text-slate-500 border-r border-slate-100">
+                        <div>{hour}:00</div>
+                      </td>
+                      {courtsForCenter.map(court => {
+                        const slot = apiSlots.find(s => s.courtId === court.id && s.date.getHours() === hour);
+                        const isAvailable = slot?.status === 'available';
 
-                      return (
-                        <td key={`${court.id}-${hour}`} className="p-2">
-                          {slot ? (
-                            <button
-                              onClick={() => slot && handleSlotClick(slot)}
-                              disabled={!isAvailable}
-                              className={`w-full py-2 rounded-lg text-sm font-bold transition-all ${isAvailable
-                                  ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-500 hover:text-white hover:shadow-md'
-                                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                }`}
-                            >
-                              {isAvailable ? 'Disponible' : (slot?.status === 'passed' ? 'No disp.' : 'Reservado')}
-                            </button>
-                          ) : (
-                            <span className="text-slate-300">-</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {isLoading && (
-            <div className="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center">
-              <p className="text-emerald-600 font-bold animate-pulse">Cargando Horarios...</p>
-            </div>
-          )}
-        </div>
+                        return (
+                          <td key={`${court.id}-${hour}`} className="p-2">
+                            {slot ? (
+                              <button
+                                onClick={() => slot && handleSlotClick(slot)}
+                                disabled={!isAvailable}
+                                className={`w-full py-2 rounded-lg text-sm font-bold transition-all ${isAvailable
+                                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-500 hover:text-white hover:shadow-md'
+                                    : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                  }`}
+                              >
+                                {isAvailable ? 'Disponible' : (slot?.status === 'passed' ? 'No disp.' : 'Reservado')}
+                              </button>
+                            ) : (
+                              <span className="text-slate-300">-</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )
       )}
     </div>
   );
