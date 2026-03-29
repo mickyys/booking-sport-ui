@@ -79,6 +79,8 @@ export const RootLayout: React.FC = () => {
 
     if (!slug && slugQuery) slug = slugQuery;
 
+    console.log('Detected slug:', slug);
+
     if (slug) {
       fetchSportCenterBySlug(slug).then(center => {
         if (center && location.pathname === '/') {

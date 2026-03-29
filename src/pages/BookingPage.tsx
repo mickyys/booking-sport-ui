@@ -32,6 +32,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
   useEffect(() => {
     if (selectedCenter) {
       const formattedDate = format(selectedDay, 'yyyy-MM-dd');
+      console.log('Fetching schedules for center:', selectedCenter, 'and date:', formattedDate);  
       fetchSchedules(selectedCenter, formattedDate);
     }
   }, [selectedDay, selectedCenter, fetchSchedules]);
@@ -174,7 +175,10 @@ export const BookingView: React.FC<BookingViewProps> = ({
           return (
             <button
               key={day.toISOString()}
-              onClick={() => setSelectedDay(day)}
+              onClick={() => {
+                console.log('Selected day:', day);
+                setSelectedDay(day)
+              }}
               className={`flex-shrink-0 flex flex-col items-center justify-center min-w-[80px] h-20 rounded-2xl border transition-all ${isSelected
                   ? 'bg-slate-900 border-slate-900 text-white shadow-lg scale-105'
                   : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-400 hover:bg-slate-50'

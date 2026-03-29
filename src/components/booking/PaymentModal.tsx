@@ -147,7 +147,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                       <CreditCard className="w-5 h-5" />
                     </div>
                     <div className="text-left">
-                      <span className="block font-bold text-slate-800 group-hover:text-indigo-700">Fintoc</span>
+                      <span className="block font-bold text-slate-800 group-hover:text-indigo-700">Pagar</span>
                       <span className="text-xs text-slate-500">Transferencia bancaria directa</span>
                     </div>
                   </div>
