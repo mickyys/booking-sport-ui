@@ -7,9 +7,12 @@ import { SportCenter } from '../../types';
 interface SportCenterCardProps {
   center: SportCenter;
   index: number;
+  date?: string;
+  today?: string;
 }
 
-const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index }) => {
+const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index, date, today }) => {
+  const dateQuery = date && today && date !== today ? `?date=${encodeURIComponent(date)}` : '';
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -17,7 +20,7 @@ const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index }) => {
       transition={{ delay: index * 0.1 }}
       className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 border border-slate-200 flex flex-col"
     >
-      <Link to={`/${center.slug}/reservar`} className="no-underline">
+      <Link to={`/${center.slug}/reservar${dateQuery}`} className="no-underline">
         {/* Image */}
         <div className="relative h-56 overflow-hidden">
           <img
@@ -71,7 +74,7 @@ const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index }) => {
 
         {/* Price and CTA */}
         <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-auto">
-          <Link to={`/${center.slug}/reservar`} className="no-underline ml-auto">
+          <Link to={`/${center.slug}/reservar${dateQuery}`} className="no-underline ml-auto">
             <button className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-all group-hover:gap-3 cursor-pointer">
               Ver más
               <ChevronRight className="w-4 h-4" />

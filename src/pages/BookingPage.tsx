@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { MapPin, Clock, Grid, List, CheckCircle, CreditCard, Loader2 } from 'lucide-react';
-import { format, startOfToday, addDays, setHours, setMinutes } from 'date-fns';
+import { format, startOfToday, addDays, setHours, setMinutes, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TimeSlot, UserProfile, SportCenter, Court, CourtWithSchedule } from '../types';
 import { useBookingStore } from '../store/useBookingStore';
@@ -29,6 +29,24 @@ export const BookingView: React.FC<BookingViewProps> = ({
   const { schedules, isLoading, fetchSchedules, fetchSportCenterBySlug } = useBookingStore();
     const { slug } = useParams<{ slug?: string }>();
   const [selectedDay, setSelectedDay] = useState<Date>(startOfToday());
+
+  const location = useLocation();
+
+  // If the route includes a `date` query param (YYYY-MM-DD), set selectedDay accordingly
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const qDate = params.get('date');
+    if (qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate)) {
+      try {
+        const parsed = parseISO(qDate);
+        if (!isNaN(parsed.getTime())) {
+          setSelectedDay(parsed);
+        }
+      } catch (e) {
+        // ignore invalid parse
+      }
+    }
+  }, [location.search]);
 
   // Efecto para recargar horarios cuando cambia el día o el centro
   useEffect(() => {

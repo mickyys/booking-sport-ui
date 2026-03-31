@@ -19,7 +19,7 @@ const SearchHero: React.FC<SearchHeroProps> = ({ children }) => {
               Encuentra tu <span className="text-emerald-400">Cancha Perfecta</span>
             </h1>
             <p className="text-lg text-slate-300 max-w-2xl mx-auto">
-              Busca y reserva canchas de futbolito en los mejores centros deportivos de Santiago
+              Busca y reserva canchas en los mejores centros deportivos de tu ciudad. ¡Tu próximo partido te espera!
             </p>
           </motion.div>
 
