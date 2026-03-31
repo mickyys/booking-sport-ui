@@ -6,6 +6,8 @@ import { SPORT_CENTERS as MOCK_SPORT_CENTERS, COURTS as MOCK_COURTS } from '../d
 import { getUserCancelledBookings } from '../api/bookingApi';
 import { mapBooking } from '../mapper/mapBooking';
 
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1759210720456-c9814f721479?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvdXRkb29yJTIwc29jY2VyJTIwZmllbGQlMjBuaWdodCUyMGxpZ2h0c3xlbnwxfHx8fDE3NzQ4OTgwODd8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
+
 interface BookingState {
   sportCenters: SportCenter[];
   courts: Court[];
@@ -20,10 +22,12 @@ interface BookingState {
   adminCourts: any[];
   adminDashboardData: any | null;
   sportCenterBySlug: SportCenter | null;
+  cities: string[];
 
 
   // Actions
-  fetchSportCenters: () => Promise<void>;
+  fetchSportCenters: (filters?: { page?: number; limit?: number; name?: string; city?: string; date?: string; hour?: number }) => Promise<void>;
+  fetchCities: () => Promise<string[]>;
   fetchCourts: () => Promise<void>;
   fetchSchedules: (centerId: string, date?: string) => Promise<void>;
   fetchMyBookings: (getToken: (options?: any) => Promise<string>, isOld?: boolean) => Promise<void>;
@@ -31,6 +35,7 @@ interface BookingState {
   fetchConfirmedCount: (getToken: (options?: any) => Promise<string>) => Promise<number>;
   fetchBookingDetail: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<any>;
   fetchBookingByCode: (code: string) => Promise<any>;
+  resetCurrentBooking: () => void;
   createFintocPayment: (bookingData: any) => Promise<string>;
   cancelBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   setSelectedCenterId: (id: string | null) => void;
@@ -82,6 +87,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       }
     },
   sportCenters: [],
+  cities: [],
   courts: [],
   schedules: [],
   myBookings: [],
@@ -196,6 +202,10 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
+  resetCurrentBooking: () => {
+    set({ currentBooking: null, error: null });
+  },
+
   createFintocPayment: async (bookingData: any) => {
     set({ isLoading: true });
     try {
@@ -249,46 +259,85 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
-  fetchSportCenters: async () => {
+  fetchSportCenters: async (filters?: { page?: number; limit?: number; name?: string; city?: string; date?: string; hour?: number }) => {
     set({ isLoading: true });
     try {
-      const { data } = await api.get('/sport-centers');
+      const params: any = {};
+      if (filters) {
+        if (filters.page) params.page = filters.page;
+        if (filters.limit) params.limit = filters.limit;
+        if (filters.name) params.name = filters.name;
+        if (filters.city) params.city = filters.city;
+        if (filters.date) params.date = filters.date;
+        if (typeof filters.hour === 'number') params.hour = String(filters.hour);
+      }
+
+      let data;
+      try {
+        const response = await api.get('/sport-centers', { params });
+        data = response.data;
+      } catch (err) {
+        console.warn('API failed, using mock data for sport centers');
+        data = MOCK_SPORT_CENTERS;
+      }
+
       const centersData = data.data || data;
       const centers: SportCenter[] = centersData.map((c: any) => {
         // Normalize coordinates: backend might send { lat, lng } or [lng, lat]
         let coordinates = { lat: -33.5922, lng: -71.6127 };
         if (c.coordinates) {
           if (Array.isArray(c.coordinates)) {
-            // assume [lng, lat]
             coordinates = { lat: c.coordinates[1] || -33.5922, lng: c.coordinates[0] || -71.6127 };
           } else if (typeof c.coordinates === 'object') {
             coordinates = { lat: c.coordinates.lat ?? c.coordinates[1] ?? -33.5922, lng: c.coordinates.lng ?? c.coordinates[0] ?? -71.6127 };
           }
         }
 
+        // Preserve original backend fields (availableHours, available_dates, city, etc.)
+        // while normalizing a few known fields used across the UI.
         return {
+          ...c,
           id: c.id || c._id,
           name: c.name,
           slug: c.slug || '',
           location: c.address,
           address: c.address,
+          courts: c.courts ?? c.courts_count ?? (Array.isArray(c.courts) ? c.courts.length : undefined),
           contact: c.contact || { phone: '', email: '' },
-          image: "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&q=80&w=1000",
+          image: c.image || FALLBACK_IMAGE,
           cancellationHours: c.cancellation_hours,
           retentionPercent: c.retention_percent,
           services: c.services || [],
           coordinates
         } as SportCenter;
       });
-      
+
       set({ sportCenters: centers, error: null });
-      
+
       if (centers.length > 0 && !get().selectedCenterId) {
-          get().setSelectedCenterId(centers[0].id);
+        get().setSelectedCenterId(centers[0].id);
       }
     } catch (err) {
-      console.error("Error fetching sport centers:", err);
+      console.error('Error fetching sport centers:', err);
       set({ error: 'Failed to fetch sport centers' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  fetchCities: async () => {
+    set({ isLoading: true });
+    try {
+      const { data } = await api.get('/cities');
+      // backend returns { cities: [...] }
+      const cities = data.cities || data.data || data || [];
+      const normalized = (Array.isArray(cities) ? cities.map((c: any) => (typeof c === 'string' ? c : String(c))).filter(Boolean) : []);
+      set({ cities: normalized, error: null });
+      return normalized;
+    } catch (err) {
+      console.error('Error fetching cities:', err);
+      set({ error: 'Failed to fetch cities' });
+      return [];
     } finally {
       set({ isLoading: false });
     }
@@ -305,8 +354,9 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         slug: c.slug,
         location: c.address,
         address: c.address,
+        courts: c.courts ?? c.courts_count ?? (Array.isArray(c.courts) ? c.courts.length : undefined),
         contact: c.contact || { phone: '', email: '' }, 
-        image: "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&q=80&w=1000",
+        image: c.image || FALLBACK_IMAGE,
         cancellationHours: c.cancellation_hours,
         retentionPercent: c.retention_percent,
         services: c.services || [],
@@ -349,7 +399,15 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
 
   fetchCourts: async () => {
     try {
-      const { data } = await api.get('/courts');
+      let data;
+      try {
+        const response = await api.get('/courts');
+        data = response.data;
+      } catch (err) {
+        console.warn("API failed, using mock data for courts");
+        data = MOCK_COURTS;
+      }
+
       const courtsData = data.data || data;
       const allCourts: Court[] = courtsData.map((c: any) => ({
         id: c.id || c._id,

@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { MapPin, Clock, Grid, List, CheckCircle, CreditCard, Loader2 } from 'lucide-react';
-import { format, startOfToday, addDays, setHours, setMinutes } from 'date-fns';
+import { motion } from 'framer-motion';
+import { useParams, useLocation } from 'react-router-dom';
+import { MapPin, Clock, Grid, List, CheckCircle, CreditCard, Loader2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { format, startOfToday, addDays, setHours, setMinutes, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TimeSlot, UserProfile, SportCenter, Court, CourtWithSchedule } from '../types';
 import { useBookingStore } from '../store/useBookingStore';
@@ -25,8 +26,67 @@ export const BookingView: React.FC<BookingViewProps> = ({
   sportCenters,
   courts
 }) => {
-  const { schedules, isLoading, fetchSchedules } = useBookingStore();
+  const { schedules, isLoading, fetchSchedules, fetchSportCenterBySlug } = useBookingStore();
+    const { slug } = useParams<{ slug?: string }>();
   const [selectedDay, setSelectedDay] = useState<Date>(startOfToday());
+
+  // Touch gesture refs for mobile swipe navigation
+  const touchStartX = React.useRef<number | null>(null);
+  const touchStartY = React.useRef<number | null>(null);
+  const touchMoved = React.useRef(false);
+  const SWIPE_THRESHOLD = 50; // px
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchStartX.current = t.clientX;
+    touchStartY.current = t.clientY;
+    touchMoved.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const t = e.touches[0];
+    const dx = t.clientX - touchStartX.current;
+    const dy = t.clientY - (touchStartY.current ?? 0);
+    // if vertical scroll dominates, ignore
+    if (Math.abs(dy) > Math.abs(dx)) return;
+    if (Math.abs(dx) > 5) touchMoved.current = true;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    if (!touchMoved.current) {
+      touchStartX.current = null; touchStartY.current = null; return;
+    }
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartX.current;
+    if (Math.abs(dx) > SWIPE_THRESHOLD) {
+      if (dx < 0) {
+        nextDay();
+      } else {
+        prevDay();
+      }
+    }
+    touchStartX.current = null; touchStartY.current = null; touchMoved.current = false;
+  };
+
+  const location = useLocation();
+
+  // If the route includes a `date` query param (YYYY-MM-DD), set selectedDay accordingly
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const qDate = params.get('date');
+    if (qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate)) {
+      try {
+        const parsed = parseISO(qDate);
+        if (!isNaN(parsed.getTime())) {
+          setSelectedDay(parsed);
+        }
+      } catch (e) {
+        // ignore invalid parse
+      }
+    }
+  }, [location.search]);
 
   // Efecto para recargar horarios cuando cambia el día o el centro
   useEffect(() => {
@@ -51,6 +111,29 @@ export const BookingView: React.FC<BookingViewProps> = ({
       setSelectedCourtId(courtsForCenter[0].id);
     }
   }, [courtsForCenter, selectedCourtId]);
+
+  // Auto-seleccionar center si la ruta trae un `slug`
+  useEffect(() => {
+    if (!slug) return;
+    // If sportCenters are already loaded, pick from them
+    const foundLocal = sportCenters.find(c => (c as any).slug === slug || c.id === slug);
+    if (foundLocal) {
+      if (selectedCenter !== foundLocal.id) onCenterChange(foundLocal.id);
+      const newCourts = courts.filter(c => c.centerId === foundLocal.id);
+      if (newCourts.length > 0) setSelectedCourtId(newCourts[0].id);
+      return;
+    }
+
+    // Otherwise, try fetch by slug from backend
+    (async () => {
+      const center = await fetchSportCenterBySlug(slug);
+      if (center) {
+        if (selectedCenter !== center.id) onCenterChange(center.id);
+        const newCourts = courts.filter(c => c.centerId === center.id);
+        if (newCourts.length > 0) setSelectedCourtId(newCourts[0].id);
+      }
+    })();
+  }, [slug, sportCenters, courts, selectedCenter, onCenterChange, fetchSportCenterBySlug]);
 
   const apiSlots = useMemo(() => {
     const slots: TimeSlot[] = [];
@@ -104,8 +187,13 @@ export const BookingView: React.FC<BookingViewProps> = ({
     }
   }, [isLoading, selectedDay, selectedCenter, viewMode, selectedCourtId]); // Se activa al cargar o cambiar filtros
 
-  const days = Array.from({ length: 7 }, (_, i) => addDays(startOfToday(), i));
-  const hours = Array.from({ length: 19 }, (_, i) => 6 + i); // 6 to 24
+  // Sliding window: always show 7 days starting at `startOffset` days from today
+  const [startOffset, setStartOffset] = useState<number>(0);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(startOfToday(), startOffset + i));
+
+  const prevDay = () => setStartOffset((s) => Math.max(0, s - 1));
+  const nextDay = () => setStartOffset((s) => s + 1);
+  const hours = Array.from({ length: 18 }, (_, i) => 6 + i); // 6 to 23 (6AM - 11PM)
 
   const handleSlotClick = (slot: TimeSlot) => {
     if (slot.status !== 'available') return;
@@ -123,28 +211,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
         )}
       </div>
 
-      {/* Center Selector */}
-      <div className="flex flex-wrap justify-center gap-3 mb-6">
-        {sportCenters.map(center => (
-          <button
-            key={center.id}
-            onClick={() => {
-              onCenterChange(center.id);
-              const newCourts = courts.filter(c => c.centerId === center.id);
-              if (newCourts.length > 0) {
-                setSelectedCourtId(newCourts[0].id);
-              }
-            }}
-            className={`px-4 py-2 rounded-xl font-medium transition-all ${selectedCenter === center.id
-                ? 'bg-slate-900 text-white shadow-md'
-                : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-400'
-              }`}
-          >
-            <MapPin className="w-4 h-4 inline mr-1" />
-            {center.name}
-          </button>
-        ))}
-      </div>
+      {/* Center Selector removed: auto-select by slug when provided */}
 
       {/* View Mode Toggle */}
       <div className="flex justify-center mb-8">
@@ -169,8 +236,15 @@ export const BookingView: React.FC<BookingViewProps> = ({
       </div>
 
       {/* Selector de días */}
-      <div className="flex overflow-x-auto pb-4 gap-3 mb-8 no-scrollbar justify-start md:justify-center px-2">
-        {days.map((day) => {
+      <div className="relative mb-8">
+        <div
+          className="flex overflow-x-auto pb-4 gap-3 no-scrollbar justify-start md:justify-center px-2"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchEnd}
+        >
+          {days.map((day) => {
           const isSelected = format(day, 'yyyy-MM-dd') === format(selectedDay, 'yyyy-MM-dd');
           return (
             <button
@@ -193,6 +267,29 @@ export const BookingView: React.FC<BookingViewProps> = ({
             </button>
           );
         })}
+        </div>
+
+        {/* Navegación semanas: izquierda/derecha (siempre mostrar 7) */}
+        <div className="absolute left-2 top-1/2 -translate-y-1/2 hidden md:block">
+          <button
+            onClick={prevDay}
+            disabled={startOffset === 0}
+            className={`flex items-center justify-center w-10 h-10 bg-white rounded-full shadow-sm border border-slate-200 text-slate-700 hover:bg-slate-50 ${startOffset === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+            aria-label="Día anterior"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden md:block">
+          <button
+            onClick={nextDay}
+            className="flex items-center justify-center w-10 h-10 bg-white rounded-full shadow-sm border border-slate-200 text-slate-700 hover:bg-slate-50"
+            aria-label="Día siguiente"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {viewMode === 'single' ? (
