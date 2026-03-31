@@ -20,6 +20,11 @@ const SportCenterSearchPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   const todayISO = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const maxDateISO = useMemo(() => {
+    const max = new Date();
+    max.setDate(max.getDate() + 6);
+    return max.toISOString().split('T')[0];
+  }, []);
 
   const availableHours = useMemo(() => {
     // Fixed hours from 6 (6AM) to 23 (11PM) in HH:MM format
@@ -89,6 +94,7 @@ const SportCenterSearchPage: React.FC = () => {
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
             minDate={todayISO}
+            maxDate={maxDateISO}
             showMobileFilters={showFilters}
             hasActiveFilters={hasActiveFilters}
             onClearFilters={clearFilters}
