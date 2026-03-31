@@ -45,6 +45,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         cancelBooking: storeCancelBooking // Use real cancelBooking
     } = useBookingStore();
 
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
     useEffect(() => {
         fetchAdminCourts(getAccessTokenSilently);
     }, [fetchAdminCourts, getAccessTokenSilently]);
@@ -219,6 +221,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 setDashboardPage(1); // Reset to page 1 on search
                             }
                         }}
+                        onRefresh={() => {
+                            setIsRefreshing(true);
+                            // call fetch and clear loading when done
+                            Promise.resolve(
+                                fetchAdminDashboard(
+                                    getAccessTokenSilently,
+                                    dashboardPage,
+                                    10,
+                                    dashboardDateFilter,
+                                    dashboardNameFilter
+                                )
+                            ).finally(() => setIsRefreshing(false));
+                        }}
+                        isRefreshing={isRefreshing}
                     />
                 )}
 
