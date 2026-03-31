@@ -182,9 +182,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-                                            }`}>
-                                            {booking.status === 'confirmed' ? 'Confirmado' : 'Cancelado'}
+                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                                            booking.status === 'confirmed'
+                                                ? 'bg-emerald-100 text-emerald-700'
+                                                : booking.status === 'pending'
+                                                ? 'bg-yellow-100 text-yellow-700'
+                                                : 'bg-red-100 text-red-700'
+                                        }`}>
+                                            {booking.status === 'confirmed' ? 'Confirmado' : booking.status === 'pending' ? 'Pendiente' : 'Cancelado'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
