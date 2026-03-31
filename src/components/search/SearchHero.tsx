@@ -7,7 +7,7 @@ interface SearchHeroProps {
 
 const SearchHero: React.FC<SearchHeroProps> = ({ children }) => {
   return (
-    <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 text-white pt-24 pb-12 sm:pb-16 relative">
+    <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 text-white pt-24 pb-3 sm:pb-3 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center">
           <motion.div

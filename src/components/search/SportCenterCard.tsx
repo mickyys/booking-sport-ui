@@ -17,19 +17,20 @@ const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index }) => {
       transition={{ delay: index * 0.1 }}
       className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 border border-slate-200 flex flex-col"
     >
-      {/* Image */}
-      <div className="relative h-56 overflow-hidden">
-        <img
-          src={center.image}
-          alt={center.name}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-        />
+      <Link to={`/${center.slug}/reservar`} className="no-underline">
+        {/* Image */}
+        <div className="relative h-56 overflow-hidden">
+          <img
+            src={center.image}
+            alt={center.name}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+          />
 
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-          <h3 className="text-xl font-bold text-white">{center.name}</h3>
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+            <h3 className="text-xl font-bold text-white">{center.name}</h3>
+          </div>
         </div>
-      </div>
-
+      </Link>
       {/* Content */}
       <div className="p-6 flex flex-col flex-1">
         {/* Location */}
@@ -71,7 +72,7 @@ const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index }) => {
         {/* Price and CTA */}
         <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-auto">
           <Link to={`/${center.slug}/reservar`} className="no-underline ml-auto">
-            <button className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-all group-hover:gap-3">
+            <button className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-all group-hover:gap-3 cursor-pointer">
               Ver más
               <ChevronRight className="w-4 h-4" />
             </button>

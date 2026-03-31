@@ -94,29 +94,28 @@ const SportCenterSearchPage: React.FC = () => {
             onClearFilters={clearFilters}
           />
         </SearchBar>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          {/* Results counter */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-center py-6"
+          >
+            <p className="text-slate-300 font-medium">
+              {sportCenters.length === 0 ? (
+                'No se encontraron centros deportivos'
+              ) : sportCenters.length === 1 ? (
+                '1 centro deportivo disponible'
+              ) : (
+                `${sportCenters.length} centros deportivos disponibles`
+              )}
+            </p>
+          </motion.div>
+        </div>
       </SearchHero>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        {/* Results counter */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="text-center py-6"
-        >
-          <p className="text-slate-600 font-medium">
-            {sportCenters.length === 0 ? (
-              'No se encontraron centros deportivos'
-            ) : sportCenters.length === 1 ? (
-              '1 centro deportivo disponible'
-            ) : (
-              `${sportCenters.length} centros deportivos disponibles`
-            )}
-          </p>
-        </motion.div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-10">
         {sportCenters.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sportCenters.map((center, index) => (
