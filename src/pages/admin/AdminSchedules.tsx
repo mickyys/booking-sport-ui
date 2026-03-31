@@ -11,14 +11,24 @@ const PriceInput: React.FC<{
     debounceMs?: number;
 }> = ({ value, onChange, disabled, className, placeholder, debounceMs = 500 }) => {
     const [localValue, setLocalValue] = useState<string>(value === 0 ? '' : value.toString());
+    const [isFocused, setIsFocused] = useState(false);
     const timeoutRef = useRef<any>(null);
 
     useEffect(() => {
-        const numericLocal = localValue === '' ? 0 : parseInt(localValue, 10);
-        if (value !== numericLocal) {
-            setLocalValue(value === 0 ? '' : value.toString());
+        // Only sync with prop if NOT focused to avoid flickering during typing
+        if (!isFocused) {
+            const numericLocal = localValue === '' ? 0 : parseInt(localValue, 10);
+            if (value !== numericLocal) {
+                setLocalValue(value === 0 ? '' : value.toString());
+            }
         }
-    }, [value]);
+    }, [value, isFocused]);
+
+    useEffect(() => {
+        return () => {
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        };
+    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
@@ -38,12 +48,31 @@ const PriceInput: React.FC<{
         }
     };
 
+    const handleBlur = () => {
+        setIsFocused(false);
+        // On blur, ensure the latest value is sent immediately if there's a pending change
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+            const numericLocal = localValue === '' ? 0 : parseInt(localValue, 10);
+            if (numericLocal !== value) {
+                onChange(numericLocal);
+            }
+        }
+    };
+
+    const handleFocus = () => {
+        setIsFocused(true);
+    };
+
     return (
         <input
             type="text"
             inputMode="numeric"
             value={localValue}
             onChange={handleChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
             disabled={disabled}
             placeholder={placeholder}
             className={className}
