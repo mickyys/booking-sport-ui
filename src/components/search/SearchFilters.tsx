@@ -34,7 +34,7 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
   const cityOptions = ['Todas', ...cities];
 
   return (
-    <div className="mt-4">
+    <div className="">
       {/* Inline filters (desktop) */}
       <div className="hidden md:flex gap-3 items-center justify-center w-full">
         <select
