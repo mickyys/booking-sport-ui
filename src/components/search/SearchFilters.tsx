@@ -67,7 +67,7 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
           value={selectedDate}
           min={minDate}
           onChange={(e) => onDateChange(e.target.value)}
-          className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 bg-white cursor-pointer"
+          className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 bg-white cursor-pointer appearance-none"
         />
       </div>
 
@@ -120,7 +120,7 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
                 value={selectedDate}
                 min={minDate}
                 onChange={(e) => onDateChange(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 bg-white"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 bg-white appearance-none"
               />
             </div>
           </motion.div>
