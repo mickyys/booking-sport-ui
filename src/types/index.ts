@@ -35,6 +35,7 @@ export interface SportCenter {
   image: string;
   cancellationHours?: number;
   retentionPercent?: number;
+  courts?: number;
   services: string[];
 }
 
