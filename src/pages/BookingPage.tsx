@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useParams, useLocation } from 'react-router-dom';
 import { MapPin, Clock, Grid, List, CheckCircle, CreditCard, Loader2, ChevronRight, ChevronLeft } from 'lucide-react';
-import { format, startOfToday, addDays, setHours, setMinutes, parseISO } from 'date-fns';
+import { format, startOfToday, addDays, setHours, setMinutes, parseISO, differenceInCalendarDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TimeSlot, UserProfile, SportCenter, Court, CourtWithSchedule } from '../types';
 import { useBookingStore } from '../store/useBookingStore';
@@ -189,6 +189,14 @@ export const BookingView: React.FC<BookingViewProps> = ({
 
   // Sliding window: always show 7 days starting at `startOffset` days from today
   const [startOffset, setStartOffset] = useState<number>(0);
+  // Re-centra la ventana de 7 días cuando la fecha seleccionada queda fuera
+  useEffect(() => {
+    const diff = differenceInCalendarDays(selectedDay, startOfToday());
+    if (diff < startOffset || diff > startOffset + 6) {
+      const newStart = Math.max(0, diff - 3);
+      setStartOffset(newStart);
+    }
+  }, [selectedDay, startOffset]);
   const days = Array.from({ length: 7 }, (_, i) => addDays(startOfToday(), startOffset + i));
 
   const prevDay = () => setStartOffset((s) => Math.max(0, s - 1));
