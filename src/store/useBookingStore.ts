@@ -6,6 +6,8 @@ import { SPORT_CENTERS as MOCK_SPORT_CENTERS, COURTS as MOCK_COURTS } from '../d
 import { getUserCancelledBookings } from '../api/bookingApi';
 import { mapBooking } from '../mapper/mapBooking';
 
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1759210720456-c9814f721479?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvdXRkb29yJTIwc29jY2VyJTIwZmllbGQlMjBuaWdodCUyMGxpZ2h0c3xlbnwxfHx8fDE3NzQ4OTgwODd8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
+
 interface BookingState {
   sportCenters: SportCenter[];
   courts: Court[];
@@ -252,7 +254,15 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
   fetchSportCenters: async () => {
     set({ isLoading: true });
     try {
-      const { data } = await api.get('/sport-centers');
+      let data;
+      try {
+        const response = await api.get('/sport-centers');
+        data = response.data;
+      } catch (err) {
+        console.warn("API failed, using mock data for sport centers");
+        data = MOCK_SPORT_CENTERS;
+      }
+
       const centersData = data.data || data;
       const centers: SportCenter[] = centersData.map((c: any) => {
         // Normalize coordinates: backend might send { lat, lng } or [lng, lat]
@@ -273,7 +283,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           location: c.address,
           address: c.address,
           contact: c.contact || { phone: '', email: '' },
-          image: "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&q=80&w=1000",
+          image: c.image || FALLBACK_IMAGE,
           cancellationHours: c.cancellation_hours,
           retentionPercent: c.retention_percent,
           services: c.services || [],
@@ -306,7 +316,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         location: c.address,
         address: c.address,
         contact: c.contact || { phone: '', email: '' }, 
-        image: "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&q=80&w=1000",
+        image: c.image || FALLBACK_IMAGE,
         cancellationHours: c.cancellation_hours,
         retentionPercent: c.retention_percent,
         services: c.services || [],
@@ -349,7 +359,15 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
 
   fetchCourts: async () => {
     try {
-      const { data } = await api.get('/courts');
+      let data;
+      try {
+        const response = await api.get('/courts');
+        data = response.data;
+      } catch (err) {
+        console.warn("API failed, using mock data for courts");
+        data = MOCK_COURTS;
+      }
+
       const courtsData = data.data || data;
       const allCourts: Court[] = courtsData.map((c: any) => ({
         id: c.id || c._id,

@@ -63,6 +63,7 @@ export const useBooking = (user: UserProfile | null) => {
             slotId: selectedSlot.id,
             courtId: selectedSlot.courtId,
             centerId: selectedSlot.centerId,
+            userId: user?.id || 'guest',
             date: selectedSlot.date.toISOString(),
             hour: selectedSlot.date.getHours(),
             sportCenterName: sportCenter?.name || '',
@@ -70,10 +71,14 @@ export const useBooking = (user: UserProfile | null) => {
             price: selectedSlot.price,
             status: 'confirmed',
             createdAt: new Date().toISOString(),
-            paymentMethod: method,
-            userName: user ? user.name : (guestDetails?.name || 'Invitado'),
-            userEmail: user ? user.email : (guestDetails?.email || ''),
-            isGuest: !user
+            updatedAt: new Date().toISOString(),
+            paymentMethod: method === 'cash' ? 'cash' : method,
+            customerName: user ? user.name : (guestDetails?.name || 'Invitado'),
+            customerEmail: user ? user.email : (guestDetails?.email || ''),
+            customerPhone: guestDetails?.phone || '',
+            isGuest: !user,
+            bookingCode: Math.random().toString(36).substr(2, 6).toUpperCase(),
+            finalPrice: selectedSlot.price,
         };
 
         setBookings(prev => [newBooking, ...prev]);
