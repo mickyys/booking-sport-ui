@@ -35,6 +35,7 @@ interface BookingState {
   fetchConfirmedCount: (getToken: (options?: any) => Promise<string>) => Promise<number>;
   fetchBookingDetail: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<any>;
   fetchBookingByCode: (code: string) => Promise<any>;
+  resetCurrentBooking: () => void;
   createFintocPayment: (bookingData: any) => Promise<string>;
   cancelBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   setSelectedCenterId: (id: string | null) => void;
@@ -199,6 +200,10 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  resetCurrentBooking: () => {
+    set({ currentBooking: null, error: null });
   },
 
   createFintocPayment: async (bookingData: any) => {
