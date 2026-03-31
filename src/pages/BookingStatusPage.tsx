@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useBookingStore } from '../store/useBookingStore';
 import { SuccessPage } from './booking/SuccessPage';
@@ -8,13 +8,40 @@ export default function BookingStatusPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const code = searchParams.get('code');
-  const { currentBooking, isLoading, fetchBookingByCode } = useBookingStore();
+  const { currentBooking, isLoading, fetchBookingByCode, resetCurrentBooking } = useBookingStore();
+  const [isTimedOut, setIsTimedOut] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
-    if (code) fetchBookingByCode(code);
-  }, [code, fetchBookingByCode]);
+    resetCurrentBooking();
+    setIsInitialLoad(true);
+    setHasError(false);
+    setIsTimedOut(false);
 
-  if (isLoading && !currentBooking) {
+    if (code) {
+      fetchBookingByCode(code)
+        .then(() => {
+          setIsInitialLoad(false);
+        })
+        .catch(() => {
+          setHasError(true);
+          setIsInitialLoad(false);
+        });
+    } else {
+      setIsInitialLoad(false);
+    }
+
+    const timer = setTimeout(() => {
+      setIsTimedOut(true);
+    }, 30000);
+
+    return () => clearTimeout(timer);
+  }, [code, fetchBookingByCode, resetCurrentBooking]);
+
+  const showLoading = (isLoading || isInitialLoad) && !isTimedOut && !hasError;
+
+  if (showLoading) {
     return (
       <div className="max-w-xl mx-auto px-4 py-20 text-center">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-emerald-500 border-t-transparent mb-4" />
@@ -52,7 +79,22 @@ export default function BookingStatusPage() {
 
   return (
     <FailurePage
-      onRetry={() => navigate('/reservar')}
+      onRetry={() => {
+        if (code) {
+          resetCurrentBooking();
+          setIsInitialLoad(true);
+          setHasError(false);
+          setIsTimedOut(false);
+          fetchBookingByCode(code)
+            .then(() => setIsInitialLoad(false))
+            .catch(() => {
+              setHasError(true);
+              setIsInitialLoad(false);
+            });
+        } else {
+          navigate('/reservar');
+        }
+      }}
       onGoHome={() => navigate('/')}
     />
   );
