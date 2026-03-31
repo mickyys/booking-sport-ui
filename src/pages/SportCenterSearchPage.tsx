@@ -78,21 +78,22 @@ const SportCenterSearchPage: React.FC = () => {
           onToggleFilters={() => setShowFilters(!showFilters)}
           showFilters={showFilters}
           hasActiveFilters={hasActiveFilters}
-        />
-        <SearchFilters
-          cities={cities}
-          selectedCity={selectedCity}
-          onCityChange={setSelectedCity}
-          hours={availableHours}
-          selectedHour={selectedHour}
-          onHourChange={setSelectedHour}
-          selectedDate={selectedDate}
-          onDateChange={setSelectedDate}
-          minDate={todayISO}
-          showMobileFilters={showFilters}
-          hasActiveFilters={hasActiveFilters}
-          onClearFilters={clearFilters}
-        />
+        >
+          <SearchFilters
+            cities={cities}
+            selectedCity={selectedCity}
+            onCityChange={setSelectedCity}
+            hours={availableHours}
+            selectedHour={selectedHour}
+            onHourChange={setSelectedHour}
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+            minDate={todayISO}
+            showMobileFilters={showFilters}
+            hasActiveFilters={hasActiveFilters}
+            onClearFilters={clearFilters}
+          />
+        </SearchBar>
       </SearchHero>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">

@@ -7,6 +7,7 @@ interface SearchBarProps {
   onToggleFilters: () => void;
   showFilters: boolean;
   hasActiveFilters: boolean;
+  children?: React.ReactNode;
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({
@@ -15,6 +16,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   onToggleFilters,
   showFilters,
   hasActiveFilters,
+  children,
 }) => {
   return (
     <div className="bg-white rounded-2xl shadow-2xl p-4">
@@ -44,6 +46,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
             )}
           </button>
         </div>
+
+        {/* Nested Filters */}
+        {children}
       </div>
     </div>
   );
