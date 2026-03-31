@@ -71,22 +71,14 @@ const SportCenterSearchPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
-      <SearchHero />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="max-w-3xl mx-auto"
+      <SearchHero>
+        <SearchBar
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          onToggleFilters={() => setShowFilters(!showFilters)}
+          showFilters={showFilters}
+          hasActiveFilters={hasActiveFilters}
         >
-          <SearchBar
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            onToggleFilters={() => setShowFilters(!showFilters)}
-            showFilters={showFilters}
-            hasActiveFilters={hasActiveFilters}
-          />
           <SearchFilters
             cities={cities}
             selectedCity={selectedCity}
@@ -101,14 +93,16 @@ const SportCenterSearchPage: React.FC = () => {
             hasActiveFilters={hasActiveFilters}
             onClearFilters={clearFilters}
           />
-        </motion.div>
+        </SearchBar>
+      </SearchHero>
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Results counter */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="text-center mt-6"
+          className="text-center py-6"
         >
           <p className="text-slate-600 font-medium">
             {sportCenters.length === 0 ? (
@@ -122,7 +116,7 @@ const SportCenterSearchPage: React.FC = () => {
         </motion.div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         {sportCenters.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sportCenters.map((center, index) => (
