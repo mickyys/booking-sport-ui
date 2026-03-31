@@ -12,6 +12,7 @@ interface SearchFiltersProps {
   selectedDate: string;
   onDateChange: (date: string) => void;
   minDate: string;
+  maxDate?: string;
   showMobileFilters: boolean;
   hasActiveFilters: boolean;
   onClearFilters: () => void;
@@ -27,6 +28,7 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
   selectedDate,
   onDateChange,
   minDate,
+  maxDate,
   showMobileFilters,
   hasActiveFilters,
   onClearFilters,
@@ -66,6 +68,7 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
           type="date"
           value={selectedDate}
           min={minDate}
+          max={maxDate}
           onChange={(e) => onDateChange(e.target.value)}
           className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 bg-white cursor-pointer appearance-none"
         />
@@ -119,6 +122,7 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
                 type="date"
                 value={selectedDate}
                 min={minDate}
+                max={maxDate}
                 onChange={(e) => onDateChange(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 bg-white appearance-none"
               />

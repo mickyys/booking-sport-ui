@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Trophy, Car, ShowerHead, ChevronRight } from 'lucide-react';
+import { MapPin, Trophy, Car, ShowerHead, ChevronRight, Info } from 'lucide-react';
 import { SportCenter } from '../../types';
+import SportCenterInfoModal from './SportCenterInfoModal';
 
 interface SportCenterCardProps {
   center: SportCenter;
@@ -12,6 +13,7 @@ interface SportCenterCardProps {
 }
 
 const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index, date, today }) => {
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const dateQuery = date && today && date !== today ? `?date=${encodeURIComponent(date)}` : '';
   return (
     <motion.div
@@ -37,12 +39,21 @@ const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index, date, 
       {/* Content */}
       <div className="p-6 flex flex-col flex-1">
         {/* Location */}
-        <div className="flex items-start gap-2 mb-4">
-          <MapPin className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium text-slate-900">{center.address.split(',').pop()?.trim() || center.location}</p>
-            <p className="text-xs text-slate-600">{center.address}</p>
+        <div className="flex items-start justify-between gap-2 mb-4">
+          <div className="flex items-start gap-2">
+            <MapPin className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-slate-900">{center.address.split(',').pop()?.trim() || center.location}</p>
+              <p className="text-xs text-slate-600">{center.address}</p>
+            </div>
           </div>
+          <button
+            onClick={() => setIsInfoModalOpen(true)}
+            className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all"
+            title="Ver información y ubicación"
+          >
+            <Info className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Quick Info */}
@@ -82,6 +93,12 @@ const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index, date, 
           </Link>
         </div>
       </div>
+
+      <SportCenterInfoModal
+        center={center}
+        isOpen={isInfoModalOpen}
+        onClose={() => setIsInfoModalOpen(false)}
+      />
     </motion.div>
   );
 };
