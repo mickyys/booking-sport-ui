@@ -4,7 +4,7 @@ import { RootLayout } from './RootLayout';
 import { ProtectedRoute } from './ProtectedRoute';
 
 // Pages
-import SearchCentrosDeportivos from '../pages/SearchCentrosDeportivos';
+import SportCenterSearchPage from '../pages/SportCenterSearchPage';
 import BookingPageWrapper from '../pages/BookingPageWrapper';
 import { LocationServices } from '../pages/LocationServicesPage';
 import { ClientDashboard } from '../pages/ClientDashboard';
@@ -21,7 +21,7 @@ export const router = createBrowserRouter([
     element: <RootLayout />,
     children: [
       // Public routes
-      { index: true, element: <SearchCentrosDeportivos /> },
+      { index: true, element: <SportCenterSearchPage /> },
       { path: 'reservar', element: <BookingPageWrapper /> },
       { path: ':slug/reservar', element: <BookingPageWrapper /> },
       { path: 'ubicacion', element: <LocationServices /> },
