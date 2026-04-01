@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, Globe } from 'lucide-react';
+import { Settings, Save, Globe, Clock, Percent, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBookingStore } from '../../store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
@@ -12,6 +12,8 @@ interface AdminSettingsProps {
 export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSave }) => {
     const [name, setName] = useState(sportCenter?.name || '');
     const [slug, setSlug] = useState(sportCenter?.slug || '');
+    const [cancellationHours, setCancellationHours] = useState<number>(sportCenter?.cancellationHours ?? sportCenter?.cancellation_hours ?? 3);
+    const [retentionPercent, setRetentionPercent] = useState<number>(sportCenter?.retentionPercent ?? sportCenter?.retention_percent ?? 10);
     const { updateSportCenter, isLoading } = useBookingStore();
     const { getAccessTokenSilently } = useAuth0();
 
@@ -19,6 +21,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
         if (sportCenter) {
             setName(sportCenter.name || '');
             setSlug(sportCenter.slug || '');
+            setCancellationHours(sportCenter.cancellationHours ?? sportCenter.cancellation_hours ?? 3);
+            setRetentionPercent(sportCenter.retentionPercent ?? sportCenter.retention_percent ?? 10);
         }
     }, [sportCenter]);
 
@@ -28,7 +32,12 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
 
         try {
             const id = sportCenter.id || sportCenter._id;
-            await updateSportCenter(id, { name, slug }, getAccessTokenSilently);
+            await updateSportCenter(id, {
+                name,
+                slug,
+                cancellation_hours: cancellationHours,
+                retention_percent: retentionPercent,
+            }, getAccessTokenSilently);
             toast.success("Configuración actualizada con éxito");
             if (onSave) onSave();
         } catch (error) {
@@ -38,8 +47,11 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
 
     if (!sportCenter) return <div>No se encontró información del centro deportivo.</div>;
 
+    const refundPercent = 100 - retentionPercent;
+
     return (
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl mx-auto space-y-6">
+            {/* General Settings */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="p-6 border-b border-slate-100 flex items-center gap-3">
                     <div className="p-2 bg-slate-100 text-slate-600 rounded-lg">
@@ -83,6 +95,95 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                         <p className="mt-2 text-xs text-slate-500">
                             Esto se usará para acceder directamente via <span className="font-bold">{slug || 'tu-club'}.reservaloya.cl</span>
                         </p>
+                    </div>
+
+                    {/* Cancellation Policy Section */}
+                    <div className="border-t border-slate-200 pt-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <AlertTriangle className="w-5 h-5 text-amber-500" />
+                            <h4 className="text-base font-bold text-slate-900">Política de Cancelación y Devolución</h4>
+                        </div>
+                        <p className="text-sm text-slate-500 mb-5">
+                            Configura las reglas de devolución cuando un usuario cancela una reserva.
+                        </p>
+
+                        <div className="space-y-5">
+                            {/* Cancellation Hours */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    <Clock className="w-4 h-4 inline mr-1.5 text-slate-400" />
+                                    Horas límite para devolución completa
+                                </label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        max={168}
+                                        value={cancellationHours}
+                                        onChange={(e) => setCancellationHours(Math.max(0, Math.min(168, Number(e.target.value))))}
+                                        className="w-28 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-center text-lg font-bold"
+                                    />
+                                    <span className="text-sm text-slate-600">horas antes del partido</span>
+                                </div>
+                                <p className="mt-1.5 text-xs text-slate-500">
+                                    Si el usuario cancela con {cancellationHours} horas o más de anticipación, recibirá el <strong>100%</strong> de devolución.
+                                </p>
+                            </div>
+
+                            {/* Retention Percent */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    <Percent className="w-4 h-4 inline mr-1.5 text-slate-400" />
+                                    Porcentaje de retención por cancelación tardía
+                                </label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        max={100}
+                                        value={retentionPercent}
+                                        onChange={(e) => setRetentionPercent(Math.max(0, Math.min(100, Number(e.target.value))))}
+                                        className="w-28 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-center text-lg font-bold"
+                                    />
+                                    <span className="text-sm text-slate-600">% de retención</span>
+                                </div>
+                                <p className="mt-1.5 text-xs text-slate-500">
+                                    Si el usuario cancela con menos de {cancellationHours} horas, se retiene el <strong>{retentionPercent}%</strong> del pago {retentionPercent === 100 ? '(sin devolución)' : `y se devuelve el ${refundPercent}%`}.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Policy Preview */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Info className="w-4 h-4 text-blue-500" />
+                            <span className="text-sm font-bold text-slate-700">Vista previa — Lo que verá el usuario</span>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="flex items-start gap-3">
+                                <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                                <p className="text-sm text-slate-700">
+                                    <span className="font-bold text-slate-900">Cancelación con {cancellationHours}+ horas de anticipación:</span>{' '}
+                                    Devolución del <span className="font-bold text-emerald-600">100%</span> del pago.
+                                </p>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+                                <p className="text-sm text-slate-700">
+                                    <span className="font-bold text-slate-900">Cancelación con menos de {cancellationHours} horas:</span>{' '}
+                                    {retentionPercent === 100 ? (
+                                        <span className="font-bold text-red-600">Sin devolución (retención del 100%).</span>
+                                    ) : retentionPercent === 0 ? (
+                                        <span className="font-bold text-emerald-600">Devolución del 100% (sin retención).</span>
+                                    ) : (
+                                        <>
+                                            Se retiene el <span className="font-bold text-amber-600">{retentionPercent}%</span> y se devuelve el <span className="font-bold text-emerald-600">{refundPercent}%</span>.
+                                        </>
+                                    )}
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="pt-4">

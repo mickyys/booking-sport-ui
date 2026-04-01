@@ -75,6 +75,7 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
             await fetchMyBookings(getAccessTokenSilently, false);
             await fetchMyBookings(getAccessTokenSilently, true);
             await fetchCancelledBookings(getAccessTokenSilently, 1, 5);
+            toast.success('Reserva cancelada correctamente');
             onClose();
         } catch (error: any) {
             console.error('Error al cancelar reserva:', error);
