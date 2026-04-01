@@ -62,38 +62,6 @@ export const RootLayout: React.FC = () => {
     }
   }, [location.pathname, navigate]);
 
-  // Subdomain / slug detection
-  useEffect(() => {
-    const hostname = window.location.hostname;
-    const params = new URLSearchParams(window.location.search);
-    const slugQuery = params.get('slug');
-    const parts = hostname.split('.');
-    let slug = '';
-
-    // 1. Query parameter has priority
-    if (slugQuery) {
-      slug = slugQuery;
-    }
-    // 2. Subdomain detection (if no query param)
-    else if (parts.length >= 3) {
-      const subdomain = parts[0].toLowerCase();
-      if (subdomain !== 'www') {
-        slug = subdomain;
-      }
-    }
-
-    console.log('Detected slug:', slug);
-
-    // Only fetch if we have a valid slug and it's not 'www'
-    if (slug && slug !== 'www') {
-      fetchSportCenterBySlug(slug).then(center => {
-        if (center && location.pathname === '/') {
-          navigate('/reservar', { replace: true });
-        }
-      });
-    }
-  }, [fetchSportCenterBySlug, navigate, location.pathname]);
-
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-emerald-100">
       <Toaster richColors position="top-center" />

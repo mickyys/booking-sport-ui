@@ -22,17 +22,20 @@ export interface SportCenter {
   slug: string;
   location: string;
   address: string;
-  contact: {
+  phone?: string;
+  email?: string;
+  contact?: {
     phone: string;
     email: string;
   },
-  coordinates: {
+  coordinates?: {
     lat: number;
     lng: number;
   };
   image: string;
   cancellationHours?: number;
   retentionPercent?: number;
+  courts?: number;
   services: string[];
 }
 
@@ -85,6 +88,8 @@ export interface Booking {
   fintocPaymentIntentId?: string
 
   // cliente
+  userName?: string;
+  userEmail?: string;
   customerName: string
   customerPhone: string
   customerEmail?: string

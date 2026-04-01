@@ -24,6 +24,8 @@ interface AdminDashboardProps {
         date: string;
     };
     onFilterChange: (newFilters: any) => void;
+    onRefresh?: () => void;
+    isRefreshing?: boolean;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
@@ -33,6 +35,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     courts,
     filters,
     onFilterChange
+    , onRefresh = () => {}
+    , isRefreshing = false
 }) => {
     if (!dashboardData) {
         return <div className="flex justify-center items-center h-64">Cargando dashboard...</div>;
@@ -89,36 +93,55 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h3 className="text-lg font-bold text-slate-900">Reservas Recientes</h3>
                     
-                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                        <input
-                            type="text"
-                            placeholder="Buscar cliente..."
-                            className="flex-1 sm:w-48 pl-4 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-slate-200"
-                            value={filters.name}
-                            onChange={(e) => onFilterChange({ name: e.target.value })}
-                        />
-                        {/* Date range: stored in filters.date as "from|to" */}
-                        {(() => {
-                            const [from, to] = (filters.date || '').split('|');
-                            return (
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="date"
+                    <div className="w-full sm:w-auto flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                            <input
+                                type="text"
+                                placeholder="Buscar cliente..."
+                                className="flex-1 sm:w-48 pl-4 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-slate-200"
+                                value={filters.name}
+                                onChange={(e) => onFilterChange({ name: e.target.value })}
+                            />
+                            {/* Date range: stored in filters.date as "from|to" */}
+                            {(() => {
+                                const [from, to] = (filters.date || '').split('|');
+                                return (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="date"
+                                            className="pl-4 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-slate-200"
+                                            value={from || ''}
+                                            onChange={(e) => onFilterChange({ date: `${e.target.value || ''}|${to || ''}` })}
+                                        />
+                                        <span className="text-slate-400">a</span>
+                                        <input
+                                            type="date"
+                                            className="pl-4 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-slate-200"
+                                            value={to || ''}
+                                            onChange={(e) => onFilterChange({ date: `${from || ''}|${e.target.value || ''}` })}
+                                        />
+                                    </div>
+                                );
+                            })()}
+                        </div>
 
-                                        className="pl-4 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-slate-200"
-                                        value={from || ''}
-                                        onChange={(e) => onFilterChange({ date: `${e.target.value || ''}|${to || ''}` })}
-                                    />
-                                    <span className="text-slate-400">a</span>
-                                    <input
-                                        type="date"
-                                        className="pl-4 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-slate-200"
-                                        value={to || ''}
-                                        onChange={(e) => onFilterChange({ date: `${from || ''}|${e.target.value || ''}` })}
-                                    />
-                                </div>
-                            );
-                        })()}
+                        <button
+                            onClick={() => onRefresh()}
+                            disabled={isRefreshing}
+                            className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm hover:bg-slate-50 font-medium disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center"
+                        >
+                            {isRefreshing ? (
+                                <span className="flex items-center gap-2">
+                                    <svg className="w-4 h-4 animate-spin text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                                    </svg>
+                                    Actualizando...
+                                </span>
+                            ) : (
+                                'Actualizar'
+                            )}
+                        </button>
                     </div>
                 </div>
                 <div className="overflow-x-auto">
@@ -159,9 +182,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${booking.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-                                            }`}>
-                                            {booking.status === 'confirmed' ? 'Confirmado' : 'Cancelado'}
+                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                                            booking.status === 'confirmed'
+                                                ? 'bg-emerald-100 text-emerald-700'
+                                                : booking.status === 'pending'
+                                                ? 'bg-yellow-100 text-yellow-700'
+                                                : 'bg-red-100 text-red-700'
+                                        }`}>
+                                            {booking.status === 'confirmed' ? 'Confirmado' : booking.status === 'pending' ? 'Pendiente' : 'Cancelado'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
@@ -200,21 +228,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </p>
                     <div className="flex items-center gap-2">
                         <button
-                            disabled={filters.page <= 1}
+                            disabled={isRefreshing || filters.page <= 1}
                             onClick={() => onFilterChange({ page: filters.page - 1 })}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all flex items-center justify-center"
                         >
-                            Anterior
+                            {isRefreshing ? (
+                                <svg className="w-3 h-3 animate-spin text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                                </svg>
+                            ) : (
+                                'Anterior'
+                            )}
                         </button>
                         <span className="text-xs font-bold bg-white border border-slate-200 px-3 py-1.5 rounded-lg min-w-[32px] text-center">
                             {filters.page}
                         </span>
                         <button
-                            disabled={!dashboardData.totalRecentCount || filters.page * 10 >= dashboardData.totalRecentCount}
+                            disabled={isRefreshing || !dashboardData.totalRecentCount || filters.page * 10 >= dashboardData.totalRecentCount}
                             onClick={() => onFilterChange({ page: filters.page + 1 })}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all flex items-center justify-center"
                         >
-                            Siguiente
+                            {isRefreshing ? (
+                                <svg className="w-3 h-3 animate-spin text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                                </svg>
+                            ) : (
+                                'Siguiente'
+                            )}
                         </button>
                     </div>
                 </div>

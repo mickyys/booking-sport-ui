@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { MapPin, Clock, Grid, List, CheckCircle, CreditCard, Loader2 } from 'lucide-react';
-import { format, startOfToday, addDays, setHours, setMinutes } from 'date-fns';
+import { motion } from 'framer-motion';
+import { useParams, useLocation } from 'react-router-dom';
+import { Clock, Grid, List, CheckCircle, CreditCard, Loader2 } from 'lucide-react';
+import { format, startOfToday, addDays, setHours, setMinutes, parseISO, isAfter, isBefore, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TimeSlot, UserProfile, SportCenter, Court, CourtWithSchedule } from '../types';
 import { useBookingStore } from '../store/useBookingStore';
@@ -25,8 +26,37 @@ export const BookingView: React.FC<BookingViewProps> = ({
   sportCenters,
   courts
 }) => {
-  const { schedules, isLoading, fetchSchedules } = useBookingStore();
+  const { schedules, isLoading, fetchSchedules, fetchSportCenterBySlug } = useBookingStore();
+    const { slug } = useParams<{ slug?: string }>();
   const [selectedDay, setSelectedDay] = useState<Date>(startOfToday());
+
+  const location = useLocation();
+
+  // If the route includes a `date` query param (YYYY-MM-DD), set selectedDay accordingly
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const qDate = params.get('date');
+    if (qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate)) {
+      try {
+        const parsed = startOfDay(parseISO(qDate));
+        const today = startOfToday();
+        const maxDate = addDays(today, 6);
+
+        if (!isNaN(parsed.getTime())) {
+          // Clamp the date within the 7-day range
+          if (isBefore(parsed, today)) {
+            setSelectedDay(today);
+          } else if (isAfter(parsed, maxDate)) {
+            setSelectedDay(maxDate);
+          } else {
+            setSelectedDay(parsed);
+          }
+        }
+      } catch (e) {
+        // ignore invalid parse
+      }
+    }
+  }, [location.search]);
 
   // Efecto para recargar horarios cuando cambia el día o el centro
   useEffect(() => {
@@ -51,6 +81,29 @@ export const BookingView: React.FC<BookingViewProps> = ({
       setSelectedCourtId(courtsForCenter[0].id);
     }
   }, [courtsForCenter, selectedCourtId]);
+
+  // Auto-seleccionar center si la ruta trae un `slug`
+  useEffect(() => {
+    if (!slug) return;
+    // If sportCenters are already loaded, pick from them
+    const foundLocal = sportCenters.find(c => (c as any).slug === slug || c.id === slug);
+    if (foundLocal) {
+      if (selectedCenter !== foundLocal.id) onCenterChange(foundLocal.id);
+      const newCourts = courts.filter(c => c.centerId === foundLocal.id);
+      if (newCourts.length > 0) setSelectedCourtId(newCourts[0].id);
+      return;
+    }
+
+    // Otherwise, try fetch by slug from backend
+    (async () => {
+      const center = await fetchSportCenterBySlug(slug);
+      if (center) {
+        if (selectedCenter !== center.id) onCenterChange(center.id);
+        const newCourts = courts.filter(c => c.centerId === center.id);
+        if (newCourts.length > 0) setSelectedCourtId(newCourts[0].id);
+      }
+    })();
+  }, [slug, sportCenters, courts, selectedCenter, onCenterChange, fetchSportCenterBySlug]);
 
   const apiSlots = useMemo(() => {
     const slots: TimeSlot[] = [];
@@ -104,8 +157,9 @@ export const BookingView: React.FC<BookingViewProps> = ({
     }
   }, [isLoading, selectedDay, selectedCenter, viewMode, selectedCourtId]); // Se activa al cargar o cambiar filtros
 
-  const days = Array.from({ length: 7 }, (_, i) => addDays(startOfToday(), i));
-  const hours = Array.from({ length: 19 }, (_, i) => 6 + i); // 6 to 24
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(startOfToday(), i)), []);
+
+  const hours = Array.from({ length: 18 }, (_, i) => 6 + i); // 6 to 23 (6AM - 11PM)
 
   const handleSlotClick = (slot: TimeSlot) => {
     if (slot.status !== 'available') return;
@@ -123,28 +177,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
         )}
       </div>
 
-      {/* Center Selector */}
-      <div className="flex flex-wrap justify-center gap-3 mb-6">
-        {sportCenters.map(center => (
-          <button
-            key={center.id}
-            onClick={() => {
-              onCenterChange(center.id);
-              const newCourts = courts.filter(c => c.centerId === center.id);
-              if (newCourts.length > 0) {
-                setSelectedCourtId(newCourts[0].id);
-              }
-            }}
-            className={`px-4 py-2 rounded-xl font-medium transition-all ${selectedCenter === center.id
-                ? 'bg-slate-900 text-white shadow-md'
-                : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-400'
-              }`}
-          >
-            <MapPin className="w-4 h-4 inline mr-1" />
-            {center.name}
-          </button>
-        ))}
-      </div>
+      {/* Center Selector removed: auto-select by slug when provided */}
 
       {/* View Mode Toggle */}
       <div className="flex justify-center mb-8">
@@ -169,8 +202,11 @@ export const BookingView: React.FC<BookingViewProps> = ({
       </div>
 
       {/* Selector de días */}
-      <div className="flex overflow-x-auto pb-4 gap-3 mb-8 no-scrollbar justify-start md:justify-center px-2">
-        {days.map((day) => {
+      <div className="relative mb-8">
+        <div
+          className="flex overflow-x-auto pb-4 gap-3 no-scrollbar justify-start md:justify-center px-2"
+        >
+          {days.map((day) => {
           const isSelected = format(day, 'yyyy-MM-dd') === format(selectedDay, 'yyyy-MM-dd');
           return (
             <button
@@ -193,6 +229,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
             </button>
           );
         })}
+        </div>
       </div>
 
       {viewMode === 'single' ? (

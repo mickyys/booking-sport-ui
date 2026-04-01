@@ -4,7 +4,7 @@ import { RootLayout } from './RootLayout';
 import { ProtectedRoute } from './ProtectedRoute';
 
 // Pages
-import HomePage from '../pages/HomePage';
+import SportCenterSearchPage from '../pages/SportCenterSearchPage';
 import BookingPageWrapper from '../pages/BookingPageWrapper';
 import { LocationServices } from '../pages/LocationServicesPage';
 import { ClientDashboard } from '../pages/ClientDashboard';
@@ -21,8 +21,9 @@ export const router = createBrowserRouter([
     element: <RootLayout />,
     children: [
       // Public routes
-      { index: true, element: <HomePage /> },
+      { index: true, element: <SportCenterSearchPage /> },
       { path: 'reservar', element: <BookingPageWrapper /> },
+      { path: ':slug/reservar', element: <BookingPageWrapper /> },
       { path: 'ubicacion', element: <LocationServices /> },
       { path: 'booking/success', element: <SuccessPage /> },
       { path: 'booking/failure', element: <FailurePage /> },
