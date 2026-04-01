@@ -5,7 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog';
-import { MapPin, Phone, Mail, Info } from 'lucide-react';
+import { MapPin, Phone, Mail, Info, Clock } from 'lucide-react';
 import { SportCenter } from '../../types';
 
 interface SportCenterInfoModalProps {
@@ -91,6 +91,32 @@ const SportCenterInfoModal: React.FC<SportCenterInfoModalProps> = ({ center, isO
                         </a>
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Política de Cancelación */}
+              {(center.cancellationHours !== undefined) && (
+                <div className="pt-6 border-t border-slate-100">
+                  <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-emerald-500" />
+                    Política de Cancelación
+                  </h4>
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <p className="text-sm text-slate-600 leading-relaxed">
+                      {center.retentionPercent === 100 ? (
+                        <>
+                          Si cancelas con menos de <span className="font-bold text-slate-900">{center.cancellationHours} horas</span> de anticipación, <span className="text-red-600 font-medium">no se realizará el reembolso</span> del pago.
+                        </>
+                      ) : (
+                        <>
+                          Si cancelas con menos de <span className="font-bold text-slate-900">{center.cancellationHours} horas</span> de anticipación, recibirás un reembolso del <span className="font-bold text-emerald-600">{100 - (center.retentionPercent || 0)}%</span> del pago.
+                        </>
+                      )}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-2 italic">
+                      Las cancelaciones con más de {center.cancellationHours} horas de antelación reciben el reembolso completo.
+                    </p>
                   </div>
                 </div>
               )}

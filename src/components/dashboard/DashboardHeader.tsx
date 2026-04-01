@@ -34,36 +34,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user, cancella
                 </div>            
             </div>
 
-            {cancellationPolicy && cancellationPolicy.hours > 0 && cancellationPolicy.retention_percent > 0 && (
-                <div className="bg-white border border-slate-200 p-6 rounded-3xl flex flex-col gap-3">
-                    <div className="flex items-center gap-2 text-emerald-800 font-bold mb-1">
-                        <Info className="w-5 h-5" />
-                        <span>Política de Cancelación</span>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        <div className="flex items-start gap-3">
-                            <span className="text-xl">✅</span>
-                            <p className="text-sm text-slate-700">
-                                <span className="font-bold text-slate-900 block">Hasta {cancellationPolicy.hours} horas antes:</span>
-                                recibirás <span className="font-bold text-emerald-600 text-base">100%</span> del pago.
-                            </p>
-                        </div>
-                        <div className="flex items-start gap-3">
-                            <span className="text-xl">⚡</span>
-                            <p className="text-sm text-slate-700">
-                                <span className="font-bold text-slate-900 block">Dentro de las {cancellationPolicy.hours} horas previas:</span>
-                                recibirás <span className="font-bold text-amber-600 text-base">{100 - cancellationPolicy.retention_percent}%</span> del pago.
-                            </p>
-                        </div>
-                        <div className="flex items-start gap-3">
-                            <span className="text-xl">ℹ️</span>
-                            <p className="text-sm text-slate-500 italic mt-1">
-                                Puedes cancelar tu reserva en cualquier momento y ver el reembolso correspondiente.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
+           
         </div>
     );
 };

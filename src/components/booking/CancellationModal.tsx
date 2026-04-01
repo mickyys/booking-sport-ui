@@ -166,7 +166,9 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                                                 }`}>
                                                 {refund_percentage === 100
                                                     ? `Estás cancelando con más de ${cancellation_policy.limit_hours} horas de anticipación. Recibirás el reembolso completo.`
-                                                    : `Estás cancelando con menos de ${cancellation_policy.limit_hours} horas de anticipación. Se aplicará un cargo del ${cancellation_policy.retention_percent}% por cancelación tardía.`
+                                                    : cancellation_policy.retention_percent === 100
+                                                        ? `Estás cancelando con menos de ${cancellation_policy.limit_hours} horas de anticipación. No se realizará reembolso del pago según la política del centro.`
+                                                        : `Estás cancelando con menos de ${cancellation_policy.limit_hours} horas de anticipación. Se aplicará un cargo del ${cancellation_policy.retention_percent}% por reserva tardía.`
                                                 }
                                             </p>
                                         </div>
