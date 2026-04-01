@@ -22,6 +22,7 @@ interface AdminDashboardProps {
         page: number;
         name: string;
         date: string;
+        code: string;
     };
     onFilterChange: (newFilters: any) => void;
     onRefresh?: () => void;
@@ -102,6 +103,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 value={filters.name}
                                 onChange={(e) => onFilterChange({ name: e.target.value })}
                             />
+                            <input
+                                type="text"
+                                placeholder="Código..."
+                                className="w-24 sm:w-32 pl-4 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-slate-200"
+                                value={filters.code}
+                                onChange={(e) => onFilterChange({ code: e.target.value })}
+                            />
                             {/* Date range: stored in filters.date as "from|to" */}
                             {(() => {
                                 const [from, to] = (filters.date || '').split('|');
@@ -148,6 +156,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 text-slate-500">
                             <tr>
+                                <th className="px-6 py-4 font-medium">Código</th>
                                 <th className="px-6 py-4 font-medium">Cliente</th>
                                 <th className="px-6 py-4 font-medium">Cancha</th>
                                 <th className="px-6 py-4 font-medium">Fecha y Hora</th>
@@ -159,26 +168,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <tbody className="divide-y divide-slate-100">
                             {recentBookings.map((booking: any) => (
                                 <tr key={booking.id} className="hover:bg-slate-50/50">
+                                    <td className="px-6 py-4 font-mono text-xs font-bold text-slate-500">
+                                        {booking.booking_code || 'N/A'}
+                                    </td>
                                     <td className="px-6 py-4 font-medium text-slate-900">
-                                        {booking.userName}
-                                        {booking.isGuest && <span className="ml-2 px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-xs">Invitado</span>}
+                                        {booking.user_name}
+                                        {booking.is_guest && <span className="ml-2 px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-xs">Invitado</span>}
                                     </td>
                                     <td className="px-6 py-4 text-slate-600">
-                                        {booking.courtName || courts.find(c => c.id === booking.courtId)?.name}
+                                        {booking.court_name || courts.find(c => c.id === booking.courtId)?.name}
                                     </td>
                                     <td className="px-6 py-4 text-slate-600">
                                         {format(parseISO(booking.date), "d MMM, HH:mm", { locale: es })}
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                                            booking.paymentMethod === 'mercadopago' ? 'bg-blue-100 text-blue-700' : 
-                                            booking.paymentMethod === 'fintoc' ? 'bg-indigo-100 text-indigo-700' : 
-                                            booking.paymentMethod === 'venue' ? 'bg-emerald-100 text-emerald-700' :
+                                            booking.payment_method === 'mercadopago' ? 'bg-blue-100 text-blue-700' : 
+                                            booking.payment_method === 'fintoc' ? 'bg-indigo-100 text-indigo-700' : 
+                                            booking.payment_method === 'venue' ? 'bg-emerald-100 text-emerald-700' :
                                             'bg-slate-100 text-slate-700'
                                         }`}>
-                                            {booking.paymentMethod === 'mercadopago' ? 'MercadoPago' : 
-                                             booking.paymentMethod === 'fintoc' ? 'Fintoc' : 
-                                             booking.paymentMethod === 'venue' ? 'Presencial' : 'Interno'}
+                                            {booking.payment_method === 'mercadopago' ? 'MercadoPago' : 
+                                             booking.payment_method === 'fintoc' ? 'Fintoc' : 
+                                             booking.payment_method === 'venue' ? 'Presencial' : 'Interno'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
@@ -206,7 +218,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             ))}
                             {recentBookings.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                                    <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
                                         No hay reservas recientes
                                     </td>
                                 </tr>
@@ -220,7 +232,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <p className="text-xs text-slate-500 font-medium px-2">
                         {(() => {
                             const perPage = 10;
-                            const total = dashboardData.totalRecentCount || 0;
+                            const total = dashboardData.total_recent_count || 0;
                             if (total === 0) return <>Reservas: <span className="text-slate-900">0</span> de <span className="text-slate-900">0</span></>;
                             const start = (filters.page - 1) * perPage + 1;
                             return <>Reservas: <span className="text-slate-900">{start}</span> de <span className="text-slate-900">{total}</span></>;
@@ -245,7 +257,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             {filters.page}
                         </span>
                         <button
-                            disabled={isRefreshing || !dashboardData.totalRecentCount || filters.page * 10 >= dashboardData.totalRecentCount}
+                            disabled={isRefreshing || !dashboardData.total_recent_count || filters.page * 10 >= dashboardData.total_recent_count}
                             onClick={() => onFilterChange({ page: filters.page + 1 })}
                             className="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all flex items-center justify-center"
                         >
@@ -267,8 +279,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <AlertDialogHeader>
                         <AlertDialogTitle>¿Estás seguro de cancelar esta reserva?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Esta acción no se puede deshacer. La reserva de {bookingToCancel?.userName} para el {bookingToCancel && format(parseISO(bookingToCancel.date), "d 'de' MMMM", { locale: es })} a las {bookingToCancel?.hour}:00 será cancelada.
-                            {bookingToCancel?.paymentMethod === 'flow' && (
+                            Esta acción no se puede deshacer. La reserva de {bookingToCancel?.user_name} para el {bookingToCancel && format(parseISO(bookingToCancel.date), "d 'de' MMMM", { locale: es })} a las {bookingToCancel?.hour}:00 será cancelada.
+                            {bookingToCancel?.payment_method === 'flow' && (
                                 <div className="mt-2 p-2 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium border border-blue-100">
                                     Nota: Los pagos vía Flow tienen devolución del 100% garantizada.
                                 </div>

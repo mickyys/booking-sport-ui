@@ -29,6 +29,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const [view, setView] = useState<'dashboard' | 'courts' | 'schedules' | 'calendar' | 'settings'>('dashboard');
     const [dashboardPage, setDashboardPage] = useState(1);
     const [dashboardNameFilter, setDashboardNameFilter] = useState('');
+    const [dashboardCodeFilter, setDashboardCodeFilter] = useState('');
     const [dashboardDateFilter, setDashboardDateFilter] = useState<string>(() => {
         const from = format(new Date(), 'yyyy-MM-dd');
         const to = format(addDays(new Date(), 6), 'yyyy-MM-dd');
@@ -57,14 +58,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             dashboardPage,
             10,
             dashboardDateFilter,
-            dashboardNameFilter
+            dashboardNameFilter,
+            dashboardCodeFilter
         );
     }, [
         fetchAdminDashboard,
         getAccessTokenSilently,
         dashboardPage,
         dashboardDateFilter,
-        dashboardNameFilter
+        dashboardNameFilter,
+        dashboardCodeFilter
     ]);
 
     // Flatten backend courts
@@ -206,7 +209,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         filters={{
                             page: dashboardPage,
                             name: dashboardNameFilter,
-                            date: dashboardDateFilter
+                            date: dashboardDateFilter,
+                            code: dashboardCodeFilter
                         }}
                         onFilterChange={(newFilters: any) => {
                             if (newFilters.page !== undefined) {
@@ -214,6 +218,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             }
                             if (newFilters.name !== undefined) {
                                 setDashboardNameFilter(newFilters.name);
+                                setDashboardPage(1); // Reset to page 1 on search
+                            }
+                            if (newFilters.code !== undefined) {
+                                setDashboardCodeFilter(newFilters.code);
                                 setDashboardPage(1); // Reset to page 1 on search
                             }
                             if (newFilters.date !== undefined) {

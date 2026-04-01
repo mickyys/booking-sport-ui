@@ -42,7 +42,7 @@ interface BookingState {
   setSelectedCenterId: (id: string | null) => void;
   initialize: () => Promise<void>;
   fetchAdminCourts: (getToken: (options?: any) => Promise<string>) => Promise<void>;
-  fetchAdminDashboard: (getToken: (options?: any) => Promise<string>, page?: number, limit?: number, date?: string, name?: string) => Promise<void>;
+  fetchAdminDashboard: (getToken: (options?: any) => Promise<string>, page?: number, limit?: number, date?: string, name?: string, code?: string) => Promise<void>;
   createAdminCourt: (courtData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
   updateAdminCourt: (courtId: string, courtData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
   deleteAdminCourt: (courtId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
@@ -536,7 +536,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
-  fetchAdminDashboard: async (getToken: (options?: any) => Promise<string>, page: number = 1, limit: number = 10, date: string = '', name: string = '') => {
+  fetchAdminDashboard: async (getToken: (options?: any) => Promise<string>, page: number = 1, limit: number = 10, date: string = '', name: string = '', code: string = '') => {
     set({ isLoading: true });
     try {
       const token = await getToken({
@@ -550,7 +550,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         page: page.toString(),
         limit: limit.toString(),
         date,
-        name
+        name,
+        code
       });
 
       const { data } = await api.get(`/admin/dashboard?${params.toString()}`, {

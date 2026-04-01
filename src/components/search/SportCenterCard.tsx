@@ -40,31 +40,38 @@ const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index, date, 
       </Link>
       {/* Content */}
       <div className="p-6 flex flex-col flex-1">
-        {/* Location */}
-        <div className="flex items-start justify-between gap-2 mb-4">
-          <div className="flex items-start gap-2">
+        {/* Location & Actions */}
+        <div className="mb-4">
+          <div className="flex items-start gap-2 mb-4">
             <MapPin className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-slate-900">{center.address.split(',').pop()?.trim() || center.location}</p>
-              <p className="text-xs text-slate-600">{center.address}</p>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-slate-900 leading-tight">
+                {center.address.split(',').pop()?.trim() || center.location}
+              </p>
+              <p className="text-xs text-slate-600 line-clamp-1 mt-0.5">
+                {center.address}
+              </p>
             </div>
           </div>
-          <button
-            onClick={() => setIsInfoModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-emerald-100 font-medium text-xs whitespace-nowrap"
-            title="Ver ubicación en el mapa e información"
-          >
-            <Map className="w-4 h-4" />
-            Ver mapa
-          </button>
-          <button
-            onClick={() => setIsPolicyModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-slate-600 hover:bg-slate-50 rounded-lg transition-all border border-slate-200 font-medium text-xs whitespace-nowrap"
-            title="Ver política de cancelación"
-          >
-            <ShieldAlert className="w-4 h-4 text-slate-400" />
-            Cancelación
-          </button>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setIsInfoModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-emerald-100 font-medium text-xs whitespace-nowrap"
+              title="Ver ubicación en el mapa e información"
+            >
+              <Map className="w-4 h-4" />
+              Ver mapa
+            </button>
+            <button
+              onClick={() => setIsPolicyModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-slate-600 hover:bg-slate-50 rounded-lg transition-all border border-slate-200 font-medium text-xs whitespace-nowrap"
+              title="Ver política de cancelación"
+            >
+              <ShieldAlert className="w-4 h-4 text-slate-400" />
+              Política de cancelación
+            </button>
+          </div>
         </div>
 
         {/* Quick Info */}
