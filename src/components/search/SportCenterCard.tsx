@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Trophy, Car, ShowerHead, ChevronRight, Info } from 'lucide-react';
+import { MapPin, Trophy, Car, ShowerHead, ChevronRight, Info, Map } from 'lucide-react';
 import { SportCenter } from '../../types';
 import SportCenterInfoModal from './SportCenterInfoModal';
 
@@ -49,10 +49,11 @@ const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index, date, 
           </div>
           <button
             onClick={() => setIsInfoModalOpen(true)}
-            className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all"
-            title="Ver información y ubicación"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-emerald-100 font-medium text-xs whitespace-nowrap"
+            title="Ver ubicación en el mapa e información"
           >
-            <Info className="w-5 h-5" />
+            <Map className="w-4 h-4" />
+            Ver mapa
           </button>
         </div>
 
