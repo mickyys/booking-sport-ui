@@ -26,13 +26,6 @@ export const Navbar: React.FC = () => {
 
           {/* Right side items */}
           <div className="flex items-center gap-1 sm:gap-3 min-w-0">
-            {/* Ubicación - hidden on mobile */}
-            <button
-              onClick={() => navigate('/ubicacion')}
-              className={`hidden md:block px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/ubicacion') ? 'text-white bg-slate-800' : 'text-slate-300 hover:text-white'}`}
-            >
-              Ubicación
-            </button>
 
             {/* Reservar - only for non-admins, hidden on mobile */}
             {!isAdministrator && (
