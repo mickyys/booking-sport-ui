@@ -53,6 +53,8 @@ interface BookingState {
   deleteBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchSportCenterBySlug: (slug: string) => Promise<SportCenter | null>;
   updateSportCenter: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  updateSportCenterSettings: (id: string, settingsData: { slug: string; cancellation_hours: number; retention_percent: number }, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  fetchSportCenterByID: (id: string, getToken: (options?: any) => Promise<string>) => Promise<any>;
 }
 
 export const useBookingStore = create<BookingState, [["zustand/persist", Partial<BookingState>]]>(
@@ -409,6 +411,50 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       throw err;
     } finally {
       set({ isLoading: false });
+    }
+  },
+
+  updateSportCenterSettings: async (id: string, settingsData: { slug: string; cancellation_hours: number; retention_percent: number }, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+      await api.patch(`/admin/sport-centers/${id}/settings`, settingsData, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      await get().fetchSportCenters();
+    } catch (err) {
+      console.error("Error updating sport center settings:", err);
+      set({ error: 'Failed to update sport center settings' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  fetchSportCenterByID: async (id: string, getToken: (options?: any) => Promise<string>) => {
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+      const response = await api.get(`/admin/sport-centers/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      return response.data.center;
+    } catch (err) {
+      console.error("Error fetching sport center by ID:", err);
+      return null;
     }
   },
 

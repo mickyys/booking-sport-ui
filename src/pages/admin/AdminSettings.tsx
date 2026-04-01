@@ -10,21 +10,31 @@ interface AdminSettingsProps {
 }
 
 export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSave }) => {
-    const [name, setName] = useState(sportCenter?.name || '');
-    const [slug, setSlug] = useState(sportCenter?.slug || '');
-    const [cancellationHours, setCancellationHours] = useState<number>(sportCenter?.cancellationHours ?? sportCenter?.cancellation_hours ?? 3);
-    const [retentionPercent, setRetentionPercent] = useState<number>(sportCenter?.retentionPercent ?? sportCenter?.retention_percent ?? 10);
-    const { updateSportCenter, isLoading } = useBookingStore();
+    const [slug, setSlug] = useState('');
+    const [cancellationHours, setCancellationHours] = useState<number>(3);
+    const [retentionPercent, setRetentionPercent] = useState<number>(10);
+    const [loadingData, setLoadingData] = useState(true);
+    const { updateSportCenterSettings, fetchSportCenterByID, isLoading } = useBookingStore();
     const { getAccessTokenSilently } = useAuth0();
 
     useEffect(() => {
-        if (sportCenter) {
-            setName(sportCenter.name || '');
-            setSlug(sportCenter.slug || '');
-            setCancellationHours(sportCenter.cancellationHours ?? sportCenter.cancellation_hours ?? 3);
-            setRetentionPercent(sportCenter.retentionPercent ?? sportCenter.retention_percent ?? 10);
-        }
-    }, [sportCenter]);
+        const loadSportCenter = async () => {
+            const id = sportCenter?.id || sportCenter?._id;
+            if (!id) return;
+            setLoadingData(true);
+            try {
+                const center = await fetchSportCenterByID(id, getAccessTokenSilently);
+                if (center) {
+                    setSlug(center.slug || '');
+                    setCancellationHours(center.cancellation_hours ?? 3);
+                    setRetentionPercent(center.retention_percent ?? 10);
+                }
+            } finally {
+                setLoadingData(false);
+            }
+        };
+        loadSportCenter();
+    }, [sportCenter?.id, sportCenter?._id]);
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -32,8 +42,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
 
         try {
             const id = sportCenter.id || sportCenter._id;
-            await updateSportCenter(id, {
-                name,
+            await updateSportCenterSettings(id, {
                 slug,
                 cancellation_hours: cancellationHours,
                 retention_percent: retentionPercent,
@@ -46,6 +55,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
     };
 
     if (!sportCenter) return <div>No se encontró información del centro deportivo.</div>;
+    if (loadingData) return <div className="flex justify-center p-8 text-slate-500">Cargando configuración...</div>;
 
     const refundPercent = 100 - retentionPercent;
 
@@ -61,20 +71,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                 </div>
 
                 <form onSubmit={handleSave} className="p-8 space-y-6">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Nombre del Club
-                        </label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all"
-                            placeholder="Ej: Club Orellana"
-                            required
-                        />
-                    </div>
-
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">
                             Subdominio (Slug)
