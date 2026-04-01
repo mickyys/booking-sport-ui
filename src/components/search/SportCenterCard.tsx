@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Trophy, Car, ShowerHead, ChevronRight, Info, Map } from 'lucide-react';
+import { MapPin, Trophy, Car, ShowerHead, ChevronRight, Info, Map, ShieldAlert } from 'lucide-react';
 import { SportCenter } from '../../types';
 import SportCenterInfoModal from './SportCenterInfoModal';
+import CancellationPolicyModal from './CancellationPolicyModal';
 
 interface SportCenterCardProps {
   center: SportCenter;
@@ -13,6 +14,7 @@ interface SportCenterCardProps {
 }
 
 const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index, date, today }) => {
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const dateQuery = date && today && date !== today ? `?date=${encodeURIComponent(date)}` : '';
   return (
@@ -55,6 +57,14 @@ const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index, date, 
             <Map className="w-4 h-4" />
             Ver mapa
           </button>
+          <button
+            onClick={() => setIsPolicyModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-slate-600 hover:bg-slate-50 rounded-lg transition-all border border-slate-200 font-medium text-xs whitespace-nowrap"
+            title="Ver política de cancelación"
+          >
+            <ShieldAlert className="w-4 h-4 text-slate-400" />
+            Cancelación
+          </button>
         </div>
 
         {/* Quick Info */}
@@ -92,6 +102,12 @@ const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index, date, 
               <ChevronRight className="w-4 h-4" />
             </button>
           </Link>
+
+      <CancellationPolicyModal
+        center={center}
+        isOpen={isPolicyModalOpen}
+        onClose={() => setIsPolicyModalOpen(false)}
+      />
         </div>
       </div>
 
