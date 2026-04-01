@@ -30,6 +30,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const [dashboardPage, setDashboardPage] = useState(1);
     const [dashboardNameFilter, setDashboardNameFilter] = useState('');
     const [dashboardCodeFilter, setDashboardCodeFilter] = useState('');
+    const [dashboardStatusFilter, setDashboardStatusFilter] = useState('');
     const [dashboardDateFilter, setDashboardDateFilter] = useState<string>(() => {
         const from = format(new Date(), 'yyyy-MM-dd');
         const to = format(addDays(new Date(), 6), 'yyyy-MM-dd');
@@ -59,7 +60,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             10,
             dashboardDateFilter,
             dashboardNameFilter,
-            dashboardCodeFilter
+            dashboardCodeFilter,
+            dashboardStatusFilter
         );
     }, [
         fetchAdminDashboard,
@@ -67,7 +69,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         dashboardPage,
         dashboardDateFilter,
         dashboardNameFilter,
-        dashboardCodeFilter
+        dashboardCodeFilter,
+        dashboardStatusFilter
     ]);
 
     // Flatten backend courts
@@ -210,7 +213,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             page: dashboardPage,
                             name: dashboardNameFilter,
                             date: dashboardDateFilter,
-                            code: dashboardCodeFilter
+                            code: dashboardCodeFilter,
+                            status: dashboardStatusFilter
                         }}
                         onFilterChange={(newFilters: any) => {
                             if (newFilters.page !== undefined) {
@@ -222,6 +226,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             }
                             if (newFilters.code !== undefined) {
                                 setDashboardCodeFilter(newFilters.code);
+                                setDashboardPage(1); // Reset to page 1 on search
+                            }
+                            if (newFilters.status !== undefined) {
+                                setDashboardStatusFilter(newFilters.status);
                                 setDashboardPage(1); // Reset to page 1 on search
                             }
                             if (newFilters.date !== undefined) {
@@ -238,7 +246,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                     dashboardPage,
                                     10,
                                     dashboardDateFilter,
-                                    dashboardNameFilter
+                                    dashboardNameFilter,
+                                    dashboardCodeFilter,
+                                    dashboardStatusFilter
                                 )
                             ).finally(() => setIsRefreshing(false));
                         }}
