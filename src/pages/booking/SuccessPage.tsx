@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { CheckCircle, Calendar, ArrowRight, Info, AlertCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, Calendar, ArrowRight, Info, AlertCircle } from 'lucide-react';
 import { useBookingStore } from '../../store/useBookingStore';
 
 interface SuccessPageProps {
@@ -9,59 +9,23 @@ interface SuccessPageProps {
     onGoToProfile?: () => void;
 }
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+    mercadopago: 'MercadoPago',
+    fintoc: 'Fintoc',
+    cash: 'Efectivo en recinto',
+    venue: 'Efectivo en recinto',
+    internal: 'Interno',
+};
+
 export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfile }) => {
     const navigate = useNavigate();
-    const [booking, setBooking] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-    const { courts } = useBookingStore();
+    const { currentBooking } = useBookingStore();
 
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get('code');
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
 
-        if (code) {
-            // Aquí se podría hacer un fetch al backend para obtener los detalles de la reserva por su código
-            // Por ahora simularemos la carga o buscaremos si hay algo en el estado global
-            // En una implementación real: axios.get(`/api/bookings/details?code=${code}`)
-            
-            const fetchDetails = async () => {
-                try {
-                    // Simulación de delay
-                    await new Promise(resolve => setTimeout(resolve, 1500));
-                    
-                    // Como no tenemos el endpoint exacto aquí, usaremos datos de ejemplo
-                    // basándonos en lo que el backend devolvió en el redirect
-                    setBooking({
-                        id: code,
-                        date: new Date().toISOString(), // Esto debería venir del backend
-                        price: 0, // Esto debería venir del backend
-                        paymentMethod: 'fintoc',
-                        userEmail: 'cliente@ejemplo.com',
-                        courtName: 'Cancha Seleccionada'
-                    });
-                } catch (err) {
-                    console.error("Error al cargar detalles de la reserva", err);
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            fetchDetails();
-        } else {
-            setLoading(false);
-        }
-    }, []);
-
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <div className="text-center">
-                    <Loader2 className="w-12 h-12 text-emerald-500 animate-spin mx-auto mb-4" />
-                    <p className="text-slate-600 font-medium">Validando tu pago...</p>
-                </div>
-            </div>
-        );
-    }
+    const paymentMethodLabel =
+        PAYMENT_METHOD_LABELS[currentBooking?.payment_method ?? ''] ?? 'Online';
 
     return (
         <div className="min-h-screen bg-slate-50 pt-8 pb-20 px-4">
@@ -96,11 +60,11 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-slate-600 font-medium">Código de Reserva</span>
-                                        <span className="font-bold text-slate-900">{booking?.id}</span>
+                                        <span className="font-bold text-slate-900">{currentBooking?.booking_code ?? code}</span>
                                     </div>
                                     <div className="flex justify-between items-center mt-2 pt-2 border-t border-emerald-100">
                                         <span className="text-slate-700 font-medium">Método de pago</span>
-                                        <span className="text-sm font-medium text-slate-900">Fintoc</span>
+                                        <span className="text-sm font-medium text-slate-900">{paymentMethodLabel}</span>
                                     </div>
                                 </div>
                             </div>

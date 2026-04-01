@@ -10,7 +10,7 @@ interface PaymentModalProps {
   slot: TimeSlot;
   court: Court;
   onClose: () => void;
-  onConfirm: (method: 'fintoc' | 'venue', guestDetails?: GuestDetails) => void;
+  onConfirm: (method: 'mercadopago' | 'venue', guestDetails?: GuestDetails) => void;
   user: UserProfile | null;
 }
 
@@ -23,7 +23,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 }) => {
   const { sportCenters } = useBookingStore();
   const center = sportCenters.find(c => c.id === slot.centerId);
-  const [processing, setProcessing] = useState<null | 'fintoc' | 'venue'>(null);
+  const [processing, setProcessing] = useState<null | 'mercadopago' | 'venue'>(null);
   const [guestDetails, setGuestDetails] = useState<GuestDetails>({
     name: user?.name || '',
     email: user?.email || '',
@@ -42,7 +42,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handlePayment = (method: 'fintoc' | 'venue') => {
+  const handlePayment = (method: 'mercadopago' | 'venue') => {
     if (!validate()) return;
 
     setProcessing(method);
@@ -136,25 +136,25 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               {slot.paymentRequired && (
                 <button
                   disabled={processing !== null}
-                  onClick={() => handlePayment('fintoc')}
-                  className={`w-full group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all ${processing === 'fintoc'
-                    ? 'border-indigo-500 bg-indigo-50'
-                    : 'border-slate-100 hover:border-indigo-500 hover:bg-indigo-50/30'
+                  onClick={() => handlePayment('mercadopago')}
+                  className={`w-full group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all ${processing === 'mercadopago'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-slate-100 hover:border-blue-500 hover:bg-blue-50/30'
                     }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                       <CreditCard className="w-5 h-5" />
                     </div>
                     <div className="text-left">
-                      <span className="block font-bold text-slate-800 group-hover:text-indigo-700">Pagar</span>
-                      <span className="text-xs text-slate-500">Transferencia bancaria directa</span>
+                      <span className="block font-bold text-slate-800 group-hover:text-blue-700">Pagar con MercadoPago</span>
+                      <span className="text-xs text-slate-500">Tarjeta, transferencia o efectivo</span>
                     </div>
                   </div>
-                  {processing === 'fintoc' ? (
-                    <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                  {processing === 'mercadopago' ? (
+                    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <ChevronRight className="text-slate-300 group-hover:text-indigo-500" />
+                    <ChevronRight className="text-slate-300 group-hover:text-blue-500" />
                   )}
                 </button>
               )}
@@ -163,25 +163,25 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 <div className="space-y-3">
                   <button
                     disabled={processing !== null}
-                    onClick={() => handlePayment('fintoc')}
-                    className={`w-full group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all ${processing === 'fintoc'
-                      ? 'border-indigo-500 bg-indigo-50'
-                      : 'border-slate-100 hover:border-indigo-500 hover:bg-indigo-50/30'
+                    onClick={() => handlePayment('mercadopago')}
+                    className={`w-full group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all ${processing === 'mercadopago'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-slate-100 hover:border-blue-500 hover:bg-blue-50/30'
                       }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                         <CreditCard className="w-5 h-5" />
                       </div>
                       <div className="text-left">
-                        <span className="block font-bold text-slate-800 group-hover:text-indigo-700">Pagar (opcional)</span>
+                        <span className="block font-bold text-slate-800 group-hover:text-blue-700">Pagar con MercadoPago (opcional)</span>
                         <span className="text-xs text-slate-500">Paga ahora y asegura tu reserva</span>
                       </div>
                     </div>
-                    {processing === 'fintoc' ? (
-                      <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    {processing === 'mercadopago' ? (
+                      <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      <ChevronRight className="text-slate-300 group-hover:text-indigo-500" />
+                      <ChevronRight className="text-slate-300 group-hover:text-blue-500" />
                     )}
                   </button>
 

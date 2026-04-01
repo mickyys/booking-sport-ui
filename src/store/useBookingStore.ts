@@ -37,6 +37,7 @@ interface BookingState {
   fetchBookingByCode: (code: string) => Promise<any>;
   resetCurrentBooking: () => void;
   createFintocPayment: (bookingData: any) => Promise<string>;
+  createMercadoPagoPayment: (bookingData: any) => Promise<string>;
   cancelBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   setSelectedCenterId: (id: string | null) => void;
   initialize: () => Promise<void>;
@@ -213,6 +214,20 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       return data.redirect_url;
     } catch (err) {
       console.error("Error creating Fintoc payment:", err);
+      set({ error: 'Failed to initiate payment' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  createMercadoPagoPayment: async (bookingData: any) => {
+    set({ isLoading: true });
+    try {
+      const { data } = await api.post('/bookings/mercadopago', bookingData);
+      return data.init_point;
+    } catch (err) {
+      console.error("Error creating MercadoPago payment:", err);
       set({ error: 'Failed to initiate payment' });
       throw err;
     } finally {

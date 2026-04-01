@@ -51,7 +51,7 @@ export const RootLayout: React.FC = () => {
     document.title = titles[location.pathname] || 'ReservaloYA';
   }, [location.pathname]);
 
-  // Fintoc redirect detection (code without state)
+  // Payment redirect detection (code without state)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');

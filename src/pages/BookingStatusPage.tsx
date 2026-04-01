@@ -66,7 +66,7 @@ export default function BookingStatusPage() {
           <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent animate-spin rounded-full" />
         </div>
         <h2 className="text-2xl font-bold mb-2">Pago en proceso</h2>
-        <p className="text-slate-500 mb-8">Estamos esperando la confirmación de Fintoc. Esto puede tardar unos segundos.</p>
+        <p className="text-slate-500 mb-8">Estamos esperando la confirmación de tu pago. Esto puede tardar unos segundos.</p>
         <button
           onClick={() => window.location.reload()}
           className="bg-emerald-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-emerald-700 transition-colors w-full"

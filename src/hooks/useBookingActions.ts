@@ -6,7 +6,7 @@ import { UserProfile } from '../types';
 
 export const useBookingActions = (user: UserProfile | null) => {
   const navigate = useNavigate();
-  const { createFintocPayment, createBooking } = useBookingStore();
+  const { createMercadoPagoPayment, createBooking } = useBookingStore();
   const {
     slots,
     bookings,
@@ -18,10 +18,10 @@ export const useBookingActions = (user: UserProfile | null) => {
     setSelectedSlot,
   } = useBooking(user);
 
-  const handleConfirmBooking = async (method: 'fintoc' | 'venue' | 'cash', guestDetails?: any) => {
-    if (method === 'fintoc' && selectedSlot) {
+  const handleConfirmBooking = async (method: 'mercadopago' | 'venue' | 'cash', guestDetails?: any) => {
+    if (method === 'mercadopago' && selectedSlot) {
       try {
-        const redirect_url = await createFintocPayment({
+        const init_point = await createMercadoPagoPayment({
           court_id: selectedSlot.courtId,
           date: selectedSlot.date.toISOString(),
           hour: selectedSlot.date.getHours(),
@@ -29,10 +29,10 @@ export const useBookingActions = (user: UserProfile | null) => {
           user_id: user?.id,
         });
 
-        // Redirigir a Fintoc Checkout
-        window.location.href = redirect_url;
+        // Redirigir a MercadoPago Checkout
+        window.location.href = init_point;
       } catch (error) {
-        toast.error("Error al iniciar el pago con Fintoc.");
+        toast.error("Error al iniciar el pago con MercadoPago.");
       }
       return;
     }
