@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { X, MapPin, CreditCard, ChevronRight, Info } from 'lucide-react';
+import { X, MapPin, CreditCard, ChevronRight, Info, ShieldAlert } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TimeSlot, Court, UserProfile, GuestDetails } from '../../types';
 import { useBookingStore } from '../../store/useBookingStore';
+import CancellationPolicyModal from '../search/CancellationPolicyModal';
 
 interface PaymentModalProps {
   slot: TimeSlot;
@@ -24,6 +25,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const { sportCenters } = useBookingStore();
   const center = sportCenters.find(c => c.id === slot.centerId);
   const [processing, setProcessing] = useState<null | 'mercadopago' | 'venue'>(null);
+  const [showPolicies, setShowPolicies] = useState(false);
   const [guestDetails, setGuestDetails] = useState<GuestDetails>({
     name: user?.name || '',
     email: user?.email || '',
@@ -126,6 +128,19 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               />
               {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
             </div>
+
+            {(slot.paymentRequired || slot.paymentOptional) && center && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPolicies(true)}
+                  className="flex items-center gap-2 text-slate-500 hover:text-emerald-600 transition-colors text-sm font-medium"
+                >
+                  <ShieldAlert className="w-4 h-4" />
+                  Ver políticas de cancelación
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-3 pt-2 border-t border-slate-100">
@@ -229,6 +244,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           </div>
         </div>
       </motion.div>
+
+      {center && (
+        <CancellationPolicyModal
+          center={center}
+          isOpen={showPolicies}
+          onClose={() => setShowPolicies(false)}
+        />
+      )}
     </div>
   );
 };
