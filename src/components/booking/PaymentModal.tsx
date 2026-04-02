@@ -163,7 +163,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     </div>
                     <div className="text-left">
                       <span className="block font-bold text-slate-800 group-hover:text-blue-700">Pagar con MercadoPago</span>
-                      <span className="text-xs text-slate-500">Tarjeta, transferencia o efectivo</span>
+                      <span className="text-xs text-slate-500">Crédito, Débito o Prepago</span>
                     </div>
                   </div>
                   {processing === 'mercadopago' ? (
@@ -190,7 +190,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                       </div>
                       <div className="text-left">
                         <span className="block font-bold text-slate-800 group-hover:text-blue-700">Pagar con MercadoPago (opcional)</span>
-                        <span className="text-xs text-slate-500">Paga ahora y asegura tu reserva</span>
+                        <span className="text-xs text-slate-500">Crédito, Débito o dinero en cuenta</span>
                       </div>
                     </div>
                     {processing === 'mercadopago' ? (
