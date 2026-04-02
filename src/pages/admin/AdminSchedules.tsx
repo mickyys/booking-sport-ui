@@ -251,8 +251,8 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
             </div>
 
             <div className="space-y-6">
-                {courts.map(court => {
-                    const schedule = schedules.find(s => s.courtId === court.id);
+                {(courts || []).map(court => {
+                    const schedule = (schedules || []).find(s => s.courtId === court.id);
                     if (!schedule) return null;
                     const isCollapsed = collapsedCourts[court.id];
 
@@ -274,7 +274,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                         <div className="flex items-center gap-2 mt-1">
                                             <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold uppercase tracking-wider shrink-0">Activa</span>
                                             <span className="text-slate-400 text-xs font-medium truncate">• {court.centerName}</span>
-                                            <span className="text-slate-300 text-xs font-medium">• {schedule.slots.length} horarios</span>
+                                            <span className="text-slate-300 text-xs font-medium">• {(schedule.slots || []).length} horarios</span>
                                         </div>
                                     </div>
                                     {isCollapsed ? <ChevronDown className="text-slate-400 ml-auto" /> : <ChevronUp className="text-slate-400 ml-auto" />}
@@ -291,14 +291,14 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                             {/* Slots Grid */}
                             {!isCollapsed && (
                                 <div className="p-6 lg:p-8 bg-white border-t border-slate-100 animate-in slide-in-from-top-4 duration-300">
-                                    {schedule.slots.length === 0 ? (
+                                    {(!schedule.slots || schedule.slots.length === 0) ? (
                                         <div className="flex flex-col items-center justify-center py-12 text-slate-400 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
                                             <AlertCircle size={40} className="mb-3 opacity-20" />
                                             <p className="font-medium">Sin horarios configurados</p>
                                         </div>
                                     ) : (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                            {schedule.slots.map((slot: any, index: number) => {
+                                            {(schedule.slots || []).map((slot: any, index: number) => {
                                                 const slotKey = `${court.id}-${slot.hour}-${slot.minutes || 0}`;
                                                 const isLoading = !!loadingSlots[slotKey];
 

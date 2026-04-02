@@ -9,6 +9,13 @@ import BookingPageWrapper from '../pages/BookingPageWrapper';
 import { LocationServices } from '../pages/LocationServicesPage';
 import { ClientDashboard } from '../pages/ClientDashboard';
 import AdminPageWrapper from '../pages/AdminPageWrapper';
+import { 
+  AdminDashboardSubPage, 
+  AdminCourtsSubPage, 
+  AdminSchedulesSubPage, 
+  AdminCalendarSubPage, 
+  AdminSettingsSubPage 
+} from '../pages/AdminPage';
 import { SuccessPage } from '../pages/booking/SuccessPage';
 import { FailurePage } from '../pages/booking/FailurePage';
 import BookingStatusPage from '../pages/BookingStatusPage';
@@ -48,6 +55,13 @@ export const router = createBrowserRouter([
             <AdminPageWrapper />
           </ProtectedRoute>
         ),
+        children: [
+          { index: true, element: <AdminDashboardSubPage /> },
+          { path: 'courts', element: <AdminCourtsSubPage /> },
+          { path: 'schedules', element: <AdminSchedulesSubPage /> },
+          { path: 'calendar', element: <AdminCalendarSubPage /> },
+          { path: 'settings', element: <AdminSettingsSubPage /> },
+        ]
       },
 
       // 404

@@ -5,13 +5,14 @@ import { COURTS } from '../data/mockData';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useBookingStore } from '../store/useBookingStore';
 import { toast } from 'sonner';
+import { Outlet, useNavigate, useOutletContext } from 'react-router-dom';
 
 import { AdminDashboard } from './admin/AdminDashboard';
 import { AdminCourts } from './admin/AdminCourts';
 import { AdminSchedules } from './admin/AdminSchedules';
 import { AdminCalendar } from './admin/AdminCalendar';
 import { AdminSettings } from './admin/AdminSettings';
-import { LayoutDashboard, Trophy, Clock, CalendarRange, Settings } from 'lucide-react';
+import { AdminSidebar } from '../components/layout/AdminSidebar';
 
 interface AdminPanelProps {
     bookings: Booking[];
@@ -26,7 +27,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     onCancelBooking,
     onBlockSlot
 }) => {
-    const [view, setView] = useState<'dashboard' | 'courts' | 'schedules' | 'calendar' | 'settings'>('dashboard');
     const [dashboardPage, setDashboardPage] = useState(1);
     const [dashboardNameFilter, setDashboardNameFilter] = useState('');
     const [dashboardCodeFilter, setDashboardCodeFilter] = useState('');
@@ -97,13 +97,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             price: s.price || 0,
             enabled: s.status === 'available',
             paymentRequired: s.payment_required,
-            paymentOptional: s.payment_optional || false
+            paymentOptional: s.payment_optional || false,
         })) || []
     }));
 
-    // For simplicity, take prices from the first center
-    const prices = {}; // No longer used
-    
     // Actions
     const onSaveCourt = (court: any) => fetchAdminCourts(getAccessTokenSilently);
     const onDeleteCourt = async (id: any) => {
@@ -137,154 +134,114 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 p-4 lg:p-8">
-            <div className="max-w-7xl mx-auto">
-                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-6 mb-8">
-                    <h2 className="text-3xl font-bold text-slate-800 tracking-tight">
-                        Panel de Administración
-                    </h2>
-                    
-                    <div className="flex bg-white/80 backdrop-blur-sm p-1.5 rounded-2xl shadow-sm border border-slate-200 overflow-x-auto no-scrollbar scroll-smooth">
-                        <button
-                            onClick={() => setView('dashboard')}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
-                                view === 'dashboard' 
-                                ? 'bg-slate-900 text-white shadow-lg shadow-slate-200 translate-y-[-1px]' 
-                                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-                            }`}
-                        >
-                            <LayoutDashboard size={18} />
-                            Dashboard
-                        </button>
-                        <button
-                            onClick={() => setView('courts')}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
-                                view === 'courts' 
-                                ? 'bg-slate-900 text-white shadow-lg shadow-slate-200 translate-y-[-1px]' 
-                                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-                            }`}
-                        >
-                            <Trophy size={18} />
-                            Canchas
-                        </button>
-                        <button
-                            onClick={() => setView('schedules')}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
-                                view === 'schedules' 
-                                ? 'bg-slate-900 text-white shadow-lg shadow-slate-200 translate-y-[-1px]' 
-                                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-                            }`}
-                        >
-                            <Clock size={18} />
-                            Horarios y Tarifas
-                        </button>
-                        <button
-                            onClick={() => setView('calendar')}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
-                                view === 'calendar' 
-                                ? 'bg-slate-900 text-white shadow-lg shadow-slate-200 translate-y-[-1px]' 
-                                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-                            }`}
-                        >
-                            <CalendarRange size={18} />
-                            Calendario y Reservas
-                        </button>
-                        <button
-                            onClick={() => setView('settings')}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
-                                view === 'settings' 
-                                ? 'bg-slate-900 text-white shadow-lg shadow-slate-200 translate-y-[-1px]' 
-                                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-                            }`}
-                        >
-                            <Settings size={18} />
-                            Configuración
-                        </button>
-                    </div>
+        <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
+            <AdminSidebar />
+            
+            <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
+                <div className="max-w-7xl mx-auto pt-16 lg:pt-0">
+                    <Outlet context={{
+                        adminDashboardData,
+                        handleDashboardCancel,
+                        courts,
+                        dashboardPage,
+                        dashboardNameFilter,
+                        dashboardCodeFilter,
+                        dashboardStatusFilter,
+                        dashboardDateFilter,
+                        setDashboardPage,
+                        setDashboardNameFilter,
+                        setDashboardCodeFilter,
+                        setDashboardStatusFilter,
+                        setDashboardDateFilter,
+                        onSaveCourt,
+                        onDeleteCourt,
+                        schedules,
+                        onUpdateSchedule,
+                        currentSportCenter,
+                        isRefreshing,
+                        setIsRefreshing,
+                        fetchAdminDashboard
+                    }} />
                 </div>
-
-                {view === 'dashboard' && (
-                    <AdminDashboard
-                        dashboardData={adminDashboardData}
-                        onCancelBooking={handleDashboardCancel}
-                        onNewBooking={() => setView('calendar')}
-                        courts={courts}
-                        filters={{
-                            page: dashboardPage,
-                            name: dashboardNameFilter,
-                            date: dashboardDateFilter,
-                            code: dashboardCodeFilter,
-                            status: dashboardStatusFilter
-                        }}
-                        onFilterChange={(newFilters: any) => {
-                            if (newFilters.page !== undefined) {
-                                setDashboardPage(newFilters.page);
-                            }
-                            if (newFilters.name !== undefined) {
-                                setDashboardNameFilter(newFilters.name);
-                                setDashboardPage(1); // Reset to page 1 on search
-                            }
-                            if (newFilters.code !== undefined) {
-                                setDashboardCodeFilter(newFilters.code);
-                                setDashboardPage(1); // Reset to page 1 on search
-                            }
-                            if (newFilters.status !== undefined) {
-                                setDashboardStatusFilter(newFilters.status);
-                                setDashboardPage(1); // Reset to page 1 on search
-                            }
-                            if (newFilters.date !== undefined) {
-                                setDashboardDateFilter(newFilters.date);
-                                setDashboardPage(1); // Reset to page 1 on search
-                            }
-                        }}
-                        onRefresh={() => {
-                            setIsRefreshing(true);
-                            // call fetch and clear loading when done
-                            Promise.resolve(
-                                fetchAdminDashboard(
-                                    getAccessTokenSilently,
-                                    dashboardPage,
-                                    10,
-                                    dashboardDateFilter,
-                                    dashboardNameFilter,
-                                    dashboardCodeFilter,
-                                    dashboardStatusFilter
-                                )
-                            ).finally(() => setIsRefreshing(false));
-                        }}
-                        isRefreshing={isRefreshing}
-                    />
-                )}
-
-                {view === 'courts' && (
-                    <AdminCourts
-                        courts={courts}
-                        onSaveCourt={onSaveCourt}
-                        onDeleteCourt={onDeleteCourt}
-                    />
-                )}
-
-                {view === 'schedules' && (
-                    <AdminSchedules
-                        courts={courts}
-                        schedules={schedules}
-                        onUpdateSchedule={onUpdateSchedule}
-                    />
-                )}
-
-                {view === 'calendar' && (
-                    <AdminCalendar
-                        courts={courts}
-                    />
-                )}
-
-                {view === 'settings' && (
-                    <AdminSettings
-                        sportCenter={currentSportCenter}
-                        onSave={() => fetchAdminCourts(getAccessTokenSilently)}
-                    />
-                )}
-            </div>
+            </main>
         </div>
     );
+};
+
+// Sub-page Components that consume the context
+export const AdminDashboardSubPage: React.FC = () => {
+    const { 
+        adminDashboardData, 
+        handleDashboardCancel, 
+        courts, 
+        dashboardPage,
+        dashboardNameFilter,
+        dashboardCodeFilter,
+        dashboardStatusFilter,
+        dashboardDateFilter,
+        setDashboardPage,
+        setDashboardNameFilter,
+        setDashboardCodeFilter,
+        setDashboardStatusFilter,
+        setDashboardDateFilter,
+        fetchAdminDashboard,
+        setIsRefreshing
+    } = useOutletContext<any>();
+    const { getAccessTokenSilently } = useAuth0();
+    const navigate = useNavigate();
+
+    return (
+        <AdminDashboard
+            dashboardData={adminDashboardData}
+            onCancelBooking={handleDashboardCancel}
+            onNewBooking={() => navigate('/admin/calendar')}
+            courts={courts}
+            filters={{
+                page: dashboardPage,
+                name: dashboardNameFilter,
+                date: dashboardDateFilter,
+                code: dashboardCodeFilter,
+                status: dashboardStatusFilter
+            }}
+            onFilterChange={(newFilters: any) => {
+                if (newFilters.page !== undefined) setDashboardPage(newFilters.page);
+                if (newFilters.name !== undefined) { setDashboardNameFilter(newFilters.name); setDashboardPage(1); }
+                if (newFilters.code !== undefined) { setDashboardCodeFilter(newFilters.code); setDashboardPage(1); }
+                if (newFilters.status !== undefined) { setDashboardStatusFilter(newFilters.status); setDashboardPage(1); }
+                if (newFilters.date !== undefined) { setDashboardDateFilter(newFilters.date); setDashboardPage(1); }
+            }}
+            onRefresh={() => {
+                setIsRefreshing(true);
+                fetchAdminDashboard(
+                    getAccessTokenSilently,
+                    dashboardPage,
+                    10,
+                    dashboardDateFilter,
+                    dashboardNameFilter,
+                    dashboardCodeFilter,
+                    dashboardStatusFilter
+                ).finally(() => setIsRefreshing(false));
+            }}
+        />
+    );
+};
+
+export const AdminCourtsSubPage: React.FC = () => {
+    const { courts, onSaveCourt, onDeleteCourt } = useOutletContext<any>();
+    return <AdminCourts courts={courts} onSaveCourt={onSaveCourt} onDeleteCourt={onDeleteCourt} />;
+};
+
+export const AdminSchedulesSubPage: React.FC = () => {
+    const { courts, schedules, onUpdateSchedule } = useOutletContext<any>();
+    return <AdminSchedules courts={courts} schedules={schedules} onUpdateSchedule={onUpdateSchedule} />;
+};
+
+export const AdminCalendarSubPage: React.FC = () => {
+    const { courts } = useOutletContext<any>();
+    return <AdminCalendar courts={courts} onNewBooking={() => {}} />;
+};
+
+export const AdminSettingsSubPage: React.FC = () => {
+    const { currentSportCenter } = useOutletContext<any>();
+    return <AdminSettings sportCenter={currentSportCenter} />;
 };
