@@ -7,7 +7,8 @@ import {
   CalendarRange, 
   Settings,
   Menu,
-  X
+  X,
+  Users
 } from 'lucide-react';
 
 const navItems = [
@@ -15,6 +16,7 @@ const navItems = [
   { to: '/admin/courts', icon: Trophy, label: 'Canchas' },
   { to: '/admin/schedules', icon: Clock, label: 'Horarios y Tarifas' },
   { to: '/admin/calendar', icon: CalendarRange, label: 'Calendario y Reservas' },
+  { to: '/admin/subscriptions', icon: Users, label: 'Suscripciones' },
   { to: '/admin/settings', icon: Settings, label: 'Configuración' },
 ];
 

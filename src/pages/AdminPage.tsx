@@ -12,6 +12,7 @@ import { AdminCourts } from './admin/AdminCourts';
 import { AdminSchedules } from './admin/AdminSchedules';
 import { AdminCalendar } from './admin/AdminCalendar';
 import { AdminSettings } from './admin/AdminSettings';
+import { AdminSubscriptions } from './admin/AdminSubscriptions';
 import { AdminSidebar } from '../components/layout/AdminSidebar';
 
 interface AdminPanelProps {
@@ -224,6 +225,10 @@ export const AdminDashboardSubPage: React.FC = () => {
             }}
         />
     );
+};
+
+export const AdminSubscriptionsSubPage: React.FC = () => {
+    return <AdminSubscriptions />;
 };
 
 export const AdminCourtsSubPage: React.FC = () => {

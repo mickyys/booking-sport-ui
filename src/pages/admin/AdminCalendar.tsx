@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Ban, Calendar, User, Phone, Unlock, CheckCircle, Clock } from 'lucide-react';
 import { format, startOfToday, addDays } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { TimeSlot } from '../../types';
 import { useBookingStore } from '../../store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
@@ -19,6 +20,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
         fetchSchedules,
         createInternalBooking,
         deleteBooking,
+        deleteSeries,
         selectedCenterId
     } = useBookingStore();
 
@@ -26,6 +28,9 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
     const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
     const [bookingMode, setBookingMode] = useState<{ slot: any, mode: 'block' | 'reserve' } | null>(null);
     const [guestInfo, setGuestInfo] = useState({ name: '', phone: '' });
+    const [isRecurring, setIsRecurring] = useState(false);
+    const [recurringWeeks, setRecurringWeeks] = useState(4);
+    const [isCreating, setIsCreating] = useState(false);
 
     useEffect(() => {
         // Obtenemos el centerId de la cancha seleccionada o del store
@@ -43,44 +48,84 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
 
     const handleInternalReserve = async () => {
         if (!bookingMode) return;
+        setIsCreating(true);
+
+        const weeksToProcess = isRecurring ? recurringWeeks : 1;
+        const successDates: string[] = [];
+        const seriesId = isRecurring ? `SERIE-${crypto.randomUUID().slice(0, 8).toUpperCase()}` : undefined;
 
         try {
-            const bookingData = {
-                court_id: bookingMode.slot.courtId,
-                date: selectedDate.toISOString(),
-                hour: bookingMode.slot.hour,
-                guest_details: bookingMode.mode === 'reserve' ? {
-                    name: guestInfo.name,
-                    phone: guestInfo.phone,
-                    email: 'admin@internal.com'
-                } : null,
-                status: 'confirmed',
-                payment_method: 'internal'
-            };
+            for (let i = 0; i < weeksToProcess; i++) {
+                const currentDate = addDays(selectedDate, i * 7);
+                
+                const bookingData: any = {
+                    court_id: bookingMode.slot.courtId,
+                    sport_center_id: selectedCenterId, // Agregado para asegurar consistencia
+                    date: currentDate.toISOString(),
+                    hour: bookingMode.slot.hour,
+                    customer_name: guestInfo.name, // Sin el (R) para que el agrupamiento sea limpio
+                    customer_phone: guestInfo.phone,
+                    guest_details: bookingMode.mode === 'reserve' ? {
+                        name: guestInfo.name,
+                        phone: guestInfo.phone,
+                        email: 'admin@internal.com'
+                    } : null,
+                    status: 'confirmed',
+                    payment_method: 'internal',
+                    series_id: seriesId
+                };
 
-            await createInternalBooking(bookingData, getAccessTokenSilently);
-            toast.success(bookingMode.mode === 'reserve' ? "Reserva guardada con éxito" : "Horario bloqueado");
+                await createInternalBooking(bookingData, getAccessTokenSilently);
+                successDates.push(format(currentDate, 'dd/MM'));
+            }
+
+            toast.success(isRecurring 
+                ? `Se crearon ${weeksToProcess} reservas con éxito` 
+                : (bookingMode.mode === 'reserve' ? "Reserva guardada con éxito" : "Horario bloqueado")
+            );
+            
             setBookingMode(null);
             setGuestInfo({ name: '', phone: '' });
+            setIsRecurring(false);
+            setRecurringWeeks(4);
+            
             if (selectedCenterId) {
                 fetchSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'));
             }
         } catch (error) {
-            toast.error("Error al realizar la acción");
+            console.error("Error creating bookings:", error);
+            if (successDates.length > 0) {
+                toast.error(`Error parcial: Solo se crearon las primeras ${successDates.length} reservas.`);
+            } else {
+                toast.error("Error al realizar la acción. Verifique disponibilidad.");
+            }
+        } finally {
+            setIsCreating(false);
         }
     };
 
-    const handleUnlock = async (bookingId?: string) => {
+    const handleUnlock = async (bookingId?: string, seriesId?: string) => {
         if (!bookingId) {
             toast.error("No se encontró el ID de la reserva para desbloquear");
             return;
         }
 
-        if (!confirm("¿Estás seguro de que deseas desbloquear este horario? La reserva será eliminada.")) return;
+        const isSeries = !!seriesId;
+        const confirmMsg = isSeries 
+            ? "¿Deseas eliminar SOLO esta reserva o TODA la serie de reservas recurrentes?" 
+            : "¿Estás seguro de que deseas desbloquear este horario? La reserva será eliminada.";
+        
+        if (!confirm(confirmMsg)) return;
 
         try {
-            await deleteBooking(bookingId, getAccessTokenSilently);
-            toast.success("Horario desbloqueado con éxito");
+            if (isSeries && confirm("Haz clic en Aceptar para eliminar TODA LA SERIE, o Cancelar para eliminar SOLO ESTA FECHA.")) {
+                await (deleteSeries as any)(seriesId, getAccessTokenSilently);
+                toast.success("Toda la serie de reservas eliminada");
+            } else {
+                await deleteBooking(bookingId, getAccessTokenSilently);
+                toast.success("Horario desbloqueado con éxito");
+            }
+            
             if (selectedCenterId) {
                 fetchSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'));
             }
@@ -154,10 +199,15 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
 
                                 {isBooked ? (
                                     <button
-                                        onClick={() => handleUnlock(slot.booking_id)}
-                                        className="text-xs font-bold text-red-500 hover:text-red-600 flex items-center gap-1 py-2 px-3 bg-red-50 rounded-xl transition-colors"
+                                        onClick={() => handleUnlock(slot.booking_id, slot.series_id)}
+                                        className={`text-xs font-bold flex items-center gap-1 py-2 px-3 rounded-xl transition-colors ${
+                                            slot.series_id 
+                                            ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 ring-1 ring-emerald-200' 
+                                            : 'text-red-500 bg-red-50 hover:bg-red-100'
+                                        }`}
                                     >
-                                        <Unlock className="w-3 h-3" /> Desbloquear
+                                        {slot.series_id ? <Clock size={12} className="animate-pulse" /> : <Unlock size={12} />}
+                                        {slot.series_id ? 'Ver Serie' : 'Desbloquear'}
                                     </button>
                                 ) : isClosed || isPassed ? (
                                     <span className="text-xs font-bold text-red-400 py-2">{isPassed ? 'Pasado' : 'Cerrado'}</span>
@@ -200,7 +250,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                                     {bookingMode.mode === 'reserve' ? 'Reserva Interna' : 'Bloquear Horario'}
                                 </h3>
                                 <p className="text-slate-500 text-sm mt-1">
-                                    {format(selectedDate, 'EEEE d \'de\' MMMM', { locale: undefined })} a las {bookingMode.slot.hour}:00
+                                    <span className="font-bold text-slate-900">{format(selectedDate, "EEEE d 'de' MMMM 'de' yyyy", { locale: es })}</span> a las {bookingMode.slot.hour}:00
                                 </p>
                             </div>
                         </div>
@@ -244,18 +294,67 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                             </div>
                         )}
 
+                        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 mb-8 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-bold text-slate-700">Hacer recurrente</span>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={isRecurring}
+                                        onChange={(e) => setIsRecurring(e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                </label>
+                            </div>
+                            
+                            {isRecurring && (
+                                <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Cantidad de Semanas</label>
+                                        <span className="text-sm font-black text-emerald-600">{recurringWeeks}</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="2"
+                                        max="52"
+                                        value={recurringWeeks}
+                                        onChange={(e) => setRecurringWeeks(parseInt(e.target.value))}
+                                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                                    />
+                                    <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
+                                        Se crearán reservas automáticas para cada <span className="font-bold text-slate-600">{format(selectedDate, 'EEEE', { locale: es })}</span> por las próximas {recurringWeeks} semanas (Hasta el <span className="font-bold text-slate-600">{format(addDays(selectedDate, (recurringWeeks - 1) * 7), "d 'de' MMMM 'de' yyyy", { locale: es })}</span>).
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
                         <div className="flex gap-3">
                             <button
-                                onClick={() => setBookingMode(null)}
+                                onClick={() => {
+                                    setBookingMode(null);
+                                    setIsRecurring(false);
+                                }}
                                 className="flex-1 py-4 px-6 rounded-2xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all"
+                                disabled={isCreating}
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={handleInternalReserve}
-                                className="flex-1 py-4 px-6 rounded-2xl font-bold bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+                                disabled={isCreating}
+                                className={`flex-1 py-4 px-6 rounded-2xl font-bold text-white transition-all shadow-lg flex items-center justify-center gap-2 ${
+                                    isCreating ? 'bg-slate-400' : 'bg-slate-900 hover:bg-slate-800 shadow-slate-200'
+                                }`}
                             >
-                                Confirmar
+                                {isCreating ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                        <span>Procesando...</span>
+                                    </>
+                                ) : (
+                                    <span>{isRecurring ? `Crear ${recurringWeeks} Reservas` : 'Confirmar'}</span>
+                                )}
                             </button>
                         </div>
                     </div>

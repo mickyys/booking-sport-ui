@@ -6,6 +6,7 @@ export interface ScheduleSlot {
   price: number;
   status: SlotStatus;
   booking_id?: string;
+  series_id?: string;
   paymentRequired?: boolean;
   paymentOptional?: boolean;
 }
@@ -104,6 +105,8 @@ export interface Booking {
 
   // código de reserva
   bookingCode: string
+
+  series_id?: string;
 
   // auditoría
   createdAt: string

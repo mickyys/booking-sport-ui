@@ -21,6 +21,7 @@ interface BookingState {
   error: string | null;
   adminCourts: any[];
   adminDashboardData: any | null;
+  recurringSeries: any[];
   sportCenterBySlug: SportCenter | null;
   cities: string[];
 
@@ -43,6 +44,7 @@ interface BookingState {
   initialize: () => Promise<void>;
   fetchAdminCourts: (getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchAdminDashboard: (getToken: (options?: any) => Promise<string>, page?: number, limit?: number, date?: string, name?: string, code?: string, status?: string) => Promise<void>;
+  fetchRecurringSeries: (getToken: (options?: any) => Promise<string>) => Promise<void>;
   createAdminCourt: (courtData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
   updateAdminCourt: (courtId: string, courtData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
   deleteAdminCourt: (courtId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
@@ -51,6 +53,7 @@ interface BookingState {
   createBooking: (bookingData: any) => Promise<void>;
   createInternalBooking: (bookingData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   deleteBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  deleteSeries: (seriesId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchSportCenterBySlug: (slug: string) => Promise<SportCenter | null>;
   updateSportCenter: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   updateSportCenterSettings: (id: string, settingsData: { slug: string; cancellation_hours: number; retention_percent: number }, getToken: (options?: any) => Promise<string>) => Promise<void>;
@@ -102,7 +105,31 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
   error: null,
   adminCourts: [],
   adminDashboardData: null,
+  recurringSeries: [],
   sportCenterBySlug: null,
+
+  fetchRecurringSeries: async (getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+      const { data } = await api.get('/admin/bookings/series', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ recurringSeries: data.data || [], error: null });
+    } catch (err) {
+      console.error("Error fetching series:", err);
+      set({ error: 'Failed' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
 
   setSelectedCenterId: (id: string | null) => {
     set({ selectedCenterId: id });
@@ -270,6 +297,29 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     } catch (err) {
       console.error("Error cancelling booking:", err);
       set({ error: 'Failed to cancel the booking' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  deleteSeries: async (seriesId: string, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+        }
+      });
+      await api.delete(`/admin/bookings/series/${seriesId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+    } catch (err) {
+      console.error("Error deleting series:", err);
+      set({ error: 'Failed to delete the series' });
       throw err;
     } finally {
       set({ isLoading: false });

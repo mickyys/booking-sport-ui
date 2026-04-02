@@ -14,7 +14,8 @@ import {
   AdminCourtsSubPage, 
   AdminSchedulesSubPage, 
   AdminCalendarSubPage, 
-  AdminSettingsSubPage 
+  AdminSettingsSubPage,
+  AdminSubscriptionsSubPage
 } from '../pages/AdminPage';
 import { SuccessPage } from '../pages/booking/SuccessPage';
 import { FailurePage } from '../pages/booking/FailurePage';
@@ -60,6 +61,7 @@ export const router = createBrowserRouter([
           { path: 'courts', element: <AdminCourtsSubPage /> },
           { path: 'schedules', element: <AdminSchedulesSubPage /> },
           { path: 'calendar', element: <AdminCalendarSubPage /> },
+          { path: 'subscriptions', element: <AdminSubscriptionsSubPage /> },
           { path: 'settings', element: <AdminSettingsSubPage /> },
         ]
       },
