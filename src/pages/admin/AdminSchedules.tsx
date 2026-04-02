@@ -84,12 +84,14 @@ interface AdminSchedulesProps {
     courts: any[];
     schedules: any[];
     onUpdateSchedule: (schedule: any) => Promise<void>;
+    onUpdateScheduleSlot: (courtId: string, slot: any) => Promise<void>;
 }
 
 export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
     courts,
     schedules,
-    onUpdateSchedule
+    onUpdateSchedule,
+    onUpdateScheduleSlot
 }) => {
     const [loadingSlots, setLoadingSlots] = useState<Record<string, boolean>>({});
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -110,45 +112,44 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
         const schedule = schedules.find(s => s.courtId === courtId);
         if (!schedule) return;
 
-        const newSlots = schedule.slots.map((slot: any) =>
-            (slot.hour === hour && (slot.minutes || 0) === minutes)
-                ? { ...slot, enabled: !slot.enabled }
-                : slot
-        );
+        const slot = schedule.slots.find((s: any) => s.hour === hour && (s.minutes || 0) === minutes);
+        if (!slot) return;
 
-        onUpdateSchedule({ ...schedule, slots: newSlots });
+        onUpdateScheduleSlot(courtId, { ...slot, enabled: !slot.enabled });
     };
 
     const handleTogglePaymentRequired = (courtId: string, hour: number, minutes: number) => {
         const schedule = schedules.find(s => s.courtId === courtId);
         if (!schedule) return;
 
-        const newSlots = schedule.slots.map((slot: any) =>
-            (slot.hour === hour && (slot.minutes || 0) === minutes)
-                ? { ...slot, paymentRequired: !slot.paymentRequired, paymentOptional: !slot.paymentRequired ? false : slot.paymentOptional }
-                : slot
-        );
+        const slot = schedule.slots.find((s: any) => s.hour === hour && (s.minutes || 0) === minutes);
+        if (!slot) return;
 
-        onUpdateSchedule({ ...schedule, slots: newSlots });
+        onUpdateScheduleSlot(courtId, { 
+            ...slot, 
+            paymentRequired: !slot.paymentRequired, 
+            paymentOptional: !slot.paymentRequired ? false : slot.paymentOptional 
+        });
     };
 
     const handleTogglePaymentOptional = async (courtId: string, hour: number, minutes: number) => {
         const schedule = schedules.find(s => s.courtId === courtId);
         if (!schedule) return;
 
+        const slot = schedule.slots.find((s: any) => s.hour === hour && (s.minutes || 0) === minutes);
+        if (!slot) return;
+
         const key = `${courtId}-${hour}-${minutes || 0}`;
         setLoadingSlots(prev => ({ ...prev, [key]: true }));
 
-        const newSlots = schedule.slots.map((slot: any) =>
-            (slot.hour === hour && (slot.minutes || 0) === minutes)
-                ? { ...slot, paymentOptional: !slot.paymentOptional,  paymentRequired: !slot.paymentOptional ? false : slot.paymentRequired }
-                : slot
-        );
-
         try {
-            await onUpdateSchedule({ ...schedule, slots: newSlots });
+            await onUpdateScheduleSlot(courtId, { 
+                ...slot, 
+                paymentOptional: !slot.paymentOptional,  
+                paymentRequired: !slot.paymentOptional ? false : slot.paymentRequired 
+            });
         } catch (err) {
-            // onUpdateSchedule should handle toasts/errors; just ensure spinner is removed
+            // Error handling is in AdminPage
         } finally {
             setLoadingSlots(prev => ({ ...prev, [key]: false }));
         }
@@ -158,13 +159,10 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
         const schedule = schedules.find(s => s.courtId === courtId);
         if (!schedule) return;
 
-        const newSlots = schedule.slots.map((slot: any) =>
-            (slot.hour === hour && (slot.minutes || 0) === minutes)
-                ? { ...slot, price }
-                : slot
-        );
+        const slot = schedule.slots.find((s: any) => s.hour === hour && (s.minutes || 0) === minutes);
+        if (!slot) return;
 
-        onUpdateSchedule({ ...schedule, slots: newSlots });
+        onUpdateScheduleSlot(courtId, { ...slot, price });
     };
 
     const handleTimeChange = (courtId: string, oldHour: number, oldMinutes: number, timeStr: string) => {
@@ -174,20 +172,16 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
         const schedule = schedules.find(s => s.courtId === courtId);
         if (!schedule) return;
 
-        const newSlots = schedule.slots.map((slot: any) =>
-            (slot.hour === oldHour && (slot.minutes || 0) === oldMinutes)
-                ? { ...slot, hour: h, minutes: m }
-                : slot
-        );
+        const slot = schedule.slots.find((s: any) => s.hour === oldHour && (s.minutes || 0) === oldMinutes);
+        if (!slot) return;
 
         // Check for duplicate time after change
-        const times = newSlots.map((sl: any) => `${sl.hour}:${sl.minutes || 0}`);
-        if (new Set(times).size !== times.length) {
+        if (schedule.slots.some((sl: any) => sl.hour === h && (sl.minutes || 0) === m && sl !== slot)) {
             toast.error("Este horario ya existe en esta cancha");
             return;
         }
 
-        onUpdateSchedule({ ...schedule, slots: newSlots });
+        onUpdateScheduleSlot(courtId, { ...slot, hour: h, minutes: m });
     };
 
     const handleDeleteSlot = (courtId: string, hour: number, minutes: number) => {

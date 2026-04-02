@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { SportCenter, Court, CourtWithSchedule, Booking, BookingDTO } from '../types';
 import api from '../api/axiosInstance';
-import { SPORT_CENTERS as MOCK_SPORT_CENTERS, COURTS as MOCK_COURTS } from '../data/mockData';
 import { getUserCancelledBookings } from '../api/bookingApi';
 import { mapBooking } from '../mapper/mapBooking';
 
@@ -51,6 +50,7 @@ interface BookingState {
   updateAdminCourt: (courtId: string, courtData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
   deleteAdminCourt: (courtId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   updateAdminSchedule: (courtId: string, schedule: any[], getToken: (options?: any) => Promise<string>) => Promise<void>;
+  updateAdminScheduleSlot: (courtId: string, slot: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   updateAgentSportCenter?: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   createBooking: (bookingData: any) => Promise<void>;
   createInternalBooking: (bookingData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
@@ -347,8 +347,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         const response = await api.get('/sport-centers', { params });
         data = response.data;
       } catch (err) {
-        console.warn('API failed, using mock data for sport centers');
-        data = MOCK_SPORT_CENTERS;
+        console.warn('API failed');
+        data = { data: [] };
       }
 
       const centersData = data.data || data;
@@ -518,8 +518,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         const response = await api.get('/courts');
         data = response.data;
       } catch (err) {
-        console.warn("API failed, using mock data for courts");
-        data = MOCK_COURTS;
+        console.warn("API failed");
+        data = { data: [] };
       }
 
       const courtsData = data.data || data;
@@ -798,6 +798,40 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     } catch (err) {
       console.error("Error updating schedule:", err);
       set({ error: 'Failed to update schedule' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  updateAdminScheduleSlot: async (courtId: string, slot: any, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+
+      const formattedSlot = {
+        hour: Number(slot.hour),
+        minutes: Number(slot.minutes || 0),
+        price: Number(slot.price),
+        status: slot.enabled ? 'available' : 'closed',
+        payment_required: !!slot.paymentRequired,
+        payment_optional: !!slot.paymentOptional
+      };
+
+      await api.patch(`/admin/courts/${courtId}/schedule/slot`, formattedSlot, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+    } catch (err) {
+      console.error("Error updating schedule slot:", err);
+      set({ error: 'Failed to update schedule slot' });
       throw err;
     } finally {
       set({ isLoading: false });

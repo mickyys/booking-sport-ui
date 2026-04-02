@@ -7,7 +7,6 @@ import { PaymentModal } from '../components/booking/PaymentModal';
 import { useBookingStore } from '../store/useBookingStore';
 import { useBookingActions } from '../hooks/useBookingActions';
 import { useAuth } from '../hooks/useAuth';
-import { COURTS as MOCK_COURTS } from '../data/mockData';
 
 export const RootLayout: React.FC = () => {
   const navigate = useNavigate();
@@ -84,7 +83,7 @@ export const RootLayout: React.FC = () => {
         {selectedSlot && (
           <PaymentModal
             slot={selectedSlot}
-            court={(courts.length > 0 ? courts : MOCK_COURTS).find(c => c.id === selectedSlot.courtId)!}
+            court={( courts ).find(c => c.id === selectedSlot.courtId)!}
             onClose={() => setSelectedSlot(null)}
             onConfirm={handleConfirmBooking}
             user={user}

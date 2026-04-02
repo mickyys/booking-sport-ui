@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { format, addDays } from 'date-fns';
 import { Booking, TimeSlot } from '../types';
-import { COURTS } from '../data/mockData';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useBookingStore } from '../store/useBookingStore';
 import { toast } from 'sonner';
@@ -43,7 +42,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         fetchAdminCourts, 
         adminCourts, 
         deleteAdminCourt, 
-        updateAdminSchedule, 
+        updateAdminSchedule,
+        updateAdminScheduleSlot,
         fetchAdminDashboard, 
         adminDashboardData,
         cancelBooking: storeCancelBooking // Use real cancelBooking
@@ -87,8 +87,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const currentSportCenter = adminCourts && adminCourts.length > 0 ? adminCourts[0].sport_center : null;
 
 
-    // Use backend courts if available, otherwise mock
-    const courts = backendCourts.length > 0 ? backendCourts : COURTS;
+    // Use backend courts if available
+    const courts = backendCourts;
 
     // Build real schedules from backend data
     const schedules = backendCourts.map(c => ({
@@ -118,6 +118,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const onUpdateSchedule = async (schedule: any) => {
         try {
             await updateAdminSchedule(schedule.courtId, schedule.slots, getAccessTokenSilently);
+            await fetchAdminCourts(getAccessTokenSilently);
+            toast.success("Horario actualizado con éxito");
+        } catch (error) {
+            toast.error("Error al actualizar horario");
+        }
+    };
+
+    const onUpdateScheduleSlot = async (courtId: string, slot: any) => {
+        try {
+            await updateAdminScheduleSlot(courtId, slot, getAccessTokenSilently);
             await fetchAdminCourts(getAccessTokenSilently);
             toast.success("Horario actualizado con éxito");
         } catch (error) {
@@ -159,6 +169,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         onDeleteCourt,
                         schedules,
                         onUpdateSchedule,
+                        onUpdateScheduleSlot,
                         currentSportCenter,
                         isRefreshing,
                         setIsRefreshing,
@@ -238,8 +249,15 @@ export const AdminCourtsSubPage: React.FC = () => {
 };
 
 export const AdminSchedulesSubPage: React.FC = () => {
-    const { courts, schedules, onUpdateSchedule } = useOutletContext<any>();
-    return <AdminSchedules courts={courts} schedules={schedules} onUpdateSchedule={onUpdateSchedule} />;
+    const { courts, schedules, onUpdateSchedule, onUpdateScheduleSlot } = useOutletContext<any>();
+    return (
+        <AdminSchedules 
+            courts={courts} 
+            schedules={schedules} 
+            onUpdateSchedule={onUpdateSchedule} 
+            onUpdateScheduleSlot={onUpdateScheduleSlot}
+        />
+    );
 };
 
 export const AdminCalendarSubPage: React.FC = () => {
