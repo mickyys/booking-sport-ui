@@ -16,18 +16,9 @@ import { AdminSubscriptions } from './admin/AdminSubscriptions';
 import { AdminSidebar } from '../components/layout/AdminSidebar';
 
 interface AdminPanelProps {
-    bookings: Booking[];
-    slots: TimeSlot[];
-    onCancelBooking: (booking: Booking) => void;
-    onBlockSlot: (slot: TimeSlot) => void;
 }
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({
-    bookings,
-    slots,
-    onCancelBooking,
-    onBlockSlot
-}) => {
+export const AdminPanel: React.FC<AdminPanelProps> = () => {
     const [dashboardPage, setDashboardPage] = useState(1);
     const [dashboardNameFilter, setDashboardNameFilter] = useState('');
     const [dashboardCodeFilter, setDashboardCodeFilter] = useState('');
@@ -128,7 +119,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const onUpdateScheduleSlot = async (courtId: string, slot: any) => {
         try {
             await updateAdminScheduleSlot(courtId, slot, getAccessTokenSilently);
-            await fetchAdminCourts(getAccessTokenSilently);
             toast.success("Horario actualizado con éxito");
         } catch (error) {
             toast.error("Error al actualizar horario");

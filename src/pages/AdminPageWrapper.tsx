@@ -22,11 +22,6 @@ export default function AdminPageWrapper() {
   }
 
   return (
-    <AdminPanel
-      bookings={bookings}
-      slots={slots}
-      onCancelBooking={cancelBooking}
-      onBlockSlot={blockSlot}
-    />
+    <AdminPanel />
   );
 }
