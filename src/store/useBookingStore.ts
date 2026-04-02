@@ -550,7 +550,10 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         schedule: (court.schedule || []).map((slot: any) => ({
           ...slot,
           paymentRequired: slot.payment_required,
-          paymentOptional: slot.payment_optional
+          paymentOptional: slot.payment_optional,
+          customer_name: slot.customer_name,
+          customer_email: slot.customer_email,
+          booking_code: slot.booking_code
         }))
       }));
 

@@ -164,7 +164,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </button>
                     </div>
                 </div>
-                <div className="overflow-x-auto">
+                {/* Desktop View Table */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 text-slate-500">
                             <tr>
@@ -237,6 +238,76 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile View Cards */}
+                <div className="md:hidden divide-y divide-slate-100">
+                    {recentBookings.map((booking: any) => (
+                        <div key={booking.id} className="p-4 space-y-3">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                        {booking.booking_code || 'N/A'}
+                                    </p>
+                                    <h4 className="text-sm font-bold text-slate-900 mt-0.5">
+                                        {booking.user_name}
+                                        {booking.is_guest && <span className="ml-2 px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px]">Invitado</span>}
+                                    </h4>
+                                </div>
+                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
+                                    booking.status === 'confirmed'
+                                        ? 'bg-emerald-100 text-emerald-700'
+                                        : booking.status === 'pending'
+                                        ? 'bg-yellow-100 text-yellow-700'
+                                        : 'bg-red-100 text-red-700'
+                                }`}>
+                                    {booking.status === 'confirmed' ? 'Confirmado' : booking.status === 'pending' ? 'Pendiente' : 'Cancelado'}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cancha</p>
+                                    <p className="text-xs font-medium text-slate-700">
+                                        {booking.court_name || courts.find(c => c.id === booking.courtId)?.name}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fecha y Hora</p>
+                                    <p className="text-xs font-medium text-slate-700">
+                                        {format(parseISO(booking.date), "d MMM, HH:mm", { locale: es })}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2">
+                                <span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                                    booking.payment_method === 'mercadopago' ? 'bg-blue-100 text-blue-700' :
+                                    booking.payment_method === 'fintoc' ? 'bg-indigo-100 text-indigo-700' :
+                                    booking.payment_method === 'venue' ? 'bg-emerald-100 text-emerald-700' :
+                                    'bg-slate-100 text-slate-700'
+                                }`}>
+                                    {booking.payment_method === 'mercadopago' ? 'MercadoPago' :
+                                     booking.payment_method === 'fintoc' ? 'Fintoc' :
+                                     booking.payment_method === 'venue' ? 'Presencial' : 'Interno'}
+                                </span>
+
+                                {booking.status === 'confirmed' && (
+                                    <button
+                                        onClick={() => setBookingToCancel(booking)}
+                                        className="text-red-600 hover:text-red-800 font-bold text-[10px] border border-red-200 px-3 py-1 rounded-lg hover:bg-red-50 uppercase transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                    {recentBookings.length === 0 && (
+                        <div className="px-6 py-12 text-center text-slate-500 text-sm">
+                            No hay reservas recientes
+                        </div>
+                    )}
                 </div>
 
                 {/* Pagination */}

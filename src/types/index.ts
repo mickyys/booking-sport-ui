@@ -6,6 +6,9 @@ export interface ScheduleSlot {
   price: number;
   status: SlotStatus;
   booking_id?: string;
+  booking_code?: string;
+  customer_name?: string;
+  customer_email?: string;
   series_id?: string;
   paymentRequired?: boolean;
   paymentOptional?: boolean;
@@ -86,6 +89,7 @@ export interface Booking {
 
   // pago
   paymentMethod: 'mercadopago' | 'fintoc' | 'cash'
+  payment_method?: string;
   fintocPaymentIntentId?: string
 
   // cliente
@@ -105,6 +109,7 @@ export interface Booking {
 
   // código de reserva
   bookingCode: string
+  booking_code?: string;
 
   series_id?: string;
 

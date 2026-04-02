@@ -5,6 +5,7 @@ import {
   Trophy, 
   Clock, 
   CalendarRange, 
+  CalendarDays,
   Settings,
   Menu,
   X,
@@ -13,9 +14,10 @@ import {
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
+  { to: '/admin/agenda', icon: CalendarDays, label: 'Agenda Semanal' },
+  { to: '/admin/calendar', icon: CalendarRange, label: 'Bloqueos y Reservas' },
   { to: '/admin/courts', icon: Trophy, label: 'Canchas' },
   { to: '/admin/schedules', icon: Clock, label: 'Horarios y Tarifas' },
-  { to: '/admin/calendar', icon: CalendarRange, label: 'Calendario y Reservas' },
   { to: '/admin/subscriptions', icon: Users, label: 'Suscripciones' },
   { to: '/admin/settings', icon: Settings, label: 'Configuración' },
 ];
