@@ -3,6 +3,7 @@ import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, User, Mail,
 import { format, addDays, subDays, startOfToday, isSameDay, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useBookingStore } from '../../store/useBookingStore';
+import { useAuth0 } from '@auth0/auth0-react';
 import api from '../../api/axiosInstance';
 
 interface AdminAgendaProps {
@@ -10,41 +11,45 @@ interface AdminAgendaProps {
 }
 
 export const AdminAgenda: React.FC<AdminAgendaProps> = ({ courts }) => {
-    const { schedules, fetchSchedules, selectedCenterId, isLoading: storeLoading } = useBookingStore();
+    const { schedules, fetchSchedules, fetchAdminSchedules, weeklySchedules, selectedCenterId, isLoading: storeLoading } = useBookingStore();
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
     const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
-    const [weeklySchedules, setWeeklySchedules] = useState<Record<string, any[]>>({});
     const [isWeeklyLoading, setIsWeeklyLoading] = useState(false);
+
+    const { getAccessTokenSilently } = useAuth0();
 
     useEffect(() => {
         if (selectedCenterId && viewMode === 'daily') {
-            fetchSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'));
+            // Usar endpoint admin protegido para obtener detalles de cliente
+            (async () => {
+                try {
+                    await fetchAdminSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
+                } catch (err) {
+                    // Fallback público si falla (no bloqueamos UI)
+                    await fetchSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'));
+                }
+            })();
         }
-    }, [selectedDate, selectedCenterId, fetchSchedules, viewMode]);
+    }, [selectedDate, selectedCenterId, fetchSchedules, fetchAdminSchedules, viewMode, getAccessTokenSilently]);
 
     useEffect(() => {
         const loadWeek = async () => {
             if (!selectedCenterId || !selectedCourtId || viewMode !== 'weekly') return;
             setIsWeeklyLoading(true);
-            const newWeeklySchedules: Record<string, any[]> = {};
-
             try {
-                // Fetch each day of the week in parallel
                 const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(selectedDate, i));
-                const results = await Promise.all(
+                await Promise.all(
                     weekDays.map(async (day) => {
                         const dateStr = format(day, 'yyyy-MM-dd');
-                        const response = await api.get(`/sport-centers/${selectedCenterId}/schedules?date=${dateStr}&all=true`);
-                        const court = response.data.find((c: any) => c.id === selectedCourtId);
-                        return { dateStr, schedule: court?.schedule || [] };
+                        try {
+                            await fetchAdminSchedules(selectedCenterId, dateStr, getAccessTokenSilently);
+                        } catch (err) {
+                            // fallback público
+                            await fetchSchedules(selectedCenterId, dateStr);
+                        }
                     })
                 );
-
-                results.forEach(res => {
-                    newWeeklySchedules[res.dateStr] = res.schedule;
-                });
-                setWeeklySchedules(newWeeklySchedules);
             } catch (err) {
                 console.error("Error loading week:", err);
             } finally {
@@ -160,13 +165,18 @@ export const AdminAgenda: React.FC<AdminAgendaProps> = ({ courts }) => {
                     <LoadingSpinner />
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
-                        {weekDays.map((day, idx) => (
-                            <WeeklyDayColumn
-                                key={idx}
-                                day={day}
-                                schedule={weeklySchedules[format(day, 'yyyy-MM-dd')] || []}
-                            />
-                        ))}
+                        {weekDays.map((day, idx) => {
+                            const dateKey = format(day, 'yyyy-MM-dd');
+                            const dayData = weeklySchedules && weeklySchedules[dateKey] ? weeklySchedules[dateKey] : [];
+                            const court = dayData.find((c: any) => c.id === selectedCourtId);
+                            return (
+                                <WeeklyDayColumn
+                                    key={idx}
+                                    day={day}
+                                    schedule={court ? court.schedule : []}
+                                />
+                            );
+                        })}
                     </div>
                 )
             )}
@@ -175,31 +185,52 @@ export const AdminAgenda: React.FC<AdminAgendaProps> = ({ courts }) => {
 };
 
 const SlotCard: React.FC<{ slot: any }> = ({ slot }) => {
-    const isBooked = slot.status === 'booked' || slot.status === 'reserved';
+    const isBooked = slot.status === 'booked' || slot.status === 'reserved' || slot.status === 'passed_booked';
     const isBlocked = slot.status === 'closed';
-    const isPassed = slot.status === 'passed';
+    const isPassed = slot.status === 'passed' && !isBooked;
+
+    const isInternalBlock = slot.payment_method === 'internal_block';
+    const isInternalReserva = slot.payment_method === 'internal_reservation';
+    const isInternal = isInternalBlock || isInternalReserva;
 
     if (isBooked) {
         return (
-            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100 space-y-2">
+            <div className={`p-4 rounded-2xl border space-y-2 ${slot.status === 'passed_booked' ? 'bg-slate-50 border-slate-200 opacity-75' : 'bg-emerald-50 border-emerald-100'}`}>
                 <div className="flex justify-between items-center">
-                    <span className="text-sm font-black text-emerald-700">{slot.hour}:00</span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-wider">Reservado</span>
+                    <span className={`text-sm font-black ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-700'}`}>{slot.hour}:00</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${slot.status === 'passed_booked' ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700'}`}>
+                        {isInternalBlock ? 'Bloqueo Interno' : isInternalReserva ? 'Reserva Interna' : (slot.status === 'passed_booked' ? 'Arrendado (Pasado)' : 'Reserva')}
+                    </span>
                 </div>
                 <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-emerald-800">
-                        <User size={12} className="shrink-0" />
-                        <span className="text-xs font-bold truncate">{slot.customer_name || 'Cliente'}</span>
-                    </div>
-                    {slot.customer_email && (
-                        <div className="flex items-center gap-2 text-emerald-600">
-                            <Mail size={12} className="shrink-0" />
-                            <span className="text-[10px] font-medium truncate">{slot.customer_email}</span>
-                        </div>
+                    {!isInternalBlock && (
+                        <>
+                            <div className={`flex items-center gap-2 ${slot.status === 'passed_booked' ? 'text-slate-700' : 'text-emerald-800'}`}>
+                                <User size={12} className="shrink-0" />
+                                <span className="text-xs font-bold truncate">{slot.customer_name || 'Cliente'}</span>
+                            </div>
+                            {slot.customer_email && slot.customer_email !== 'admin@internal.com' && (
+                                <div className={`flex items-center gap-2 ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-600'}`}>
+                                    <Mail size={12} className="shrink-0" />
+                                    <span className="text-[10px] font-medium truncate">{slot.customer_email}</span>
+                                </div>
+                            )}
+                            <div className={`flex items-center gap-2 ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-600'}`}>
+                                <Hash size={12} className="shrink-0" />
+                                <span className="text-[10px] font-mono font-bold">{slot.booking_code || '---'}</span>
+                            </div>
+                        </>
                     )}
-                    <div className="flex items-center gap-2 text-emerald-600">
-                        <Hash size={12} className="shrink-0" />
-                        <span className="text-[10px] font-mono font-bold">{slot.booking_code || '---'}</span>
+                    {isInternalBlock && (
+                        <p className="text-[10px] text-slate-500 font-bold italic">Hora bloqueada interna</p>
+                    )}
+                    <div className="pt-1 mt-1 border-t border-emerald-100/50 flex justify-between items-center">
+                        <span className={`text-[9px] font-bold uppercase ${isInternal ? 'text-orange-600' : 'text-emerald-600'}`}>
+                            {isInternal ? 'Cobro Presencial' : 'Pagado Online'}
+                        </span>
+                        <span className="text-[10px] font-black text-slate-900">
+                            ${slot.price?.toLocaleString()}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -242,15 +273,19 @@ const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[] }> = ({ day, schedu
             <div className="space-y-1.5">
                 {schedule.length > 0 ? (
                     schedule.map((slot, idx) => {
-                        const isBooked = slot.status === 'booked' || slot.status === 'reserved';
+                        const isBooked = slot.status === 'booked' || slot.status === 'reserved' || slot.status === 'passed_booked';
                         const isBlocked = slot.status === 'closed';
+                        const isInternalBlock = slot.payment_method === 'internal_block';
+                        const isInternalReserva = slot.payment_method === 'internal_reservation';
+                        const isInternal = isInternalBlock || isInternalReserva;
+
                         return (
                             <div
                                 key={idx}
                                 onClick={() => isBooked ? setActiveSlot(activeSlot === slot ? null : slot) : null}
                                 className={`relative p-2.5 rounded-xl border text-[10px] font-bold text-center transition-all cursor-pointer ${
                                     isBooked
-                                        ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
+                                        ? (isInternalBlock ? 'bg-slate-300 border-slate-300 text-slate-700' : (slot.status === 'passed_booked' ? 'bg-slate-400 border-slate-400 text-white opacity-75' : 'bg-emerald-500 border-emerald-500 text-white shadow-sm'))
                                         : isBlocked
                                         ? 'bg-slate-100 border-slate-200 text-slate-400'
                                         : 'bg-white border-slate-100 text-slate-400 border-dashed hover:border-slate-300'
@@ -261,24 +296,43 @@ const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[] }> = ({ day, schedu
                                 {isBooked && activeSlot === slot && (
                                     <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-20 w-48 p-4 bg-white rounded-2xl shadow-2xl border border-slate-100 text-slate-900 text-left animate-in zoom-in-95 duration-200">
                                         <div className="space-y-2">
-                                            <div className="flex items-center gap-2 pb-2 border-b border-slate-50">
-                                                <Clock size={12} className="text-emerald-500" />
-                                                <p className="text-[10px] font-black text-slate-900">{slot.hour}:00</p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <User size={10} className="text-slate-400 shrink-0" />
-                                                <p className="text-[10px] font-bold truncate">{slot.customer_name || 'Cliente'}</p>
-                                            </div>
-                                            {slot.customer_email && (
+                                            <div className="flex justify-between items-center pb-2 border-b border-slate-50">
                                                 <div className="flex items-center gap-2">
-                                                    <Mail size={10} className="text-slate-400 shrink-0" />
-                                                    <p className="text-[10px] text-slate-500 truncate">{slot.customer_email}</p>
+                                                    <Clock size={12} className={slot.status === 'passed_booked' ? 'text-slate-400' : 'text-emerald-500'} />
+                                                    <p className="text-[10px] font-black">{slot.hour}:00</p>
                                                 </div>
-                                            )}
-                                            <div className="flex items-center gap-2">
-                                                <Hash size={10} className="text-slate-400 shrink-0" />
-                                                <p className="text-[10px] font-mono text-slate-500">{slot.booking_code || '---'}</p>
+                                                <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase ${isInternal ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                                    {isInternal ? 'Presencial' : 'Pagado'}
+                                                </span>
                                             </div>
+
+                                            <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl mb-1">
+                                                <span className="text-[9px] text-slate-500 font-bold uppercase">Valor Hora</span>
+                                                <span className="text-[11px] font-black text-slate-900">${slot.price?.toLocaleString()}</span>
+                                            </div>
+
+                                            {isInternalBlock ? (
+                                                <p className="text-[10px] font-bold text-slate-500 italic py-1">Hora bloqueada interna</p>
+                                            ) : (
+                                                <>
+                                                    {isInternalReserva && <p className="text-[8px] font-bold text-orange-600 uppercase mb-1">Reserva Interna</p>}
+                                                    <div className="flex items-center gap-2">
+                                                        <User size={10} className="text-slate-400 shrink-0" />
+                                                        <p className="text-[10px] font-bold truncate">{slot.customer_name || 'Cliente'}</p>
+                                                    </div>
+                                                    {slot.customer_email && slot.customer_email !== 'admin@internal.com' && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Mail size={10} className="text-slate-400 shrink-0" />
+                                                            <p className="text-[10px] text-slate-500 truncate">{slot.customer_email}</p>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                        <Hash size={10} className="text-slate-400 shrink-0" />
+                                                        <p className="text-[10px] font-mono text-slate-500">{slot.booking_code || '---'}</p>
+                                                    </div>
+                                                </>
+                                            )}
+                                            
                                             <button
                                                 className="w-full mt-2 py-1.5 bg-slate-50 text-slate-400 rounded-lg text-[9px] font-bold uppercase hover:bg-slate-100"
                                                 onClick={(e) => { e.stopPropagation(); setActiveSlot(null); }}
