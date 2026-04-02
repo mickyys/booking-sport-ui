@@ -12,6 +12,7 @@ interface BookingState {
   sportCenters: SportCenter[];
   courts: Court[];
   schedules: CourtWithSchedule[];
+  weeklySchedules: Record<string, any[]>;
   myBookings: any[];
   cancelledBookings: any[];
   isCancelledLoading: boolean;
@@ -31,6 +32,7 @@ interface BookingState {
   fetchCities: () => Promise<string[]>;
   fetchCourts: () => Promise<void>;
   fetchSchedules: (centerId: string, date?: string) => Promise<void>;
+  fetchAdminSchedules: (centerId: string, date: string | undefined, getToken: (options?: any) => Promise<string>) => Promise<any[]>;
   fetchMyBookings: (getToken: (options?: any) => Promise<string>, isOld?: boolean) => Promise<void>;
   fetchCancelledBookings: (getToken: (options?: any) => Promise<string>, page?: number, limit?: number) => Promise<any[]>;
   fetchConfirmedCount: (getToken: (options?: any) => Promise<string>) => Promise<number>;
@@ -96,6 +98,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
   cities: [],
   courts: [],
   schedules: [],
+  weeklySchedules: {},
   myBookings: [],
   cancelledBookings: [],
   isCancelledLoading: false,
@@ -561,6 +564,57 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     } catch (err) {
       console.error("Error fetching schedules:", err);
       set({ error: 'Failed to fetch schedules' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // Fetch schedules with booking customer details (admin-protected)
+  fetchAdminSchedules: async (centerId: string, date: string | undefined, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          scope: 'openid profile email'
+        }
+      });
+
+      const params = new URLSearchParams();
+      params.append('all', 'true');
+      if (date) params.append('date', date);
+
+      const { data } = await api.get(`/sport-centers/${centerId}/schedules/bookings?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const formattedData = (data || []).map((court: any) => ({
+        ...court,
+        schedule: (court.schedule || []).map((slot: any) => ({
+          ...slot,
+          paymentRequired: slot.payment_required,
+          paymentOptional: slot.payment_optional,
+          customer_name: slot.customer_name,
+          customer_email: slot.customer_email,
+          customer_phone: slot.customer_phone,
+          booking_code: slot.booking_code
+        }))
+      }));
+
+      const dateKey = date || new Date().toISOString().split('T')[0];
+      set(state => ({
+        schedules: formattedData,
+        weeklySchedules: {
+          ...(state.weeklySchedules || {}),
+          [dateKey]: formattedData
+        },
+        error: null
+      }));
+
+      return formattedData;
+    } catch (err) {
+      console.error('Error fetching admin schedules:', err);
+      set({ error: 'Failed to fetch admin schedules' });
     } finally {
       set({ isLoading: false });
     }
