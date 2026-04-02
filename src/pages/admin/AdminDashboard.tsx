@@ -311,44 +311,84 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
 
                 {/* Pagination */}
-                <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
-                    <p className="text-xs text-slate-500 font-medium px-2">
+                <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
+                    <div className="text-xs text-slate-500 font-medium px-2 text-center sm:text-left">
                         {(() => {
                             const perPage = 10;
                             const total = dashboardData.total_recent_count || 0;
-                            if (total === 0) return <>Reservas: <span className="text-slate-900">0</span> de <span className="text-slate-900">0</span></>;
+                            const totalPages = Math.ceil(total / perPage);
+                            if (total === 0) return <p>Mostrando <span className="text-slate-900 font-bold">0</span> de <span className="text-slate-900 font-bold">0</span> reservas</p>;
                             const start = (filters.page - 1) * perPage + 1;
-                            return <>Reservas: <span className="text-slate-900">{start}</span> de <span className="text-slate-900">{total}</span></>;
+                            const end = Math.min(filters.page * perPage, total);
+                            return (
+                                <div className="space-y-1">
+                                    <p>Mostrando <span className="text-slate-900 font-bold">{start}-{end}</span> de <span className="text-slate-900 font-bold">{total}</span> reservas</p>
+                                    <p className="text-[10px] text-slate-400">Página <span className="font-bold text-slate-600">{filters.page}</span> de <span className="font-bold text-slate-600">{totalPages || 1}</span></p>
+                                </div>
+                            );
                         })()}
-                    </p>
-                    <div className="flex items-center gap-2">
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
                         <button
                             disabled={isRefreshing || filters.page <= 1}
                             onClick={() => onFilterChange({ page: filters.page - 1 })}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all flex items-center justify-center"
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all flex items-center justify-center min-w-[80px]"
                         >
                             {isRefreshing ? (
-                                <svg className="w-3 h-3 animate-spin text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                                </svg>
+                                <div className="w-4 h-4 border-2 border-slate-200 border-t-slate-600 rounded-full animate-spin" />
                             ) : (
                                 'Anterior'
                             )}
                         </button>
-                        <span className="text-xs font-bold bg-white border border-slate-200 px-3 py-1.5 rounded-lg min-w-[32px] text-center">
+
+                        {/* Page Numbers for Desktop */}
+                        <div className="hidden md:flex items-center gap-1 mx-2">
+                            {(() => {
+                                const total = dashboardData.total_recent_count || 0;
+                                const totalPages = Math.ceil(total / 10);
+                                const pages = [];
+
+                                // Simple page number logic
+                                let startPage = Math.max(1, filters.page - 2);
+                                let endPage = Math.min(totalPages, startPage + 4);
+
+                                if (endPage - startPage < 4) {
+                                    startPage = Math.max(1, endPage - 4);
+                                }
+
+                                for (let i = startPage; i <= endPage; i++) {
+                                    pages.push(
+                                        <button
+                                            key={i}
+                                            onClick={() => onFilterChange({ page: i })}
+                                            disabled={isRefreshing}
+                                            className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
+                                                filters.page === i
+                                                ? 'bg-slate-900 text-white shadow-md'
+                                                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            {i}
+                                        </button>
+                                    );
+                                }
+                                return pages;
+                            })()}
+                        </div>
+
+                        {/* Current Page for Mobile */}
+                        <div className="md:hidden flex items-center justify-center w-10 h-8 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-900">
                             {filters.page}
-                        </span>
+                        </div>
+
                         <button
                             disabled={isRefreshing || !dashboardData.total_recent_count || filters.page * 10 >= dashboardData.total_recent_count}
                             onClick={() => onFilterChange({ page: filters.page + 1 })}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all flex items-center justify-center"
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all flex items-center justify-center min-w-[80px]"
                         >
                             {isRefreshing ? (
-                                <svg className="w-3 h-3 animate-spin text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                                </svg>
+                                <div className="w-4 h-4 border-2 border-slate-200 border-t-slate-600 rounded-full animate-spin" />
                             ) : (
                                 'Siguiente'
                             )}
