@@ -58,7 +58,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden max-h-[90vh] overflow-y-auto"
+        className={`bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden max-h-[90vh] overflow-y-auto ${showPolicies ? 'hidden' : 'block'}`}
       >
         <div className="bg-slate-900 p-6 text-white flex justify-between items-start sticky top-0 z-10">
           <div>
