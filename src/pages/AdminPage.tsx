@@ -11,6 +11,7 @@ import { AdminDashboard } from './admin/AdminDashboard';
 import { AdminCourts } from './admin/AdminCourts';
 import { AdminSchedules } from './admin/AdminSchedules';
 import { AdminCalendar } from './admin/AdminCalendar';
+import { AdminAgenda } from './admin/AdminAgenda';
 import { AdminSettings } from './admin/AdminSettings';
 import { AdminSubscriptions } from './admin/AdminSubscriptions';
 import { AdminSidebar } from '../components/layout/AdminSidebar';
@@ -243,7 +244,12 @@ export const AdminSchedulesSubPage: React.FC = () => {
 
 export const AdminCalendarSubPage: React.FC = () => {
     const { courts } = useOutletContext<any>();
-    return <AdminCalendar courts={courts} onNewBooking={() => {}} />;
+    return <AdminCalendar courts={courts} />;
+};
+
+export const AdminAgendaSubPage: React.FC = () => {
+    const { courts } = useOutletContext<any>();
+    return <AdminAgenda courts={courts} />;
 };
 
 export const AdminSettingsSubPage: React.FC = () => {

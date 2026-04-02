@@ -164,7 +164,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </button>
                     </div>
                 </div>
-                <div className="overflow-x-auto">
+                {/* Desktop View Table */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 text-slate-500">
                             <tr>
@@ -239,45 +240,155 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </table>
                 </div>
 
+                {/* Mobile View Cards */}
+                <div className="md:hidden divide-y divide-slate-100">
+                    {recentBookings.map((booking: any) => (
+                        <div key={booking.id} className="p-4 space-y-3">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                        {booking.booking_code || 'N/A'}
+                                    </p>
+                                    <h4 className="text-sm font-bold text-slate-900 mt-0.5">
+                                        {booking.user_name}
+                                        {booking.is_guest && <span className="ml-2 px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px]">Invitado</span>}
+                                    </h4>
+                                </div>
+                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
+                                    booking.status === 'confirmed'
+                                        ? 'bg-emerald-100 text-emerald-700'
+                                        : booking.status === 'pending'
+                                        ? 'bg-yellow-100 text-yellow-700'
+                                        : 'bg-red-100 text-red-700'
+                                }`}>
+                                    {booking.status === 'confirmed' ? 'Confirmado' : booking.status === 'pending' ? 'Pendiente' : 'Cancelado'}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cancha</p>
+                                    <p className="text-xs font-medium text-slate-700">
+                                        {booking.court_name || courts.find(c => c.id === booking.courtId)?.name}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fecha y Hora</p>
+                                    <p className="text-xs font-medium text-slate-700">
+                                        {format(parseISO(booking.date), "d MMM, HH:mm", { locale: es })}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2">
+                                <span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                                    booking.payment_method === 'mercadopago' ? 'bg-blue-100 text-blue-700' :
+                                    booking.payment_method === 'fintoc' ? 'bg-indigo-100 text-indigo-700' :
+                                    booking.payment_method === 'venue' ? 'bg-emerald-100 text-emerald-700' :
+                                    'bg-slate-100 text-slate-700'
+                                }`}>
+                                    {booking.payment_method === 'mercadopago' ? 'MercadoPago' :
+                                     booking.payment_method === 'fintoc' ? 'Fintoc' :
+                                     booking.payment_method === 'venue' ? 'Presencial' : 'Interno'}
+                                </span>
+
+                                {booking.status === 'confirmed' && (
+                                    <button
+                                        onClick={() => setBookingToCancel(booking)}
+                                        className="text-red-600 hover:text-red-800 font-bold text-[10px] border border-red-200 px-3 py-1 rounded-lg hover:bg-red-50 uppercase transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                    {recentBookings.length === 0 && (
+                        <div className="px-6 py-12 text-center text-slate-500 text-sm">
+                            No hay reservas recientes
+                        </div>
+                    )}
+                </div>
+
                 {/* Pagination */}
-                <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
-                    <p className="text-xs text-slate-500 font-medium px-2">
+                <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
+                    <div className="text-xs text-slate-500 font-medium px-2 text-center sm:text-left">
                         {(() => {
                             const perPage = 10;
                             const total = dashboardData.total_recent_count || 0;
-                            if (total === 0) return <>Reservas: <span className="text-slate-900">0</span> de <span className="text-slate-900">0</span></>;
+                            const totalPages = Math.ceil(total / perPage);
+                            if (total === 0) return <p>Mostrando <span className="text-slate-900 font-bold">0</span> de <span className="text-slate-900 font-bold">0</span> reservas</p>;
                             const start = (filters.page - 1) * perPage + 1;
-                            return <>Reservas: <span className="text-slate-900">{start}</span> de <span className="text-slate-900">{total}</span></>;
+                            const end = Math.min(filters.page * perPage, total);
+                            return (
+                                <div className="space-y-1">
+                                    <p>Mostrando <span className="text-slate-900 font-bold">{start}-{end}</span> de <span className="text-slate-900 font-bold">{total}</span> reservas</p>
+                                    <p className="text-[10px] text-slate-400">Página <span className="font-bold text-slate-600">{filters.page}</span> de <span className="font-bold text-slate-600">{totalPages || 1}</span></p>
+                                </div>
+                            );
                         })()}
-                    </p>
-                    <div className="flex items-center gap-2">
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
                         <button
                             disabled={isRefreshing || filters.page <= 1}
                             onClick={() => onFilterChange({ page: filters.page - 1 })}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all flex items-center justify-center"
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all flex items-center justify-center min-w-[80px]"
                         >
                             {isRefreshing ? (
-                                <svg className="w-3 h-3 animate-spin text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                                </svg>
+                                <div className="w-4 h-4 border-2 border-slate-200 border-t-slate-600 rounded-full animate-spin" />
                             ) : (
                                 'Anterior'
                             )}
                         </button>
-                        <span className="text-xs font-bold bg-white border border-slate-200 px-3 py-1.5 rounded-lg min-w-[32px] text-center">
+
+                        {/* Page Numbers for Desktop */}
+                        <div className="hidden md:flex items-center gap-1 mx-2">
+                            {(() => {
+                                const total = dashboardData.total_recent_count || 0;
+                                const totalPages = Math.ceil(total / 10);
+                                const pages = [];
+
+                                // Simple page number logic
+                                let startPage = Math.max(1, filters.page - 2);
+                                let endPage = Math.min(totalPages, startPage + 4);
+
+                                if (endPage - startPage < 4) {
+                                    startPage = Math.max(1, endPage - 4);
+                                }
+
+                                for (let i = startPage; i <= endPage; i++) {
+                                    pages.push(
+                                        <button
+                                            key={i}
+                                            onClick={() => onFilterChange({ page: i })}
+                                            disabled={isRefreshing}
+                                            className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
+                                                filters.page === i
+                                                ? 'bg-slate-900 text-white shadow-md'
+                                                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            {i}
+                                        </button>
+                                    );
+                                }
+                                return pages;
+                            })()}
+                        </div>
+
+                        {/* Current Page for Mobile */}
+                        <div className="md:hidden flex items-center justify-center w-10 h-8 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-900">
                             {filters.page}
-                        </span>
+                        </div>
+
                         <button
                             disabled={isRefreshing || !dashboardData.total_recent_count || filters.page * 10 >= dashboardData.total_recent_count}
                             onClick={() => onFilterChange({ page: filters.page + 1 })}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all flex items-center justify-center"
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all flex items-center justify-center min-w-[80px]"
                         >
                             {isRefreshing ? (
-                                <svg className="w-3 h-3 animate-spin text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                                </svg>
+                                <div className="w-4 h-4 border-2 border-slate-200 border-t-slate-600 rounded-full animate-spin" />
                             ) : (
                                 'Siguiente'
                             )}
