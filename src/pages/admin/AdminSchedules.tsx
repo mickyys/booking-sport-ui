@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Plus, Trash2, Clock, AlertCircle, X, DollarSign, ChevronDown, ChevronUp, Layers } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
 
 const PriceInput: React.FC<{
     value: number;
@@ -93,6 +103,10 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
     onUpdateSchedule,
     onUpdateScheduleSlot
 }) => {
+    // Delete confirmation state
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [slotToDelete, setSlotToDelete] = useState<{ courtId: string, hour: number, minutes: number } | null>(null);
+
     const [loadingSlots, setLoadingSlots] = useState<Record<string, boolean>>({});
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
@@ -181,10 +195,19 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
             return;
         }
 
-        onUpdateScheduleSlot(courtId, { ...slot, hour: h, minutes: m });
+        setSlotToDelete({ courtId, hour: oldHour, minutes: oldMinutes });
+        setDeleteConfirmOpen(true);
     };
 
     const handleDeleteSlot = (courtId: string, hour: number, minutes: number) => {
+        setSlotToDelete({ courtId, hour, minutes });
+        setDeleteConfirmOpen(true);
+    };
+
+    const confirmDeleteSlot = () => {
+        if (!slotToDelete) return;
+        const { courtId, hour, minutes } = slotToDelete;
+
         const schedule = schedules.find(s => s.courtId === courtId);
         if (!schedule) return;
 
@@ -193,6 +216,8 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
         );
 
         onUpdateSchedule({ ...schedule, slots: newSlots });
+        setDeleteConfirmOpen(false);
+        setSlotToDelete(null);
     };
 
     const openCreateModal = (courtId: string) => {
@@ -476,6 +501,28 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                     </div>
                 </div>
             )}
+
+            <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                <AlertDialogContent className="rounded-[2rem] border-slate-200">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-2xl font-black text-slate-900">¿Eliminar horario?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-500 text-base">
+                            Esta acción no se puede deshacer. El horario se eliminará permanentemente de la cancha.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-3 sm:gap-0">
+                        <AlertDialogCancel className="rounded-2xl font-bold border-slate-200 hover:bg-slate-50 text-slate-600">
+                            Cancelar
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmDeleteSlot}
+                            className="rounded-2xl font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-200"
+                        >
+                            Eliminar Horario
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };

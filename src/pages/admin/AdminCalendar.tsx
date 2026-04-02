@@ -1,11 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Ban, Calendar, User, Phone, Unlock, CheckCircle, Clock } from 'lucide-react';
+import { Ban, Calendar, User, Phone, Unlock, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import { format, startOfToday, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TimeSlot } from '../../types';
 import { useBookingStore } from '../../store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
 import { toast } from 'sonner';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
 
 interface AdminCalendarProps {
     courts: any[];
@@ -31,6 +41,10 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
     const [isRecurring, setIsRecurring] = useState(false);
     const [recurringWeeks, setRecurringWeeks] = useState(4);
     const [isCreating, setIsCreating] = useState(false);
+
+    // Unlock confirmation state
+    const [unlockConfirmOpen, setUnlockConfirmOpen] = useState(false);
+    const [slotToUnlock, setSlotToUnlock] = useState<{ bookingId?: string, seriesId?: string } | null>(null);
 
     useEffect(() => {
         // Obtenemos el centerId de la cancha seleccionada o del store
@@ -104,33 +118,44 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
         }
     };
 
-    const handleUnlock = async (bookingId?: string, seriesId?: string) => {
+    const handleUnlock = (bookingId?: string, seriesId?: string) => {
         if (!bookingId) {
             toast.error("No se encontró el ID de la reserva para desbloquear");
             return;
         }
+        setSlotToUnlock({ bookingId, seriesId });
+        setUnlockConfirmOpen(true);
+    };
 
-        const isSeries = !!seriesId;
-        const confirmMsg = isSeries 
-            ? "¿Deseas eliminar SOLO esta reserva o TODA la serie de reservas recurrentes?" 
-            : "¿Estás seguro de que deseas desbloquear este horario? La reserva será eliminada.";
-        
-        if (!confirm(confirmMsg)) return;
-
+    const confirmUnlockSingle = async () => {
+        if (!slotToUnlock?.bookingId) return;
         try {
-            if (isSeries && confirm("Haz clic en Aceptar para eliminar TODA LA SERIE, o Cancelar para eliminar SOLO ESTA FECHA.")) {
-                await (deleteSeries as any)(seriesId, getAccessTokenSilently);
-                toast.success("Toda la serie de reservas eliminada");
-            } else {
-                await deleteBooking(bookingId, getAccessTokenSilently);
-                toast.success("Horario desbloqueado con éxito");
-            }
-            
+            await deleteBooking(slotToUnlock.bookingId, getAccessTokenSilently);
+            toast.success("Horario desbloqueado con éxito");
             if (selectedCenterId) {
                 fetchSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'));
             }
         } catch (error) {
             toast.error("Error al desbloquear");
+        } finally {
+            setUnlockConfirmOpen(false);
+            setSlotToUnlock(null);
+        }
+    };
+
+    const confirmUnlockSeries = async () => {
+        if (!slotToUnlock?.seriesId) return;
+        try {
+            await (deleteSeries as any)(slotToUnlock.seriesId, getAccessTokenSilently);
+            toast.success("Toda la serie de reservas eliminada");
+            if (selectedCenterId) {
+                fetchSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'));
+            }
+        } catch (error) {
+            toast.error("Error al desbloquear toda la serie");
+        } finally {
+            setUnlockConfirmOpen(false);
+            setSlotToUnlock(null);
         }
     };
 
@@ -360,6 +385,50 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                     </div>
                 </div>
             )}
+
+            <AlertDialog open={unlockConfirmOpen} onOpenChange={setUnlockConfirmOpen}>
+                <AlertDialogContent className="rounded-[2rem] border-slate-200">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-2xl font-black text-slate-900">
+                            {slotToUnlock?.seriesId ? '¿Eliminar serie?' : '¿Desbloquear horario?'}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-500 text-base">
+                            {slotToUnlock?.seriesId 
+                                ? "Este horario es parte de una serie. ¿Deseas eliminar solo esta fecha o la serie completa?" 
+                                : "Esta acción eliminará la reserva y habilitará el horario nuevamente."}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-3 sm:gap-2">
+                        <AlertDialogCancel className="rounded-2xl font-bold border-slate-200 hover:bg-slate-50 text-slate-600">
+                            Cerrar
+                        </AlertDialogCancel>
+                        
+                        {slotToUnlock?.seriesId ? (
+                            <div className="flex flex-col sm:flex-row gap-2 w-full">
+                                <button
+                                    onClick={confirmUnlockSingle}
+                                    className="flex-1 rounded-2xl font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-200 py-2 px-4 transition-all"
+                                >
+                                    Solo esta fecha
+                                </button>
+                                <button
+                                    onClick={confirmUnlockSeries}
+                                    className="flex-1 rounded-2xl font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-200 py-2 px-4 transition-all"
+                                >
+                                    Toda la serie
+                                </button>
+                            </div>
+                        ) : (
+                            <AlertDialogAction
+                                onClick={confirmUnlockSingle}
+                                className="rounded-2xl font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-200"
+                            >
+                                Desbloquear
+                            </AlertDialogAction>
+                        )}
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };

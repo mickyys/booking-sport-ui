@@ -794,7 +794,25 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           Authorization: `Bearer ${token}`
         }
       });
-      set({ error: null });
+
+      // Update local state to reflect the change immediately without additional fetch
+      const currentAdminCourts = get().adminCourts;
+      const updatedAdminCourts = currentAdminCourts.map((ac: any) => {
+        if (ac.courts && ac.courts.some((c: any) => (c.id || c._id) === courtId)) {
+          return {
+            ...ac,
+            courts: ac.courts.map((c: any) => {
+              if ((c.id || c._id) === courtId) {
+                return { ...c, schedule: formattedSchedule };
+              }
+              return c;
+            })
+          };
+        }
+        return ac;
+      });
+
+      set({ adminCourts: updatedAdminCourts, error: null });
     } catch (err) {
       console.error("Error updating schedule:", err);
       set({ error: 'Failed to update schedule' });
@@ -828,7 +846,33 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           Authorization: `Bearer ${token}`
         }
       });
-      set({ error: null });
+      
+      // Update local state to reflect the change immediately
+      const currentAdminCourts = get().adminCourts;
+      const updatedAdminCourts = currentAdminCourts.map((ac: any) => {
+        // Find the sport center containing the court
+        if (ac.courts && ac.courts.some((c: any) => (c.id || c._id) === courtId)) {
+          return {
+            ...ac,
+            courts: ac.courts.map((c: any) => {
+              if ((c.id || c._id) === courtId) {
+                // Update the specific slot in the schedule
+                const updatedSchedule = (c.schedule || []).map((s: any) => {
+                  if (s.hour === formattedSlot.hour && (s.minutes || 0) === formattedSlot.minutes) {
+                    return formattedSlot;
+                  }
+                  return s;
+                });
+                return { ...c, schedule: updatedSchedule };
+              }
+              return c;
+            })
+          };
+        }
+        return ac;
+      });
+      
+      set({ adminCourts: updatedAdminCourts, error: null });
     } catch (err) {
       console.error("Error updating schedule slot:", err);
       set({ error: 'Failed to update schedule slot' });

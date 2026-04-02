@@ -11,9 +11,11 @@ import {
     AlertCircle,
     User as UserIcon,
     Phone,
-    MapPin
+    MapPin,
+    X,
+    ExternalLink
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
 
@@ -27,6 +29,7 @@ export const AdminSubscriptions: React.FC = () => {
     } = useBookingStore();
     
     const [searchTerm, setSearchTerm] = useState('');
+    const [viewingDates, setViewingDates] = useState<{ name: string, dates: string[], court: string, hour: number } | null>(null);
 
     useEffect(() => {
         fetchRecurringSeries(getAccessTokenSilently);
@@ -50,6 +53,21 @@ export const AdminSubscriptions: React.FC = () => {
         s.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.court_name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const handleViewDates = (series: any) => {
+        const dates: string[] = [];
+        const startDate = new Date(series.start_date);
+        for (let i = 0; i < series.bookings_count; i++) {
+            const nextDate = addDays(startDate, i * 7);
+            dates.push(nextDate.toISOString());
+        }
+        setViewingDates({
+            name: series.customer_name,
+            court: series.court_name,
+            hour: series.hour,
+            dates
+        });
+    };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -117,30 +135,40 @@ export const AdminSubscriptions: React.FC = () => {
                                     </button>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4 mb-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                                     <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100">
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Cancha</p>
                                         <div className="flex items-center gap-2 text-slate-900 font-bold">
                                             <MapPin size={16} className="text-emerald-500" />
-                                            <span>{series.court_name}</span>
+                                            <span className="truncate">{series.court_name}</span>
                                         </div>
                                     </div>
                                     <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Horario</p>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Horario Fijo</p>
                                         <div className="flex items-center gap-2 text-slate-900 font-bold">
                                             <Clock size={16} className="text-emerald-500" />
-                                            <span>{series.hour}:00 hrs</span>
+                                            <span className="capitalize">
+                                                {series.day_name || format(new Date(series.start_date), "EEEE", { locale: es })}
+                                                <span className="mx-2 text-slate-300">|</span>
+                                                {series.hour}:00 hrs
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between p-4 bg-emerald-50/50 rounded-3xl border border-emerald-100/50">
+                                <div 
+                                    onClick={() => handleViewDates(series)}
+                                    className="flex items-center justify-between p-4 bg-emerald-50/50 rounded-3xl border border-emerald-100/50 cursor-pointer hover:bg-emerald-100/50 transition-all active:scale-[0.98] group/footer"
+                                >
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-emerald-600 shadow-sm">
+                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-emerald-600 shadow-sm group-hover/footer:scale-110 transition-transform">
                                             <Calendar size={18} />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-bold text-emerald-600/60 uppercase tracking-widest">Próximos Arriendos</p>
+                                            <div className="flex items-center gap-1">
+                                                <p className="text-[10px] font-bold text-emerald-600/60 uppercase tracking-widest">Próximos Arriendos</p>
+                                                <ExternalLink size={10} className="text-emerald-400 opacity-0 group-hover/footer:opacity-100 transition-opacity" />
+                                            </div>
                                             <p className="text-sm font-bold text-emerald-900">
                                                 {series.bookings_count} sesiones pendientes
                                             </p>
@@ -166,6 +194,76 @@ export const AdminSubscriptions: React.FC = () => {
                     <p className="text-slate-500 mt-2 max-w-xs">
                         Las reservas que realices como "recurrentes" en el calendario aparecerán aquí automáticamente.
                     </p>
+                </div>
+            )}
+
+            {/* Modal de Fechas */}
+            {viewingDates && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div 
+                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300" 
+                        onClick={() => setViewingDates(null)}
+                    ></div>
+                    <div className="relative bg-white rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+                        {/* Header Modal */}
+                        <div className="p-8 bg-slate-900 text-white flex justify-between items-start">
+                            <div>
+                                <h3 className="text-2xl font-black italic underline decoration-emerald-500 decoration-4 underline-offset-4">
+                                    Próximos Arriendos
+                                </h3>
+                                <p className="text-slate-400 text-sm mt-2 font-medium">
+                                    {viewingDates.name} • {viewingDates.court}
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setViewingDates(null)}
+                                className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Lista de Fechas */}
+                        <div className="p-8 max-h-[60vh] overflow-y-auto bg-slate-50/50 custom-scrollbar">
+                            <div className="space-y-3">
+                                {viewingDates.dates.map((dateStr, idx) => (
+                                    <div 
+                                        key={idx} 
+                                        className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm group/item hover:border-emerald-200 transition-all"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-xl bg-slate-50 flex flex-col items-center justify-center text-slate-400 group-hover/item:bg-emerald-50 group-hover/item:text-emerald-500 transition-colors">
+                                                <span className="text-[10px] font-black leading-none uppercase">
+                                                    {format(new Date(dateStr), "MMM", { locale: es })}
+                                                </span>
+                                                <span className="text-lg font-black leading-none">
+                                                    {format(new Date(dateStr), "d")}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-slate-900 capitalize leading-none">
+                                                    {format(new Date(dateStr), "EEEE", { locale: es })}
+                                                </p>
+                                                <p className="text-xs text-slate-400 font-bold mt-1">
+                                                    {viewingDates.hour}:00 hrs
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="px-3 py-1 bg-emerald-100/50 text-emerald-700 text-[10px] font-black rounded-lg uppercase tracking-wider group-hover/item:bg-emerald-500 group-hover/item:text-white transition-colors">
+                                            Confirmada
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Footer Modal */}
+                        <div className="p-6 bg-white border-t border-slate-100 text-center">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                                Total de {viewingDates.dates.length} sesiones programadas
+                            </p>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

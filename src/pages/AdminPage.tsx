@@ -109,7 +109,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = () => {
     const onUpdateSchedule = async (schedule: any) => {
         try {
             await updateAdminSchedule(schedule.courtId, schedule.slots, getAccessTokenSilently);
-            await fetchAdminCourts(getAccessTokenSilently);
             toast.success("Horario actualizado con éxito");
         } catch (error) {
             toast.error("Error al actualizar horario");
