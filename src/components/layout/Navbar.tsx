@@ -29,12 +29,26 @@ export const Navbar: React.FC = () => {
 
             {/* Reservar - only for non-admins, hidden on mobile */}
             {!isAdministrator && (
-              <button
-                onClick={() => navigate('/reservar')}
-                className={`hidden md:block px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/reservar') ? 'bg-emerald-500 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}`}
-              >
-                Reservar
-              </button>
+              <>
+                <button
+                  onClick={() => navigate('/reservar')}
+                  className={`hidden md:block px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/reservar') ? 'bg-emerald-500 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}`}
+                >
+                  Reservar
+                </button>
+                <button
+                  onClick={() => {
+                    if (location.pathname === '/') {
+                      document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' });
+                    } else {
+                      navigate('/contacto');
+                    }
+                  }}
+                  className={`hidden lg:block px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/contacto') ? 'bg-emerald-500 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}`}
+                >
+                  Centros Deportivos
+                </button>
+              </>
             )}
 
             {/* Admin button - always visible */}

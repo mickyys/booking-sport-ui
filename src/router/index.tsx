@@ -22,6 +22,7 @@ import { SuccessPage } from '../pages/booking/SuccessPage';
 import { FailurePage } from '../pages/booking/FailurePage';
 import BookingStatusPage from '../pages/BookingStatusPage';
 import CancelBookingPage from '../pages/CancelBookingPage';
+import ContactPage from '../pages/ContactPage';
 import NotFoundPage from '../pages/NotFoundPage';
 
 export const router = createBrowserRouter([
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
       { path: 'booking/failure', element: <FailurePage /> },
       { path: 'booking/status', element: <BookingStatusPage /> },
       { path: 'booking/cancel', element: <CancelBookingPage /> },
+      { path: 'contacto', element: <ContactPage /> },
 
       // Protected routes (must be logged in)
       {

@@ -8,8 +8,11 @@ import SearchFilters from '../components/search/SearchFilters';
 import SportCenterCard from '../components/search/SportCenterCard';
 import SearchFeatures from '../components/search/SearchFeatures';
 import EmptySearchResults from '../components/search/EmptySearchResults';
+import { ContactForm } from '../components/ContactForm';
+import { useNavigate } from 'react-router-dom';
 
 const SportCenterSearchPage: React.FC = () => {
+  const navigate = useNavigate();
   const { sportCenters, isLoading, cities, fetchCities, fetchSportCenters } = useBookingStore();
 
   // UI state
@@ -134,6 +137,28 @@ const SportCenterSearchPage: React.FC = () => {
       </div>
 
       <SearchFeatures />
+
+                {/* Sección de Contacto para Centros Deportivos */}
+                <section className="py-20 bg-slate-50 border-t border-slate-200" id="contacto">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex flex-col items-center text-center max-w-3xl mx-auto space-y-6">
+                            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+                                ¿Eres dueño de un <span className="text-emerald-600">Centro Deportivo</span>?
+                            </h2>
+                            <p className="text-xl text-slate-600 leading-relaxed">
+                                Únete a la red de complejos deportivos y simplifica tus reservas. Digitaliza tu agenda, recibe pagos online y llega a más jugadores.
+                            </p>
+                            <div className="pt-4">
+                                <button
+                                    onClick={() => navigate('/contacto')}
+                                    className="inline-flex items-center justify-center px-8 py-4 border border-transparent text-lg font-bold rounded-full text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-lg hover:shadow-emerald-500/25 transform hover:-translate-y-1"
+                                >
+                                    Contáctanos para unirte
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
     </div>
   );
 };
