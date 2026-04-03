@@ -21,6 +21,7 @@ import axios from 'axios';
 const contactSchema = z.object({
   name: z.string().min(2, { message: 'El nombre debe tener al menos 2 caracteres' }),
   email: z.string().email({ message: 'Email inválido' }),
+  phone: z.string().min(9, { message: 'El número de teléfono debe tener al menos 9 dígitos' }),
   sportCenterName: z.string().min(2, { message: 'El nombre del centro deportivo es requerido' }),
   message: z.string().min(10, { message: 'El mensaje debe tener al menos 10 caracteres' }),
 });
@@ -36,6 +37,7 @@ export const ContactForm: React.FC = () => {
     defaultValues: {
       name: '',
       email: '',
+      phone: '',
       sportCenterName: '',
       message: '',
     },
@@ -113,6 +115,24 @@ export const ContactForm: React.FC = () => {
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-slate-700 font-semibold">Número de Teléfono / WhatsApp</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Ej: +56 9 1234 5678" 
+                      className="border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 h-11"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
             <FormField
               control={form.control}
