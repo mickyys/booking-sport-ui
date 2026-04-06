@@ -53,7 +53,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         totalOnlineRevenue,
         totalVenueRevenue,
         cancelledCount,
-        recentBookings
+        recentBookings,
+        totalRecentCount,
+        limit,
+        totalPages
     } = dashboardData;
     const [bookingToCancel, setBookingToCancel] = React.useState<any | null>(null);
 
@@ -384,16 +387,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
                     <div className="text-xs text-slate-500 font-medium px-2 text-center sm:text-left">
                         {(() => {
-                            const perPage = dashboardData.limit || 10;
-                            const total = dashboardData.total_recent_count || 0;
-                            const totalPages = dashboardData.totalPages || Math.ceil(total / perPage);
+                            const perPage = limit || 10;
+                            const total = totalRecentCount || 0;
+                            const totalP = totalPages || Math.ceil(total / perPage);
                             if (total === 0) return <p>Mostrando <span className="text-slate-900 font-bold">0</span> de <span className="text-slate-900 font-bold">0</span> reservas</p>;
                             const start = (filters.page - 1) * perPage + 1;
                             const end = Math.min(filters.page * perPage, total);
                             return (
                                 <div className="space-y-1">
                                     <p>Mostrando <span className="text-slate-900 font-bold">{start}-{end}</span> de <span className="text-slate-900 font-bold">{total}</span> reservas</p>
-                                    <p className="text-[10px] text-slate-400">Página <span className="font-bold text-slate-600">{filters.page}</span> de <span className="font-bold text-slate-600">{totalPages || 1}</span></p>
+                                    <p className="text-[10px] text-slate-400">Página <span className="font-bold text-slate-600">{filters.page}</span> de <span className="font-bold text-slate-600">{totalP || 1}</span></p>
                                 </div>
                             );
                         })()}
@@ -415,12 +418,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         {/* Page Numbers for Desktop */}
                         <div className="hidden md:flex items-center gap-1 mx-2">
                             {(() => {
-                                const totalPages = dashboardData.totalPages || Math.ceil((dashboardData.total_recent_count || 0) / (dashboardData.limit || 10));
+                                const totalP = totalPages || Math.ceil((totalRecentCount || 0) / (limit || 10));
                                 const pages = [];
 
                                 // Simple page number logic
                                 let startPage = Math.max(1, filters.page - 2);
-                                let endPage = Math.min(totalPages, startPage + 4);
+                                let endPage = Math.min(totalP, startPage + 4);
 
                                 if (endPage - startPage < 4) {
                                     startPage = Math.max(1, endPage - 4);
@@ -452,7 +455,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
 
                         <button
-                            disabled={isRefreshing || !dashboardData.total_recent_count || filters.page >= (dashboardData.totalPages || Math.ceil(dashboardData.total_recent_count / (dashboardData.limit || 10)))}
+                            disabled={isRefreshing || !totalRecentCount || filters.page >= (totalPages || Math.ceil(totalRecentCount / (limit || 10)))}
                             onClick={() => onFilterChange({ page: filters.page + 1 })}
                             className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all flex items-center justify-center min-w-[80px]"
                         >
