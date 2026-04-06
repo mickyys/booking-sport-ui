@@ -16,7 +16,8 @@ import {
   AdminCalendarSubPage,
   AdminAgendaSubPage,
   AdminSettingsSubPage,
-  AdminSubscriptionsSubPage
+  AdminSubscriptionsSubPage,
+  AdminQRSubPage
 } from '../pages/AdminPage';
 import { SuccessPage } from '../pages/booking/SuccessPage';
 import { FailurePage } from '../pages/booking/FailurePage';
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
           { path: 'agenda', element: <AdminAgendaSubPage /> },
           { path: 'subscriptions', element: <AdminSubscriptionsSubPage /> },
           { path: 'settings', element: <AdminSettingsSubPage /> },
+          { path: 'qr', element: <AdminQRSubPage /> },
         ]
       },
 
