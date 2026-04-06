@@ -13,7 +13,7 @@ interface AdminAgendaProps {
 export const AdminAgenda: React.FC<AdminAgendaProps> = ({ courts }) => {
     const { schedules, fetchSchedules, fetchAdminSchedules, weeklySchedules, selectedCenterId, isLoading: storeLoading } = useBookingStore();
     const [selectedDate, setSelectedDate] = useState(new Date());
-    const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('weekly');
+    const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
     const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
     const [isWeeklyLoading, setIsWeeklyLoading] = useState(false);
 
