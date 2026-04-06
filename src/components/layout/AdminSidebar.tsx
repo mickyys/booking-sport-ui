@@ -9,7 +9,8 @@ import {
   Settings,
   Menu,
   X,
-  Users
+  Users,
+  QrCode
 } from 'lucide-react';
 
 const navItems = [
@@ -19,16 +20,21 @@ const navItems = [
   { to: '/admin/courts', icon: Trophy, label: 'Canchas' },
   { to: '/admin/schedules', icon: Clock, label: 'Horarios y Tarifas' },
   { to: '/admin/subscriptions', icon: Users, label: 'Suscripciones' },
+  { to: '/admin/qr', icon: QrCode, label: 'QR' },
   { to: '/admin/settings', icon: Settings, label: 'Configuración' },
 ];
 
-export const AdminSidebar: React.FC = () => {
+interface AdminSidebarProps {
+  sportCenterName?: string;
+}
+
+export const AdminSidebar: React.FC<AdminSidebarProps> = ({ sportCenterName }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
       {/* Mobile Menu Button */}
-      <div className="lg:hidden fixed bottom-6 right-6 z-50">
+      <div className="lg:hidden fixed bottom-6 right-6 z-60">
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="p-4 bg-slate-900 text-white rounded-full shadow-2xl hover:bg-slate-800 transition-all active:scale-95 border border-slate-700"
@@ -39,7 +45,7 @@ export const AdminSidebar: React.FC = () => {
 
       {/* Sidebar / Mobile Menu Overlay */}
       <div 
-        className={`fixed inset-y-0 left-0 z-40 w-72 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto ${
+        className={`fixed inset-y-0 left-0 z-[60] lg:z-40 w-72 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -79,7 +85,7 @@ export const AdminSidebar: React.FC = () => {
           <div className="mt-auto pt-6 border-t border-slate-100">
             <div className="px-4 py-3 rounded-xl bg-slate-50 border border-slate-100">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Centro</p>
-              <p className="text-sm font-bold text-slate-700 truncate">Santuario del Valle</p>
+              <p className="text-sm font-bold text-slate-700 truncate">{sportCenterName || 'Cargando...'}</p>
             </div>
           </div>
         </div>
@@ -88,7 +94,7 @@ export const AdminSidebar: React.FC = () => {
       {/* Mobile Overlay */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 lg:hidden"
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[55] lg:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}

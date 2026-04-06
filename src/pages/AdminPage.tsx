@@ -13,6 +13,7 @@ import { AdminCalendar } from './admin/AdminCalendar';
 import { AdminAgenda } from './admin/AdminAgenda';
 import { AdminSettings } from './admin/AdminSettings';
 import { AdminSubscriptions } from './admin/AdminSubscriptions';
+import { AdminQR } from './admin/AdminQR';
 import { AdminSidebar } from '../components/layout/AdminSidebar';
 
 interface AdminPanelProps {
@@ -136,7 +137,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = () => {
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
-            <AdminSidebar />
+            <AdminSidebar sportCenterName={currentSportCenter?.name} />
             
             <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
                 <div className="max-w-7xl mx-auto pt-16 lg:pt-0">
@@ -262,4 +263,9 @@ export const AdminAgendaSubPage: React.FC = () => {
 export const AdminSettingsSubPage: React.FC = () => {
     const { currentSportCenter } = useOutletContext<any>();
     return <AdminSettings sportCenter={currentSportCenter} />;
+};
+
+export const AdminQRSubPage: React.FC = () => {
+    const { currentSportCenter } = useOutletContext<any>();
+    return <AdminQR sportCenter={currentSportCenter} />;
 };
