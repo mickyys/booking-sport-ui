@@ -228,7 +228,7 @@ const SlotCard: React.FC<{ slot: any }> = ({ slot }) => {
                             {isInternal ? 'Cobro Presencial' : 'Pagado Online'}
                         </span>
                         <span className="text-[10px] font-black text-slate-900">
-                            ${slot.price?.toLocaleString()}
+                            ${slot.price?.toLocaleString('es-CL')}
                         </span>
                     </div>
                 </div>
@@ -307,7 +307,7 @@ const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[] }> = ({ day, schedu
 
                                             <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl mb-1">
                                                 <span className="text-[9px] text-slate-500 font-bold uppercase">Valor Hora</span>
-                                                <span className="text-[11px] font-black text-slate-900">${slot.price?.toLocaleString()}</span>
+                                                <span className="text-[11px] font-black text-slate-900">${slot.price?.toLocaleString('es-CL')}</span>
                                             </div>
 
                                             {isInternalReserva && <p className="text-[8px] font-bold text-orange-600 uppercase mb-1">Reserva Interna</p>}
