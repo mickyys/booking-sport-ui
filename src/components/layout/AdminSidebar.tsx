@@ -13,8 +13,8 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
-  { to: '/admin/agenda', icon: CalendarDays, label: 'Agenda Semanal' },
+  { to: '/admin', icon: CalendarDays, label: 'Agenda Semanal', end: true },
+  { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/admin/calendar', icon: CalendarRange, label: 'Bloqueos y Reservas' },
   { to: '/admin/courts', icon: Trophy, label: 'Canchas' },
   { to: '/admin/schedules', icon: Clock, label: 'Horarios y Tarifas' },
