@@ -672,19 +672,29 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       const formattedData = {
         todayBookingsCount: data.today_bookings_count,
         todayRevenue: data.today_revenue,
+        todayOnlineRevenue: data.today_online_revenue,
+        todayVenueRevenue: data.today_venue_revenue,
         totalRevenue: data.total_revenue,
+        totalOnlineRevenue: data.total_online_revenue,
+        totalVenueRevenue: data.total_venue_revenue,
         cancelledCount: data.cancelled_count,
         recentBookings: (data.recent_bookings || []).map((b: any) => ({
           ...b,
           sportCenterName: b.sport_center_name,
           courtName: b.court_name,
-          userName: b.user_name,
+          customerName: b.customer_name,
+          customerPhone: b.customer_phone,
+          customerEmail: b.customer_email,
+          userName: b.user_name, // Keeping for backward compatibility if needed
           isGuest: b.is_guest,
           paymentMethod: b.payment_method,
           cancelledBy: b.cancelled_by,
           createdAt: b.created_at
         })),
-        totalRecentCount: data.total_recent_count
+        totalRecentCount: data.total_recent_count,
+        page: data.page,
+        limit: data.limit,
+        totalPages: data.total_pages
       };
 
       set({ adminDashboardData: formattedData, error: null });

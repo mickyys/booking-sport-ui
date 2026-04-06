@@ -44,7 +44,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         return <div className="flex justify-center items-center h-64">Cargando dashboard...</div>;
     }
 
-    const { todayBookingsCount, todayRevenue, totalRevenue, cancelledCount, recentBookings } = dashboardData;
+    const {
+        todayBookingsCount,
+        todayRevenue,
+        todayOnlineRevenue,
+        todayVenueRevenue,
+        totalRevenue,
+        totalOnlineRevenue,
+        totalVenueRevenue,
+        cancelledCount,
+        recentBookings
+    } = dashboardData;
     const [bookingToCancel, setBookingToCancel] = React.useState<any | null>(null);
 
     return (
@@ -60,33 +70,67 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
                             <Calendar className="w-6 h-6" />
                         </div>
-                        <span className="text-slate-500 font-medium">Reservas Hoy</span>
+                        <span className="text-slate-500 font-medium text-sm">Reservas Hoy</span>
                     </div>
-                    <p className="text-4xl font-bold text-slate-900">{todayBookingsCount}</p>
+                    <p className="text-3xl font-bold text-slate-900">{todayBookingsCount}</p>
                 </div>
+
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
                             <DollarSign className="w-6 h-6" />
                         </div>
-                        <span className="text-slate-500 font-medium">Ingresos Totales</span>
+                        <div className="flex flex-col">
+                            <span className="text-slate-500 font-medium text-sm">Ingresos Hoy</span>
+                        </div>
                     </div>
-                    <p className="text-4xl font-bold text-slate-900">${totalRevenue.toLocaleString('es-CL')}</p>
+                    <p className="text-3xl font-bold text-slate-900">${todayRevenue?.toLocaleString('es-CL')}</p>
+                    <div className="mt-2 space-y-1">
+                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                            <span className="text-slate-400">Online</span>
+                            <span className="text-blue-600">${todayOnlineRevenue?.toLocaleString('es-CL')}</span>
+                        </div>
+                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                            <span className="text-slate-400">Presencial</span>
+                            <span className="text-emerald-600">${todayVenueRevenue?.toLocaleString('es-CL')}</span>
+                        </div>
+                    </div>
                 </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl">
+                            <DollarSign className="w-6 h-6" />
+                        </div>
+                        <span className="text-slate-500 font-medium text-sm">Ingresos Totales</span>
+                    </div>
+                    <p className="text-3xl font-bold text-slate-900">${totalRevenue?.toLocaleString('es-CL')}</p>
+                    <div className="mt-2 space-y-1">
+                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                            <span className="text-slate-400">Online</span>
+                            <span className="text-blue-600">${totalOnlineRevenue?.toLocaleString('es-CL')}</span>
+                        </div>
+                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                            <span className="text-slate-400">Presencial</span>
+                            <span className="text-emerald-600">${totalVenueRevenue?.toLocaleString('es-CL')}</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="p-3 bg-red-100 text-red-600 rounded-xl">
                             <AlertCircle className="w-6 h-6" />
                         </div>
-                        <span className="text-slate-500 font-medium">Cancelaciones</span>
+                        <span className="text-slate-500 font-medium text-sm">Cancelaciones</span>
                     </div>
-                    <p className="text-4xl font-bold text-slate-900">{cancelledCount}</p>
+                    <p className="text-3xl font-bold text-slate-900">{cancelledCount}</p>
                 </div>
             </div>
 
@@ -184,9 +228,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     <td className="px-6 py-4 font-mono text-xs font-bold text-slate-500">
                                         {booking.booking_code || 'N/A'}
                                     </td>
-                                    <td className="px-6 py-4 font-medium text-slate-900">
-                                        {booking.user_name}
-                                        {booking.is_guest && <span className="ml-2 px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-xs">Invitado</span>}
+                                    <td className="px-6 py-4">
+                                        <div className="flex flex-col">
+                                            <span className="font-medium text-slate-900">
+                                                {booking.customerName || booking.user_name}
+                                                {booking.is_guest && <span className="ml-2 px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold uppercase">Invitado</span>}
+                                            </span>
+                                            {booking.customerPhone && (
+                                                <span className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                                    <span className="font-bold text-slate-400">T:</span> {booking.customerPhone}
+                                                </span>
+                                            )}
+                                            {booking.customerEmail && (
+                                                <span className="text-[11px] text-slate-500 flex items-center gap-1">
+                                                    <span className="font-bold text-slate-400">E:</span> {booking.customerEmail}
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 text-slate-600">
                                         {booking.court_name || courts.find(c => c.id === booking.courtId)?.name}
@@ -250,9 +308,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         {booking.booking_code || 'N/A'}
                                     </p>
                                     <h4 className="text-sm font-bold text-slate-900 mt-0.5">
-                                        {booking.user_name}
+                                        {booking.customerName || booking.user_name}
                                         {booking.is_guest && <span className="ml-2 px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px]">Invitado</span>}
                                     </h4>
+                                    <div className="mt-1 space-y-0.5">
+                                        {booking.customerPhone && (
+                                            <p className="text-[10px] text-slate-500">
+                                                <span className="font-bold text-slate-400">TEL:</span> {booking.customerPhone}
+                                            </p>
+                                        )}
+                                        {booking.customerEmail && (
+                                            <p className="text-[10px] text-slate-500">
+                                                <span className="font-bold text-slate-400">EMAIL:</span> {booking.customerEmail}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                                 <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
                                     booking.status === 'confirmed'
@@ -314,9 +384,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
                     <div className="text-xs text-slate-500 font-medium px-2 text-center sm:text-left">
                         {(() => {
-                            const perPage = 10;
+                            const perPage = dashboardData.limit || 10;
                             const total = dashboardData.total_recent_count || 0;
-                            const totalPages = Math.ceil(total / perPage);
+                            const totalPages = dashboardData.totalPages || Math.ceil(total / perPage);
                             if (total === 0) return <p>Mostrando <span className="text-slate-900 font-bold">0</span> de <span className="text-slate-900 font-bold">0</span> reservas</p>;
                             const start = (filters.page - 1) * perPage + 1;
                             const end = Math.min(filters.page * perPage, total);
@@ -345,8 +415,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         {/* Page Numbers for Desktop */}
                         <div className="hidden md:flex items-center gap-1 mx-2">
                             {(() => {
-                                const total = dashboardData.total_recent_count || 0;
-                                const totalPages = Math.ceil(total / 10);
+                                const totalPages = dashboardData.totalPages || Math.ceil((dashboardData.total_recent_count || 0) / (dashboardData.limit || 10));
                                 const pages = [];
 
                                 // Simple page number logic
@@ -383,7 +452,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
 
                         <button
-                            disabled={isRefreshing || !dashboardData.total_recent_count || filters.page * 10 >= dashboardData.total_recent_count}
+                            disabled={isRefreshing || !dashboardData.total_recent_count || filters.page >= (dashboardData.totalPages || Math.ceil(dashboardData.total_recent_count / (dashboardData.limit || 10)))}
                             onClick={() => onFilterChange({ page: filters.page + 1 })}
                             className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all flex items-center justify-center min-w-[80px]"
                         >
