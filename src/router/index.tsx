@@ -60,7 +60,8 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         children: [
-          { index: true, element: <AdminDashboardSubPage /> },
+          { index: true, element: <AdminAgendaSubPage /> },
+          { path: 'dashboard', element: <AdminDashboardSubPage /> },
           { path: 'courts', element: <AdminCourtsSubPage /> },
           { path: 'schedules', element: <AdminSchedulesSubPage /> },
           { path: 'calendar', element: <AdminCalendarSubPage /> },

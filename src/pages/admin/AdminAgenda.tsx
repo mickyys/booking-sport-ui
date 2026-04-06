@@ -203,33 +203,32 @@ const SlotCard: React.FC<{ slot: any }> = ({ slot }) => {
                     </span>
                 </div>
                 <div className="space-y-1">
-                    {!isInternalBlock && (
-                        <>
-                            <div className={`flex items-center gap-2 ${slot.status === 'passed_booked' ? 'text-slate-700' : 'text-emerald-800'}`}>
-                                <User size={12} className="shrink-0" />
-                                <span className="text-xs font-bold truncate">{slot.customer_name || 'Cliente'}</span>
-                            </div>
-                            {slot.customer_email && slot.customer_email !== 'admin@internal.com' && (
-                                <div className={`flex items-center gap-2 ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-600'}`}>
-                                    <Mail size={12} className="shrink-0" />
-                                    <span className="text-[10px] font-medium truncate">{slot.customer_email}</span>
-                                </div>
-                            )}
-                            <div className={`flex items-center gap-2 ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-600'}`}>
-                                <Hash size={12} className="shrink-0" />
-                                <span className="text-[10px] font-mono font-bold">{slot.booking_code || '---'}</span>
-                            </div>
-                        </>
+                    <div className={`flex items-center gap-2 ${slot.status === 'passed_booked' ? 'text-slate-700' : 'text-emerald-800'}`}>
+                        <User size={12} className="shrink-0" />
+                        <span className="text-xs font-bold truncate">{slot.customer_name || (isInternalBlock ? 'Bloqueo' : 'Cliente')}</span>
+                    </div>
+                    {slot.customer_phone && (
+                        <div className={`flex items-center gap-2 ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-600'}`}>
+                            <span className="text-[10px] font-bold">TEL:</span>
+                            <span className="text-[10px] font-medium truncate">{slot.customer_phone}</span>
+                        </div>
                     )}
-                    {isInternalBlock && (
-                        <p className="text-[10px] text-slate-500 font-bold italic">Hora bloqueada interna</p>
+                    {slot.customer_email && slot.customer_email !== 'admin@internal.com' && (
+                        <div className={`flex items-center gap-2 ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-600'}`}>
+                            <Mail size={12} className="shrink-0" />
+                            <span className="text-[10px] font-medium truncate">{slot.customer_email}</span>
+                        </div>
                     )}
+                    <div className={`flex items-center gap-2 ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-600'}`}>
+                        <Hash size={12} className="shrink-0" />
+                        <span className="text-[10px] font-mono font-bold">{slot.booking_code || '---'}</span>
+                    </div>
                     <div className="pt-1 mt-1 border-t border-emerald-100/50 flex justify-between items-center">
                         <span className={`text-[9px] font-bold uppercase ${isInternal ? 'text-orange-600' : 'text-emerald-600'}`}>
                             {isInternal ? 'Cobro Presencial' : 'Pagado Online'}
                         </span>
                         <span className="text-[10px] font-black text-slate-900">
-                            ${slot.price?.toLocaleString()}
+                            ${slot.price?.toLocaleString('es-CL')}
                         </span>
                     </div>
                 </div>
@@ -308,30 +307,30 @@ const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[] }> = ({ day, schedu
 
                                             <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl mb-1">
                                                 <span className="text-[9px] text-slate-500 font-bold uppercase">Valor Hora</span>
-                                                <span className="text-[11px] font-black text-slate-900">${slot.price?.toLocaleString()}</span>
+                                                <span className="text-[11px] font-black text-slate-900">${slot.price?.toLocaleString('es-CL')}</span>
                                             </div>
 
-                                            {isInternalBlock ? (
-                                                <p className="text-[10px] font-bold text-slate-500 italic py-1">Hora bloqueada interna</p>
-                                            ) : (
-                                                <>
-                                                    {isInternalReserva && <p className="text-[8px] font-bold text-orange-600 uppercase mb-1">Reserva Interna</p>}
-                                                    <div className="flex items-center gap-2">
-                                                        <User size={10} className="text-slate-400 shrink-0" />
-                                                        <p className="text-[10px] font-bold truncate">{slot.customer_name || 'Cliente'}</p>
-                                                    </div>
-                                                    {slot.customer_email && slot.customer_email !== 'admin@internal.com' && (
-                                                        <div className="flex items-center gap-2">
-                                                            <Mail size={10} className="text-slate-400 shrink-0" />
-                                                            <p className="text-[10px] text-slate-500 truncate">{slot.customer_email}</p>
-                                                        </div>
-                                                    )}
-                                                    <div className="flex items-center gap-2">
-                                                        <Hash size={10} className="text-slate-400 shrink-0" />
-                                                        <p className="text-[10px] font-mono text-slate-500">{slot.booking_code || '---'}</p>
-                                                    </div>
-                                                </>
+                                            {isInternalReserva && <p className="text-[8px] font-bold text-orange-600 uppercase mb-1">Reserva Interna</p>}
+                                            <div className="flex items-center gap-2">
+                                                <User size={10} className="text-slate-400 shrink-0" />
+                                                <p className="text-[10px] font-bold truncate">{slot.customer_name || (isInternalBlock ? 'Bloqueo' : 'Cliente')}</p>
+                                            </div>
+                                            {slot.customer_phone && (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[9px] font-bold text-slate-400">TEL:</span>
+                                                    <p className="text-[10px] text-slate-500 truncate">{slot.customer_phone}</p>
+                                                </div>
                                             )}
+                                            {slot.customer_email && slot.customer_email !== 'admin@internal.com' && (
+                                                <div className="flex items-center gap-2">
+                                                    <Mail size={10} className="text-slate-400 shrink-0" />
+                                                    <p className="text-[10px] text-slate-500 truncate">{slot.customer_email}</p>
+                                                </div>
+                                            )}
+                                            <div className="flex items-center gap-2">
+                                                <Hash size={10} className="text-slate-400 shrink-0" />
+                                                <p className="text-[10px] font-mono text-slate-500">{slot.booking_code || '---'}</p>
+                                            </div>
                                             
                                             <button
                                                 className="w-full mt-2 py-1.5 bg-slate-50 text-slate-400 rounded-lg text-[9px] font-bold uppercase hover:bg-slate-100"
