@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import { AnimatePresence } from 'motion/react';
 import { Navbar } from '../components/layout/Navbar';
 import { PaymentModal } from '../components/booking/PaymentModal';
+import { Capacitor } from '@capacitor/core';
 import { useBookingStore } from '../store/useBookingStore';
 import { useBookingActions } from '../hooks/useBookingActions';
 import { useAuth } from '../hooks/useAuth';
@@ -49,6 +50,14 @@ export const RootLayout: React.FC = () => {
     };
     document.title = titles[location.pathname] || 'ReservaloYA';
   }, [location.pathname]);
+
+  // Capacitor-specific logic: Auto-redirect to admin if in native app
+  useEffect(() => {
+    const isNative = Capacitor.isNativePlatform();
+    if (isNative && location.pathname === '/') {
+      navigate('/admin', { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   // Payment redirect detection (code without state)
   useEffect(() => {
