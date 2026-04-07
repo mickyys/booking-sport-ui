@@ -259,12 +259,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
                                             booking.payment_method === 'mercadopago' ? 'bg-blue-100 text-blue-700' : 
                                             booking.payment_method === 'fintoc' ? 'bg-indigo-100 text-indigo-700' : 
-                                            booking.payment_method === 'venue' ? 'bg-emerald-100 text-emerald-700' :
+                                            booking.payment_method === 'presential' ? 'bg-emerald-100 text-emerald-700' :
                                             'bg-slate-100 text-slate-700'
                                         }`}>
                                             {booking.payment_method === 'mercadopago' ? 'MercadoPago' : 
                                              booking.payment_method === 'fintoc' ? 'Fintoc' : 
-                                             booking.payment_method === 'venue' ? 'Presencial' : 'Interno'}
+                                             booking.payment_method === 'presential' ? 'Presencial' : 'Interno'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
@@ -273,9 +273,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 ? 'bg-emerald-100 text-emerald-700'
                                                 : booking.status === 'pending'
                                                 ? 'bg-yellow-100 text-yellow-700'
+                                                : booking.status === 'expired'
+                                                ? 'bg-slate-100 text-slate-700'
                                                 : 'bg-red-100 text-red-700'
                                         }`}>
-                                            {booking.status === 'confirmed' ? 'Confirmado' : booking.status === 'pending' ? 'Pendiente' : 'Cancelado'}
+                                            {booking.status === 'confirmed' ? 'Confirmado' : booking.status === 'pending' ? 'Pendiente' : booking.status === 'expired' ? 'Expirada' : 'Cancelado'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
@@ -332,9 +334,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         ? 'bg-emerald-100 text-emerald-700'
                                         : booking.status === 'pending'
                                         ? 'bg-yellow-100 text-yellow-700'
+                                        : booking.status === 'expired'
+                                        ? 'bg-slate-100 text-slate-700'
                                         : 'bg-red-100 text-red-700'
                                 }`}>
-                                    {booking.status === 'confirmed' ? 'Confirmado' : booking.status === 'pending' ? 'Pendiente' : 'Cancelado'}
+                                    {booking.status === 'confirmed' ? 'Confirmado' : booking.status === 'pending' ? 'Pendiente' : booking.status === 'expired' ? 'Expirada' : 'Cancelado'}
                                 </span>
                             </div>
 
