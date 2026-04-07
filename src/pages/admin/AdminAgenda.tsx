@@ -191,7 +191,8 @@ const SlotCard: React.FC<{ slot: any }> = ({ slot }) => {
 
     const isInternalBlock = slot.payment_method === 'internal_block';
     const isInternalReserva = slot.payment_method === 'internal_reservation';
-    const isInternal = isInternalBlock || isInternalReserva;
+    const isPresential = slot.payment_method === 'presential';
+    const isInternal = isInternalBlock || isInternalReserva || isPresential;
 
     if (isBooked) {
         return (
