@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useMemo } from 'react';
 import { Search, MapPin, Clock, ChevronRight, Star, ShowerHead, Car, Trophy, Filter, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';

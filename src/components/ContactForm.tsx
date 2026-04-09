@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -51,7 +52,7 @@ export const ContactForm: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
       await axios.post(`${apiUrl}/contact`, {
         ...values,
         turnstileToken,
@@ -173,7 +174,7 @@ export const ContactForm: React.FC = () => {
             <div className="flex flex-col items-center justify-center p-4 bg-slate-50 border border-dashed border-slate-300 rounded-lg space-y-2">
               <span className="text-xs text-slate-500 font-medium">Validación de Seguridad</span>
               <Turnstile
-                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
                 onSuccess={(token) => setTurnstileToken(token)}
                 onExpire={() => setTurnstileToken(null)}
                 onError={() => setTurnstileToken(null)}

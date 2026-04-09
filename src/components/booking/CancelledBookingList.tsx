@@ -1,3 +1,4 @@
+"use client";
 import React from 'react';
 import { Ban, X } from 'lucide-react';
 import { format, parseISO } from 'date-fns';

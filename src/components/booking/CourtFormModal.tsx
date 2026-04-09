@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from 'react';
 import { Save } from 'lucide-react';
 import { Court } from '../../types';
@@ -43,7 +44,7 @@ const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave 
     try {
       const token = await getAccessTokenSilently({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });

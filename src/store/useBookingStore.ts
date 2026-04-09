@@ -70,7 +70,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       try {
         const token = await getToken({
           authorizationParams: {
-            audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+            audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
             scope: "openid profile email"
           }
         });
@@ -116,7 +116,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -146,7 +146,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -178,7 +178,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -199,7 +199,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -286,7 +286,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
         }
       });
       await api.post(`/bookings/${bookingId}/cancel`, {}, {
@@ -311,7 +311,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
         }
       });
       await api.delete(`/admin/bookings/series/${seriesId}`, {
@@ -447,7 +447,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -472,7 +472,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -495,7 +495,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -575,7 +575,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: 'openid profile email'
         }
       });
@@ -625,7 +625,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -648,7 +648,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -711,7 +711,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -736,7 +736,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -761,7 +761,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -785,7 +785,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -837,7 +837,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -897,7 +897,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -921,7 +921,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });

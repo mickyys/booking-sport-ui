@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from 'react';
 import { Clock, MapPin } from 'lucide-react';
 import { format, parseISO } from 'date-fns';

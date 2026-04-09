@@ -1,3 +1,4 @@
+"use client";
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth0 } from "@auth0/auth0-react";
@@ -8,7 +9,7 @@ export const Navbar: React.FC = () => {
   const location = useLocation();
   const { loginWithRedirect, logout, user: auth0User, isAuthenticated } = useAuth0();
 
-  const roleClaim = import.meta.env.VITE_AUTHO_ROL_CLAIM || 'https://golazohub.cl/roles';
+  const roleClaim = process.env.NEXT_PUBLIC_AUTHO_ROL_CLAIM || 'https://golazohub.cl/roles';
   const userRole = auth0User?.[roleClaim];
   const isAdministrator = userRole?.includes('administrator');
 

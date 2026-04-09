@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, MapPin, CreditCard, ChevronRight, Info, ShieldAlert } from 'lucide-react';

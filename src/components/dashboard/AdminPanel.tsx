@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from 'react';
 import { Calendar, DollarSign, AlertCircle, Ban, Plus, Edit, Trash2 } from 'lucide-react';
 import { format, parseISO, isSameDay, startOfToday } from 'date-fns';

@@ -8,7 +8,7 @@ export const useAuth = () => {
 
     useEffect(() => {
         if (isAuthenticated && auth0User) {
-            const roleClaim = import.meta.env.VITE_AUTHO_ROL_CLAIM || 'https://golazohub.cl/roles';
+            const roleClaim = process.env.NEXT_PUBLIC_AUTHO_ROL_CLAIM || 'https://golazohub.cl/roles';
             const userRole = auth0User[roleClaim];
             setUser({
                 name: auth0User.nickname || auth0User.name ||  "Usuario",
