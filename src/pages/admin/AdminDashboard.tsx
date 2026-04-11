@@ -253,7 +253,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         {booking.court_name || courts.find(c => c.id === booking.courtId)?.name}
                                     </td>
                                     <td className="px-6 py-4 text-slate-600">
-                                        {format(parseISO(booking.date), "d MMM, HH:mm", { locale: es })}
+                                        {format(parseISO(booking.date), "d MMM", { locale: es })}{booking.hour && `, ${booking.hour}:00`}
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
