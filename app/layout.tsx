@@ -18,9 +18,9 @@ export default function RootLayout({
       <body className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-emerald-100">
         <Providers>
           <Navbar />
-          <main className="pt-16">
+          <div className="pt-16">
             {children}
-          </main>
+          </div>
         </Providers>
       </body>
     </html>
