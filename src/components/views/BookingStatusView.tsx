@@ -1,14 +1,14 @@
 "use client";
 "use client";
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useBookingStore } from '@/store/useBookingStore';
 import { SuccessPage } from './booking/SuccessPage';
 import { FailurePage } from './booking/FailurePage';
 
 export default function BookingStatusPage() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const code = searchParams.get('code');
   const { currentBooking, isLoading, fetchBookingByCode, resetCurrentBooking } = useBookingStore();
   const [isTimedOut, setIsTimedOut] = useState(false);
@@ -55,8 +55,8 @@ export default function BookingStatusPage() {
   if (currentBooking?.status === 'confirmed') {
     return (
       <SuccessPage
-        onGoHome={() => navigate('/')}
-        onGoToProfile={() => navigate('/mis-reservas')}
+        onGoHome={() => router.push('/')}
+        onGoToProfile={() => router.push('/mis-reservas')}
       />
     );
   }
@@ -94,10 +94,10 @@ export default function BookingStatusPage() {
               setIsInitialLoad(false);
             });
         } else {
-          navigate('/reservar');
+          router.push('/reservar');
         }
       }}
-      onGoHome={() => navigate('/')}
+      onGoHome={() => router.push('/')}
     />
   );
 }

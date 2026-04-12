@@ -1,7 +1,7 @@
 "use client";
 "use client";
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { XCircle, CreditCard, ArrowRight } from 'lucide-react';
 
@@ -11,7 +11,7 @@ interface FailurePageProps {
 }
 
 export const FailurePage: React.FC<FailurePageProps> = ({ onRetry, onGoHome }) => {
-    const navigate = useNavigate();
+    const router = useRouter();
     return (
     <div className="min-h-screen bg-slate-50 pt-8 pb-20 px-4">
         <motion.div 
@@ -68,14 +68,14 @@ export const FailurePage: React.FC<FailurePageProps> = ({ onRetry, onGoHome }) =
                     {/* Action Buttons */}
                     <div className="flex flex-col sm:flex-row gap-3">
                         <button 
-                            onClick={onRetry || (() => navigate('/reservar'))}
+                            onClick={onRetry || (() => router.push('/reservar'))}
                             className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors"
                         >
                             <CreditCard className="w-5 h-5" />
                             Intentar Nuevamente
                         </button>
                         <button 
-                            onClick={onGoHome || (() => navigate('/'))}
+                            onClick={onGoHome || (() => router.push('/'))}
                             className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors"
                         >
                             <ArrowRight className="w-5 h-5" />
