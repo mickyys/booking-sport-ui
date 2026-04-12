@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.golazohub.cl';
     const response = await axios.get(`${backendUrl}/sport-centers/slug/${slug}`);
-    const center = response.data;
+    const { center } = response.data;
 
     if (!center) {
       return {
