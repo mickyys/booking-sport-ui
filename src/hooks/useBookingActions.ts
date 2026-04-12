@@ -1,11 +1,11 @@
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useBookingStore } from '../store/useBookingStore';
 import { useBooking } from './useBooking';
 import { UserProfile } from '../types';
 
 export const useBookingActions = (user: UserProfile | null) => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { createMercadoPagoPayment, createBooking } = useBookingStore();
   const {
     slots,
@@ -49,7 +49,7 @@ export const useBookingActions = (user: UserProfile | null) => {
 
         toast.success("¡Reserva confirmada exitosamente!");
         setSelectedSlot(null);
-        navigate('/');
+        router.push('/');
       } catch (error) {
         toast.error("Error al confirmar la reserva.");
       }
@@ -60,9 +60,9 @@ export const useBookingActions = (user: UserProfile | null) => {
     const booking = confirmMockBooking(method as any, guestDetails);
     if (booking) {
       if (user) {
-        navigate('/mis-reservas');
+        router.push('/mis-reservas');
       } else {
-        navigate('/');
+        router.push('/');
       }
     }
   };

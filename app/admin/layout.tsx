@@ -1,5 +1,4 @@
 "use client";
-'use client';
 
 import { AdminPanel } from '@/components/views/AdminPanel';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -11,7 +10,9 @@ export default function AdminLayout({
 }) {
   return (
     <ProtectedRoute adminOnly>
-      <AdminPanel />
+      <AdminPanel>
+        {children}
+      </AdminPanel>
     </ProtectedRoute>
   );
 }

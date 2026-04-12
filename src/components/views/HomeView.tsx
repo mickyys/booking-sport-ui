@@ -11,10 +11,10 @@ import SportCenterCard from '@/components/search/SportCenterCard';
 import SearchFeatures from '@/components/search/SearchFeatures';
 import EmptySearchResults from '@/components/search/EmptySearchResults';
 import { ContactForm } from '@/components/ContactForm';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 
 const SportCenterSearchPage: React.FC = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { sportCenters, isLoading, cities, fetchCities, fetchSportCenters } = useBookingStore();
 
   // UI state
@@ -152,7 +152,7 @@ const SportCenterSearchPage: React.FC = () => {
                             </p>
                             <div className="pt-4">
                                 <button
-                                    onClick={() => navigate('/contacto')}
+                                    onClick={() => router.push('/contacto')}
                                     className="inline-flex items-center justify-center px-8 py-4 border border-transparent text-lg font-bold rounded-full text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-lg hover:shadow-emerald-500/25 transform hover:-translate-y-1"
                                 >
                                     Contáctanos para unirte

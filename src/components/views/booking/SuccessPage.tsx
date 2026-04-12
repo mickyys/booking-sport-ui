@@ -1,7 +1,7 @@
 "use client";
 "use client";
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'motion/react';
 import { CheckCircle, Calendar, ArrowRight, Info, AlertCircle } from 'lucide-react';
 import { useBookingStore } from '@/store/useBookingStore';
@@ -20,11 +20,11 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 };
 
 export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfile }) => {
-    const navigate = useNavigate();
+    const router = useRouter(); const searchParams = useSearchParams();
     const { currentBooking } = useBookingStore();
 
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
+
+    const code = searchParams.get('code');
 
     const paymentMethodLabel =
         PAYMENT_METHOD_LABELS[currentBooking?.payment_method ?? ''] ?? 'Online';
@@ -99,14 +99,14 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
                         {/* Action Buttons */}
                         <div className="flex flex-col sm:flex-row gap-3">
                             <button 
-                                onClick={onGoToProfile || (() => navigate('/mis-reservas'))}
+                                onClick={onGoToProfile || (() => router.push('/mis-reservas'))}
                                 className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors"
                             >
                                 <Calendar className="w-5 h-5" />
                                 Ver Mis Reservas
                             </button>
                             <button 
-                                onClick={onGoHome || (() => navigate('/'))}
+                                onClick={onGoHome || (() => router.push('/'))}
                                 className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors"
                             >
                                 <ArrowRight className="w-5 h-5" />

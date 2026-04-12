@@ -2,7 +2,7 @@
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Clock, Grid, List, CheckCircle, CreditCard, Loader2 } from 'lucide-react';
 import { format, startOfToday, addDays, setHours, setMinutes, parseISO, isAfter, isBefore, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -29,15 +29,15 @@ export const BookingView: React.FC<BookingViewProps> = ({
   courts
 }) => {
   const { schedules, isLoading, fetchSchedules, fetchSportCenterBySlug } = useBookingStore();
-    const { slug } = useParams<{ slug?: string }>();
+    const params = useParams(); const slug = params?.slug as string | undefined;
   const [selectedDay, setSelectedDay] = useState<Date>(startOfToday());
 
-  const location = useLocation();
+  const searchParams = useSearchParams();
 
   // If the route includes a `date` query param (YYYY-MM-DD), set selectedDay accordingly
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const qDate = params.get('date');
+
+    const qDate = searchParams.get('date');
     if (qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate)) {
       try {
         const parsed = startOfDay(parseISO(qDate));
