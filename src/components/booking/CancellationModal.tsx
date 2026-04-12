@@ -141,8 +141,8 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                         </div>
                     ) : (
                         <>
-                            {/* Refund Information - hide when payment was made 'venue' (presencial) */}
-                            {booking.payment_method !== 'venue' && (
+                            {/* Refund Information - hide when payment was made 'presential' (presencial) */}
+                            {booking.payment_method !== 'presential' && (
                                 <div className={`p-5 rounded-xl mb-6 border-2 ${refund_percentage === 100
                                     ? 'bg-emerald-50 border-emerald-200'
                                     : 'bg-amber-50 border-amber-200'
@@ -195,7 +195,7 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                             )}
 
                             {/* Time remaining info */}
-                            {booking.payment_method !== 'venue' && (
+                            {booking.payment_method !== 'presential' && (
                                 <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl mb-6">
                                     <div className="flex items-start gap-3">
                                         <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -212,7 +212,7 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                             )}
 
                             {/* Payment method refund */}
-                            {booking.payment_method !== 'venue' && (
+                            {booking.payment_method !== 'presential' && (
                                 <div className="p-4 bg-slate-50 rounded-xl mb-6">
                                     <p className="text-sm text-slate-600 mb-2">Método de reembolso</p>
                                     <div className="flex items-center gap-3">
@@ -225,7 +225,7 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                                             : 'Presencial' }
                                         </span>
                                     </div>
-                                    {booking.payment_method !== 'venue' ? (
+                                    {booking.payment_method !== 'presential' ? (
                                         <p className="text-xs text-slate-500 mt-2">
                                             El reembolso se procesará de forma automática en 3-5 días hábiles a través de la plataforma de pago original.
                                         </p>
