@@ -7,12 +7,14 @@ import { es } from 'date-fns/locale';
 import { TimeSlot, Court, UserProfile, GuestDetails } from '../../types';
 import { useBookingStore } from '../../store/useBookingStore';
 import CancellationPolicyModal from '../search/CancellationPolicyModal';
+import { toast } from 'sonner';
+import axios from 'axios';
 
 interface PaymentModalProps {
   slot: TimeSlot;
   court: Court;
   onClose: () => void;
-  onConfirm: (method: 'mercadopago' | 'venue', guestDetails?: GuestDetails) => void;
+  onConfirm: (method: 'mercadopago' | 'venue', guestDetails?: GuestDetails) => Promise<boolean | void>;
   user: UserProfile | null;
 }
 
@@ -23,7 +25,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   onConfirm,
   user
 }) => {
-  const { sportCenters } = useBookingStore();
+  const { sportCenters, fetchSchedules } = useBookingStore();
   const center = sportCenters.find(c => c.id === slot.centerId);
   const [processing, setProcessing] = useState<null | 'mercadopago' | 'venue'>(null);
   const [showPolicies, setShowPolicies] = useState(false);
@@ -45,13 +47,24 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handlePayment = (method: 'mercadopago' | 'venue') => {
+  const handlePayment = async (method: 'mercadopago' | 'venue') => {
     if (!validate()) return;
 
     setProcessing(method);
-    setTimeout(() => {
-      onConfirm(method, guestDetails);
-    }, 1000);
+    try {
+      await onConfirm(method, guestDetails);
+      // If successful, the modal will likely close via parent state or navigation
+    } catch (error) {
+      console.error("Booking failed:", error);
+      setProcessing(null); // Reset state on error so user can try again
+      
+      // If it was a concurrency error, refresh the schedules
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        if (slot.centerId) {
+          fetchSchedules(slot.centerId, format(slot.date, 'yyyy-MM-dd'));
+        }
+      }
+    }
   };
 
   return (
@@ -68,7 +81,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               {user ? `Reservando como ${user.name}` : 'Completa tus datos para reservar'}
             </p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white">
+          <button onClick={onClose} className="text-slate-400 hover:text-white" disabled={processing !== null}>
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -101,6 +114,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     value={guestDetails.name}
                     onChange={e => setGuestDetails({ ...guestDetails, name: e.target.value })}
                     placeholder="Juan Pérez"
+                    disabled={processing !== null}
                   />
                   {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
                 </div>
@@ -112,6 +126,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     value={guestDetails.email}
                     onChange={e => setGuestDetails({ ...guestDetails, email: e.target.value })}
                     placeholder="juan@ejemplo.com"
+                    disabled={processing !== null}
                   />
                   {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                   <p className="text-xs text-slate-500 mt-1">Enviaremos el comprobante a este correo.</p>
@@ -126,6 +141,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 value={guestDetails.phone}
                 onChange={e => setGuestDetails({ ...guestDetails, phone: e.target.value })}
                 placeholder="+56 9 1234 5678"
+                disabled={processing !== null}
               />
               {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
             </div>
@@ -136,6 +152,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   type="button"
                   onClick={() => setShowPolicies(true)}
                   className="flex items-center gap-2 text-slate-500 hover:text-emerald-600 transition-colors text-sm font-medium"
+                  disabled={processing !== null}
                 >
                   <ShieldAlert className="w-4 h-4" />
                   Ver políticas de cancelación

@@ -8,6 +8,7 @@ import { TimeSlot } from '@/types';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
 import { toast } from 'sonner';
+import axios from 'axios';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -110,7 +111,9 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
             }
         } catch (error) {
             console.error("Error creating bookings:", error);
-            if (successDates.length > 0) {
+            if (axios.isAxiosError(error) && error.response?.status === 409) {
+                toast.error("El horario ya no está disponible. Por favor actualice el calendario.");
+            } else if (successDates.length > 0) {
                 toast.error(`Error parcial: Solo se crearon las primeras ${successDates.length} reservas.`);
             } else {
                 toast.error("Error al realizar la acción. Verifique disponibilidad.");

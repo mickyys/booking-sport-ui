@@ -3,10 +3,11 @@ import { toast } from 'sonner';
 import { useBookingStore } from '../store/useBookingStore';
 import { useBooking } from './useBooking';
 import { UserProfile } from '../types';
+import axios from 'axios';
 
 export const useBookingActions = (user: UserProfile | null) => {
   const router = useRouter();
-  const { createMercadoPagoPayment, createBooking } = useBookingStore();
+  const { createMercadoPagoPayment, createFintocPayment, createBooking } = useBookingStore();
   const {
     slots,
     bookings,
@@ -18,7 +19,7 @@ export const useBookingActions = (user: UserProfile | null) => {
     setSelectedSlot,
   } = useBooking(user);
 
-  const handleConfirmBooking = async (method: 'mercadopago' | 'venue' | 'cash', guestDetails?: any) => {
+  const handleConfirmBooking = async (method: 'mercadopago' | 'fintoc' | 'venue' | 'cash', guestDetails?: any) => {
     if (method === 'mercadopago' && selectedSlot) {
       try {
         const init_point = await createMercadoPagoPayment({
@@ -31,10 +32,38 @@ export const useBookingActions = (user: UserProfile | null) => {
 
         // Redirigir a MercadoPago Checkout
         window.location.href = init_point;
+        return true;
       } catch (error) {
-        toast.error("Error al iniciar el pago con MercadoPago.");
+        if (axios.isAxiosError(error) && error.response?.status === 409) {
+          toast.error("Este horario ya ha sido reservado por otra persona. Por favor elige otro.");
+        } else {
+          toast.error("Error al iniciar el pago con MercadoPago.");
+        }
+        throw error;
       }
-      return;
+    }
+
+    if (method === 'fintoc' && selectedSlot) {
+      try {
+        const redirect_url = await createFintocPayment({
+          court_id: selectedSlot.courtId,
+          date: selectedSlot.date.toISOString(),
+          hour: selectedSlot.date.getHours(),
+          guest_details: guestDetails,
+          user_id: user?.id,
+        });
+
+        // Redirigir a Fintoc Checkout
+        window.location.href = redirect_url;
+        return true;
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 409) {
+          toast.error("Este horario ya ha sido reservado por otra persona. Por favor elige otro.");
+        } else {
+          toast.error("Error al iniciar el pago con Fintoc.");
+        }
+        throw error;
+      }
     }
 
     if (method === 'venue' && selectedSlot) {
@@ -50,10 +79,15 @@ export const useBookingActions = (user: UserProfile | null) => {
         toast.success("¡Reserva confirmada exitosamente!");
         setSelectedSlot(null);
         router.push('/');
+        return true;
       } catch (error) {
-        toast.error("Error al confirmar la reserva.");
+        if (axios.isAxiosError(error) && error.response?.status === 409) {
+          toast.error("Este horario ya ha sido reservado por otra persona. Por favor elige otro.");
+        } else {
+          toast.error("Error al confirmar la reserva.");
+        }
+        throw error;
       }
-      return;
     }
 
     // Fallback for other methods or mock logic
@@ -64,7 +98,9 @@ export const useBookingActions = (user: UserProfile | null) => {
       } else {
         router.push('/');
       }
+      return true;
     }
+    return false;
   };
 
   return {
