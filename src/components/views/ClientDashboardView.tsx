@@ -48,7 +48,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user: userProp
             try {
                 const token = await getAccessTokenSilently({
                     authorizationParams: {
-                        audience: (import.meta as any).env.VITE_APP_AUTH0_AUDIENCE,
+                        audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
                         scope: "openid profile email"
                     }
                 });
