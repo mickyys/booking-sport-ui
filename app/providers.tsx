@@ -14,7 +14,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       domain={domain}
       clientId={clientId}
       authorizationParams={{
-        redirect_uri: typeof window !== 'undefined' ? window.location.origin : undefined
+        redirect_uri: typeof window !== 'undefined' ? window.location.origin : undefined,
+        audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE
       }}
     >
       {children}
