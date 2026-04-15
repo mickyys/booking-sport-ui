@@ -1,5 +1,4 @@
 "use client";
-"use client";
 import React from 'react';
 import { Calendar, DollarSign, AlertCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -255,7 +254,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         {booking.court_name || courts.find(c => c.id === booking.courtId)?.name}
                                     </td>
                                     <td className="px-6 py-4 text-slate-600">
-                                        <div>{format(parseISO(booking.date), "d MMM, HH:mm", { locale: es })}</div>
+<div>{format(parseISO(booking.date), "d MMM, HH:mm", { locale: es })}</div>
                                         {booking.isPartialPayment && (
                                             <div className="mt-1 flex flex-col gap-0.5">
                                                 <div className="flex justify-between w-full gap-2">

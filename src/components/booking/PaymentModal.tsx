@@ -36,7 +36,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   });
   const [errors, setErrors] = useState<Partial<GuestDetails>>({});
   const [payPartial, setPayPartial] = useState(false);
-  const hour = slot.date.getHours();
+
   // Determine if partial payment is available for this slot
   const isPartialAvailable = (() => {
     if (!center) return false;
@@ -67,12 +67,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     setProcessing(method);
     try {
       await onConfirm(method, guestDetails, payPartial);
-      // If successful, the modal will likely close via parent state or navigation
     } catch (error) {
       console.error("Booking failed:", error);
-      setProcessing(null); // Reset state on error so user can try again
+      setProcessing(null);
       
-      // If it was a concurrency error, refresh the schedules
       if (axios.isAxiosError(error) && error.response?.status === 409) {
         if (slot.centerId) {
           fetchSchedules(slot.centerId, format(slot.date, 'yyyy-MM-dd'));
@@ -176,47 +174,73 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           </div>
 
           <div className="space-y-3 pt-2 border-t border-slate-100">
-
-          {isPartialAvailable && (
-            <div className="mb-6 bg-blue-50/50 border border-blue-100 rounded-xl p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm font-bold text-slate-900">¿Pagar solo el abono ahora?</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setPayPartial(!payPartial)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                    payPartial ? 'bg-blue-600' : 'bg-slate-200'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      payPartial ? 'translate-x-6' : 'translate-x-1'
+            {isPartialAvailable && (
+              <div className="mb-6 bg-blue-50/50 border border-blue-100 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-bold text-slate-900">¿Pagar solo el abono ahora?</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPayPartial(!payPartial)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                      payPartial ? 'bg-blue-600' : 'bg-slate-200'
                     }`}
-                  />
-                </button>
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        payPartial ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500 mb-3">
+                  {payPartial
+                    ? `Pagarás $${partialAmount.toLocaleString('es-CL')} ahora y $${(slot.price - partialAmount).toLocaleString('es-CL')} en el club.`
+                    : 'Pagarás el total de la reserva ahora.'}
+                </p>
+                <div className="flex justify-between items-center pt-2 border-t border-blue-100/50">
+                  <span className="text-xs font-medium text-slate-600 uppercase tracking-wider">Monto a pagar:</span>
+                  <span className="text-lg font-black text-blue-700">
+                    ${(payPartial ? partialAmount : slot.price).toLocaleString('es-CL')}
+                  </span>
+                </div>
               </div>
-              <p className="text-xs text-slate-500 mb-3">
-                {payPartial
-                  ? `Pagarás $${partialAmount.toLocaleString('es-CL')} ahora y $${(slot.price - partialAmount).toLocaleString('es-CL')} en el club.`
-                  : 'Pagarás el total de la reserva ahora.'}
-              </p>
-              <div className="flex justify-between items-center pt-2 border-t border-blue-100/50">
-                <span className="text-xs font-medium text-slate-600 uppercase tracking-wider">Monto a pagar:</span>
-                <span className="text-lg font-black text-blue-700">
-                  ${(payPartial ? partialAmount : slot.price).toLocaleString('es-CL')}
-                </span>
-              </div>
-            </div>
-          )}
+            )}
 
             <p className="text-sm font-medium text-slate-700 mb-2">
-                {slot.paymentRequired ? 'Selecciona medio de pago:' : slot.paymentOptional ? 'Pago opcional — puedes pagar ahora o confirmar sin pagar' : 'Confirma tu reserva:'}
-              </p>
+              {slot.paymentRequired ? 'Selecciona medio de pago:' : slot.paymentOptional ? 'Pago opcional — puedes pagar ahora o confirmar sin pagar' : 'Confirma tu reserva:'}
+            </p>
 
-              {slot.paymentRequired && (
+            {slot.paymentRequired && (
+              <button
+                disabled={processing !== null}
+                onClick={() => handlePayment('mercadopago')}
+                className={`w-full group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all ${processing === 'mercadopago'
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-slate-100 hover:border-blue-500 hover:bg-blue-50/30'
+                  }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                    <CreditCard className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <span className="block font-bold text-slate-800 group-hover:text-blue-700">Pagar con MercadoPago</span>
+                    <span className="text-xs text-slate-500">Crédito, Débito o Prepago</span>
+                  </div>
+                </div>
+                {processing === 'mercadopago' ? (
+                  <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <ChevronRight className="text-slate-300 group-hover:text-blue-500" />
+                )}
+              </button>
+            )}
+
+            {slot.paymentOptional && !slot.paymentRequired && (
+              <div className="space-y-3">
                 <button
                   disabled={processing !== null}
                   onClick={() => handlePayment('mercadopago')}
@@ -230,8 +254,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                       <CreditCard className="w-5 h-5" />
                     </div>
                     <div className="text-left">
-                      <span className="block font-bold text-slate-800 group-hover:text-blue-700">Pagar con MercadoPago</span>
-                      <span className="text-xs text-slate-500">Crédito, Débito o Prepago</span>
+                      <span className="block font-bold text-slate-800 group-hover:text-blue-700">Pagar con MercadoPago (opcional)</span>
+                      <span className="text-xs text-slate-500">Crédito, Débito o dinero en cuenta</span>
                     </div>
                   </div>
                   {processing === 'mercadopago' ? (
@@ -240,65 +264,38 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     <ChevronRight className="text-slate-300 group-hover:text-blue-500" />
                   )}
                 </button>
-              )}
 
-              {slot.paymentOptional && !slot.paymentRequired && (
-                <div className="space-y-3">
-                  <button
-                    disabled={processing !== null}
-                    onClick={() => handlePayment('mercadopago')}
-                    className={`w-full group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all ${processing === 'mercadopago'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-slate-100 hover:border-blue-500 hover:bg-blue-50/30'
-                      }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                        <CreditCard className="w-5 h-5" />
-                      </div>
-                      <div className="text-left">
-                        <span className="block font-bold text-slate-800 group-hover:text-blue-700">Pagar con MercadoPago (opcional)</span>
-                        <span className="text-xs text-slate-500">Crédito, Débito o dinero en cuenta</span>
-                      </div>
-                    </div>
-                    {processing === 'mercadopago' ? (
-                      <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <ChevronRight className="text-slate-300 group-hover:text-blue-500" />
-                    )}
-                  </button>
-
-                  <button
-                    disabled={processing !== null}
-                    onClick={() => handlePayment('venue')}
-                    className={`w-full group relative flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white ${processing === 'venue' ? 'opacity-70' : ''
-                      }`}
-                  >
-                    <span className="font-bold text-lg">Confirmar Reserva (sin pagar)</span>
-                    {processing === 'venue' ? (
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <ChevronRight className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
-              )}
-
-              {!slot.paymentRequired && !slot.paymentOptional && (
                 <button
                   disabled={processing !== null}
                   onClick={() => handlePayment('venue')}
                   className={`w-full group relative flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white ${processing === 'venue' ? 'opacity-70' : ''
                     }`}
                 >
-                  <span className="font-bold text-lg">Confirmar Reserva</span>
+                  <span className="font-bold text-lg">Confirmar Reserva (sin pagar)</span>
                   {processing === 'venue' ? (
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <ChevronRight className="w-5 h-5" />
                   )}
                 </button>
-              )}
+              </div>
+            )}
+
+            {!slot.paymentRequired && !slot.paymentOptional && (
+              <button
+                disabled={processing !== null}
+                onClick={() => handlePayment('venue')}
+                className={`w-full group relative flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white ${processing === 'venue' ? 'opacity-70' : ''
+                  }`}
+              >
+                <span className="font-bold text-lg">Confirmar Reserva</span>
+                {processing === 'venue' ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <ChevronRight className="w-5 h-5" />
+                )}
+              </button>
+            )}
           </div>
 
           <div className="mt-6 flex items-start gap-2 text-xs text-slate-400 bg-slate-50 p-3 rounded-lg">

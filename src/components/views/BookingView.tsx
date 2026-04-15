@@ -58,7 +58,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
         // ignore invalid parse
       }
     }
-  }, [location.search]);
+  }, []);
 
   // Efecto para recargar horarios cuando cambia el día o el centro
   useEffect(() => {
@@ -127,7 +127,8 @@ export const BookingView: React.FC<BookingViewProps> = ({
           status: status,
           price: slot.price,
           paymentRequired: slot.paymentRequired,
-          paymentOptional: slot.paymentOptional
+          paymentOptional: slot.paymentOptional,
+          partialPaymentEnabled: slot.partialPaymentEnabled
         });
       });
     });

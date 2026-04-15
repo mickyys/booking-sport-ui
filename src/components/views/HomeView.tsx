@@ -1,5 +1,4 @@
 "use client";
-"use client";
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
@@ -23,6 +22,27 @@ const SportCenterSearchPage: React.FC = () => {
   const [selectedCity, setSelectedCity] = useState('Todas');
   const [selectedHour, setSelectedHour] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchTerm(value);
+    setHasInteracted(true);
+  }, []);
+
+  const handleCityChange = useCallback((value: string) => {
+    setSelectedCity(value);
+    setHasInteracted(true);
+  }, []);
+
+  const handleHourChange = useCallback((value: string) => {
+    setSelectedHour(value);
+    setHasInteracted(true);
+  }, []);
+
+  const handleDateChange = useCallback((value: string) => {
+    setSelectedDate(value);
+    setHasInteracted(true);
+  }, []);
 
   const todayISO = useMemo(() => new Date().toISOString().split('T')[0], []);
   const maxDateISO = useMemo(() => {
@@ -59,6 +79,8 @@ const SportCenterSearchPage: React.FC = () => {
 
   // Fetch sport centers when filters change (server-side filtering)
   useEffect(() => {
+    if (!hasInteracted) return;
+    
     const hourParam = selectedHour ? Number(selectedHour.split(':')[0]) : undefined;
     const cityParam = selectedCity && selectedCity !== 'Todas' ? selectedCity : undefined;
 
@@ -68,7 +90,7 @@ const SportCenterSearchPage: React.FC = () => {
       date: selectedDate || undefined,
       hour: hourParam,
     });
-  }, [searchTerm, selectedCity, selectedHour, selectedDate, fetchSportCenters]);
+  }, [searchTerm, selectedCity, selectedHour, selectedDate, fetchSportCenters, hasInteracted]);
 
   if (isLoading && sportCenters.length === 0) {
     return (
@@ -84,7 +106,7 @@ const SportCenterSearchPage: React.FC = () => {
       <SearchHero>
         <SearchBar
           searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
+          onSearchChange={handleSearchChange}
           onToggleFilters={() => setShowFilters(!showFilters)}
           showFilters={showFilters}
           hasActiveFilters={hasActiveFilters}
@@ -92,12 +114,12 @@ const SportCenterSearchPage: React.FC = () => {
           <SearchFilters
             cities={cities}
             selectedCity={selectedCity}
-            onCityChange={setSelectedCity}
+            onCityChange={handleCityChange}
             hours={availableHours}
             selectedHour={selectedHour}
-            onHourChange={setSelectedHour}
+            onHourChange={handleHourChange}
             selectedDate={selectedDate}
-            onDateChange={setSelectedDate}
+            onDateChange={handleDateChange}
             minDate={todayISO}
             maxDate={maxDateISO}
             showMobileFilters={showFilters}

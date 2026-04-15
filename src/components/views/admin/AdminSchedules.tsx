@@ -178,15 +178,8 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
         const slot = schedule.slots.find((s: any) => s.hour === hour && (s.minutes || 0) === minutes);
         if (!slot) return;
 
-        // Cycle through: null (Inherit) -> true (On) -> false (Off)
-        let nextValue;
-        if (slot.partialPaymentEnabled === undefined || slot.partialPaymentEnabled === null) {
-            nextValue = true;
-        } else if (slot.partialPaymentEnabled === true) {
-            nextValue = false;
-        } else {
-            nextValue = null;
-        }
+        // Toggle between true and false
+        const nextValue = slot.partialPaymentEnabled === true ? false : true;
 
         const key = `${courtId}-${hour}-${minutes || 0}`;
         setLoadingSlots(prev => ({ ...prev, [key]: true }));
@@ -433,9 +426,8 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                                     <div className="flex items-center justify-between px-1">
                                                         <div className="flex flex-col">
                                                             <label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Abonos</label>
-                                                            <span className="text-[10px] text-slate-400 -mt-1">
-                                                                {slot.partialPaymentEnabled === true ? 'Activado' :
-                                                                 slot.partialPaymentEnabled === false ? 'Desactivado' : 'Heredar'}
+<span className="text-[10px] text-slate-400 -mt-1">
+                                                                {slot.partialPaymentEnabled === true ? 'Activado' : 'Desactivado'}
                                                             </span>
                                                         </div>
                                                         <button
@@ -443,14 +435,12 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                                             onClick={() => handleTogglePartialPayment(court.id, slot.hour, slot.minutes || 0)}
                                                             disabled={!slot.enabled}
                                                             className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors focus:outline-none scale-90 ${
-                                                                slot.partialPaymentEnabled === true ? 'bg-blue-500' :
-                                                                slot.partialPaymentEnabled === false ? 'bg-slate-400' : 'bg-slate-200'
+                                                                slot.partialPaymentEnabled === true ? 'bg-blue-500' : 'bg-slate-300'
                                                             }`}
                                                         >
                                                             <span
                                                                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                                                    slot.partialPaymentEnabled === true ? 'translate-x-6' :
-                                                                    slot.partialPaymentEnabled === false ? 'translate-x-1' : 'translate-x-3.5'
+                                                                    slot.partialPaymentEnabled === true ? 'translate-x-6' : 'translate-x-1'
                                                                 }`}
                                                             />
                                                         </button>

@@ -222,28 +222,26 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                                 </button>
                             </div>
 
-                            {partialPaymentEnabled && (
-                                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                                        <Percent className="w-4 h-4 inline mr-1.5 text-slate-400" />
-                                        Porcentaje de abono requerido
-                                    </label>
-                                    <div className="flex items-center gap-3">
-                                        <input
-                                            type="number"
-                                            min={1}
-                                            max={99}
-                                            value={partialPaymentPercent}
-                                            onChange={(e) => setPartialPaymentPercent(Math.max(1, Math.min(99, Number(e.target.value))))}
-                                            className="w-28 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-center text-lg font-bold"
-                                        />
-                                        <span className="text-sm text-slate-600">% del total</span>
-                                    </div>
-                                    <p className="mt-1.5 text-xs text-slate-500">
-                                        El usuario pagará el {partialPaymentPercent}% al momento de reservar y el {100 - partialPaymentPercent}% restante en el club.
-                                    </p>
+                            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    <Percent className="w-4 h-4 inline mr-1.5 text-slate-400" />
+                                    Porcentaje de abono requerido
+                                </label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        max={99}
+                                        value={partialPaymentPercent}
+                                        onChange={(e) => setPartialPaymentPercent(Math.max(1, Math.min(99, Number(e.target.value))))}
+                                        className="w-28 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-center text-lg font-bold"
+                                    />
+                                    <span className="text-sm text-slate-600">% del total</span>
                                 </div>
-                            )}
+                                <p className="mt-1.5 text-xs text-slate-500">
+                                    El usuario pagará el {partialPaymentPercent}% al momento de reservar y el {100 - partialPaymentPercent}% restante en el club.
+                                </p>
+                            </div>
                         </div>
                     </div>
 

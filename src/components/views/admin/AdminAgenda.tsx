@@ -311,6 +311,17 @@ const SlotCard: React.FC<{ slot: any, onPayBalance: (slot: any) => void, onUndoB
     const isPresential = slot.payment_method === 'presential';
     const isInternal = isInternalBlock || isInternalReserva || isPresential;
 
+    console.log("Render SlotCard:", slot.hour, "Status:", slot.status, "Internal:", isInternal);
+    console.log("Slot details:", {
+        customer_name: slot.customer_name,
+        customer_phone: slot.customer_phone,
+        customer_email: slot.customer_email,
+        booking_code: slot.booking_code,
+        price: slot.price,
+        status: slot.status,
+        payment_method: slot.payment_method,
+    });
+
     if (isBooked) {
         return (
             <div className={`p-4 rounded-2xl border space-y-2 ${slot.status === 'passed_booked' ? 'bg-slate-50 border-slate-200 opacity-75' : 'bg-emerald-50 border-emerald-100'}`}>
