@@ -21,12 +21,14 @@ interface AdminCourtsProps {
     courts: Court[];
     onSaveCourt: (court: Court) => void;
     onDeleteCourt: (courtId: number | string) => void;
+    currentSportCenter?: { id?: string; _id?: string; name?: string } | null;
 }
 
 export const AdminCourts: React.FC<AdminCourtsProps> = ({ 
     courts, 
     onSaveCourt, 
-    onDeleteCourt 
+    onDeleteCourt,
+    currentSportCenter
 }) => {
     const [editingCourt, setEditingCourt] = useState<Court | null>(null);
     const [showCourtForm, setShowCourtForm] = useState(false);
@@ -104,6 +106,7 @@ export const AdminCourts: React.FC<AdminCourtsProps> = ({
                         court={editingCourt}
                         onClose={() => { setShowCourtForm(false); setEditingCourt(null); }}
                         onSave={handleSaveCourt}
+                        currentSportCenter={currentSportCenter}
                     />
                 )}
             </AnimatePresence>

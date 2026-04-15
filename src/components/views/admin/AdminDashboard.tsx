@@ -268,7 +268,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                     </span>
                                                 </div>
                                                 {booking.partialPaymentPaid ? (
-                                                    <span className="text-[8px] font-bold text-emerald-600 uppercase mt-0.5 bg-emerald-50 px-1 py-0.5 rounded text-center">Saldado</span>
+                                                    <span className="text-[8px] font-bold text-emerald-600 uppercase mt-0.5 bg-emerald-50 px-1 py-0.5 rounded text-center">Pagado</span>
                                                 ) : (
                                                     <span className="text-[8px] font-bold text-rose-500 uppercase mt-0.5 bg-rose-50 px-1 py-0.5 rounded text-center">Pendiente</span>
                                                 )}
@@ -379,7 +379,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 </span>
                                             </div>
                                             <span className={`text-[8px] font-black uppercase self-start px-1.5 py-0.5 rounded ${booking.partialPaymentPaid ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'}`}>
-                                                {booking.partialPaymentPaid ? 'Saldado' : 'Pendiente'}
+                                                {booking.partialPaymentPaid ? 'Pagado' : 'Pendiente'}
                                             </span>
                                         </div>
                                     )}

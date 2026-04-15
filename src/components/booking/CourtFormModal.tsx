@@ -10,18 +10,29 @@ interface CourtFormModalProps {
   court: Court | null;
   onClose: () => void;
   onSave: (court: Court) => void;
+  currentSportCenter?: { id?: string; _id?: string; name?: string } | null;
 }
 
-const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave }) => {
-  const { adminCourts, createAdminCourt, updateAdminCourt } = useBookingStore();
+const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave, currentSportCenter: centerFromProps }) => {
+  const { adminCourts, createAdminCourt, updateAdminCourt, selectedCenterId } = useBookingStore();
   const { getAccessTokenSilently } = useAuth0();
 
-  // Handle default centerId logic safely dealing with different ID formats
-  const getDefaultCenterId = () => {
+  const getCenterId = () => {
+    if (centerFromProps?.id) return centerFromProps.id;
+    if (centerFromProps?._id) return centerFromProps._id;
     if (adminCourts && adminCourts.length > 0) {
       return adminCourts[0].sport_center?.id || adminCourts[0].sport_center?._id || '';
     }
+    if (selectedCenterId) return selectedCenterId;
     return '';
+  };
+
+  const getCenterName = () => {
+    if (centerFromProps?.name) return centerFromProps.name;
+    if (adminCourts && adminCourts.length > 0) {
+      return adminCourts[0].sport_center?.name || 'Sin nombre';
+    }
+    return 'No hay centros disponibles';
   };
 
   const [formData, setFormData] = useState<Court>(
@@ -30,13 +41,13 @@ const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave 
       name: '',
       type: '',
       image: '',
-      centerId: getDefaultCenterId()
+      centerId: getCenterId()
     }
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.type || !formData.centerId) {
+    if (!formData.name || !formData.type) {
       toast.error('Por favor completa todos los campos requeridos');
       return;
     }
@@ -60,7 +71,7 @@ const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave 
       } else {
         // Enlazar con el backend real para creación a través del store
         const payload = {
-          sport_center_id: formData.centerId,
+          sport_center_id: getCenterId(),
           name: formData.name,
           description: formData.type // Usamos type como description para hacer coincidir el esquema
         };
@@ -90,27 +101,6 @@ const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave 
           </button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Centro Deportivo</label>
-            <select
-              disabled={!!court}
-              className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-emerald-200 outline-none bg-white disabled:bg-slate-50"
-              value={formData.centerId}
-              onChange={e => setFormData({ ...formData, centerId: e.target.value })}
-            >
-              {(!adminCourts || adminCourts.length === 0) && (
-                <option value="">No hay centros disponibles</option>
-              )}
-              {adminCourts?.map((ac: any) => {
-                const id = ac.sport_center?.id || ac.sport_center?._id;
-                return (
-                  <option key={id} value={id}>
-                    {ac.sport_center?.name}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Nombre Completo</label>
             <input

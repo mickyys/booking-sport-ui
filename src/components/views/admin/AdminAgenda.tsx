@@ -349,7 +349,7 @@ const SlotCard: React.FC<{ slot: any, onPayBalance: (slot: any) => void, onUndoB
                     <div className="pt-1 mt-1 border-t border-emerald-100/50 flex flex-col gap-1">
                         <div className="flex justify-between items-center">
                             <span className={`text-[9px] font-bold uppercase ${isInternal ? 'text-orange-600' : 'text-emerald-600'}`}>
-                                {slot.isPartialPayment ? (slot.partialPaymentPaid ? 'Parcial Saldado' : 'Parcial Pendiente') : (isInternal ? 'Presencial' : 'Online')}
+                                {slot.isPartialPayment ? (slot.partialPaymentPaid ? 'Parcial Pagado' : 'Parcial Pendiente') : (isInternal ? 'Presencial' : 'Online')}
                             </span>
                             <span className="text-[10px] font-black text-slate-900">
                                 ${slot.price?.toLocaleString('es-CL')}
@@ -460,7 +460,7 @@ const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[], onPayBalance: (slo
                                                     <p className="text-[10px] font-black">{slot.hour}:00</p>
                                                 </div>
                                                 <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase ${isInternal ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                                                    {slot.isPartialPayment ? (slot.partialPaymentPaid ? 'Saldado' : 'Pendiente') : (isInternal ? 'Presencial' : 'Online')}
+                                                    {slot.isPartialPayment ? (slot.partialPaymentPaid ? 'Pagado' : 'Pendiente') : (isInternal ? 'Presencial' : 'Online')}
                                                 </span>
                                             </div>
 

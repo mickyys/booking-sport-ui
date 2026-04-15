@@ -138,8 +138,8 @@ export const AdminSubscriptionsSubPage: React.FC = () => {
 };
 
 export const AdminCourtsSubPage: React.FC = () => {
-    const { courts, onSaveCourt, onDeleteCourt } = useAdminPanel();
-    return <AdminCourts courts={courts} onSaveCourt={onSaveCourt} onDeleteCourt={onDeleteCourt} />;
+    const { courts, onSaveCourt, onDeleteCourt, currentSportCenter } = useAdminPanel();
+    return <AdminCourts courts={courts} onSaveCourt={onSaveCourt} onDeleteCourt={onDeleteCourt} currentSportCenter={currentSportCenter} />;
 };
 
 export const AdminSchedulesSubPage: React.FC = () => {
