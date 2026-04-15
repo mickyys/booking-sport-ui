@@ -47,7 +47,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   })();
 
   const partialAmount = isPartialAvailable && center?.partialPaymentPercent
-    ? Math.round(slot.price * (center.partialPaymentPercent || 0 / 100))
+    ? Math.round(slot.price * ((center.partialPaymentPercent || 0) / 100))
     : 0;
 
 
