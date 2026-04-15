@@ -12,6 +12,7 @@ export interface ScheduleSlot {
   series_id?: string;
   paymentRequired?: boolean;
   paymentOptional?: boolean;
+  partialPaymentEnabled?: boolean | null;
 }
 
 export interface CourtWithSchedule {
@@ -41,6 +42,8 @@ export interface SportCenter {
   retentionPercent?: number;
   courts?: number;
   services: string[];
+  partialPaymentEnabled?: boolean;
+  partialPaymentPercent?: number;
 }
 
 export interface Court {
@@ -61,6 +64,7 @@ export interface TimeSlot {
   price: number;
   paymentRequired?: boolean;
   paymentOptional?: boolean;
+  partialPaymentEnabled?: boolean | null;
 }
 
 export interface Booking {
@@ -91,6 +95,10 @@ export interface Booking {
   paymentMethod: 'mercadopago' | 'fintoc' | 'cash'
   payment_method?: string;
   fintocPaymentIntentId?: string
+  paidAmount?: number;
+  pendingAmount?: number;
+  isPartialPayment?: boolean;
+  partialPaymentPaid?: boolean;
 
   // cliente
   userName?: string;
@@ -189,4 +197,8 @@ export interface BookingDTO {
   customer_phone: string
   created_at: string
   updated_at: string
+  paid_amount?: number;
+  pending_amount?: number;
+  is_partial_payment?: boolean;
+  partial_payment_paid?: boolean;
 }

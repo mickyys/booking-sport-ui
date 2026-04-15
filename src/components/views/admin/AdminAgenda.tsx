@@ -1,12 +1,13 @@
 "use client";
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, User, Mail, Hash, Ban, LayoutDashboard, CalendarRange } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, User, Mail, Hash, Ban, LayoutDashboard, CalendarRange, CreditCard } from 'lucide-react';
 import { format, addDays, subDays, startOfToday, isSameDay, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
 import api from '@/api/axiosInstance';
+import { toast } from 'sonner';
 
 interface AdminAgendaProps {
     courts: any[];
@@ -263,6 +264,9 @@ const SlotCard: React.FC<{ slot: any }> = ({ slot }) => {
 };
 
 const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[] }> = ({ day, schedule }) => {
+    const { payBalance } = useBookingStore();
+    const { getAccessTokenSilently } = useAuth0();
+    const [isPaying, setIsPaying] = useState<string | null>(null);
     const [activeSlot, setActiveSlot] = useState<any | null>(null);
 
     return (
@@ -280,6 +284,21 @@ const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[] }> = ({ day, schedu
                         const isInternalBlock = slot.payment_method === 'internal_block';
                         const isInternalReserva = slot.payment_method === 'internal_reservation';
                         const isInternal = isInternalBlock || isInternalReserva;
+                                            const handlePayBalance = async (e: React.MouseEvent) => {
+                                                e.stopPropagation();
+                                                if (!slot.booking_id) return;
+                                                setIsPaying(slot.booking_id);
+                                                try {
+                                                    await payBalance(slot.booking_id, getAccessTokenSilently);
+                                                    toast.success("Saldo cobrado con éxito");
+                                                    slot.partialPaymentPaid = true;
+                                                } catch (error) {
+                                                    toast.error("Error al cobrar saldo");
+                                                } finally {
+                                                    setIsPaying(null);
+                                                }
+                                            };
+
 
                         return (
                             <div
@@ -308,10 +327,37 @@ const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[] }> = ({ day, schedu
                                                 </span>
                                             </div>
 
-                                            <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl mb-1">
-                                                <span className="text-[9px] text-slate-500 font-bold uppercase">Valor Hora</span>
+                                                                                        <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl mb-1">
+                                                <span className="text-[9px] text-slate-500 font-bold uppercase">Valor Total</span>
                                                 <span className="text-[11px] font-black text-slate-900">${slot.price?.toLocaleString('es-CL')}</span>
                                             </div>
+
+                                            {slot.isPartialPayment && (
+                                                <div className="space-y-1.5 p-2 bg-blue-50/30 rounded-xl border border-blue-50">
+                                                    <div className="flex justify-between text-[8px]">
+                                                        <span className="text-slate-500">Pagado Online:</span>
+                                                        <span className="font-bold text-emerald-600">${slot.paidAmount?.toLocaleString('es-CL')}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-[8px]">
+                                                        <span className="text-slate-500">Pendiente:</span>
+                                                        <span className="font-bold text-rose-600">${slot.pendingAmount?.toLocaleString('es-CL')}</span>
+                                                    </div>
+                                                    {slot.partialPaymentPaid ? (
+                                                        <div className="py-1 text-center bg-emerald-50 text-emerald-600 rounded-lg text-[8px] font-bold uppercase">
+                                                            Saldo Pagado
+                                                        </div>
+                                                    ) : (
+                                                        <button
+                                                            onClick={handlePayBalance}
+                                                            disabled={isPaying === slot.booking_id}
+                                                            className="w-full py-1.5 bg-slate-900 text-white rounded-lg text-[8px] font-bold uppercase hover:bg-slate-800 disabled:opacity-50"
+                                                        >
+                                                            {isPaying === slot.booking_id ? '...' : 'Cobrar Saldo'}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+
 
                                             {isInternalReserva && <p className="text-[8px] font-bold text-orange-600 uppercase mb-1">Reserva Interna</p>}
                                             <div className="flex items-center gap-2">

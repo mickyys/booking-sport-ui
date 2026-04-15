@@ -255,7 +255,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         {booking.court_name || courts.find(c => c.id === booking.courtId)?.name}
                                     </td>
                                     <td className="px-6 py-4 text-slate-600">
-                                        {format(parseISO(booking.date), "d MMM, HH:mm", { locale: es })}
+                                        <div>{format(parseISO(booking.date), "d MMM, HH:mm", { locale: es })}</div>
+                                        {booking.isPartialPayment && (
+                                            <div className="mt-1 flex flex-col gap-0.5">
+                                                <span className="text-[10px] font-bold text-emerald-600 uppercase">Abono: ${booking.paidAmount?.toLocaleString('es-CL')}</span>
+                                                <span className="text-[10px] font-bold text-rose-500 uppercase">Pend: ${booking.pendingAmount?.toLocaleString('es-CL')}</span>
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
@@ -352,6 +358,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     <p className="text-xs font-medium text-slate-700">
                                         {format(parseISO(booking.date), "d MMM, HH:mm", { locale: es })}
                                     </p>
+                                    {booking.isPartialPayment && (
+                                        <div className="mt-1 flex gap-2">
+                                            <span className="text-[9px] font-bold text-emerald-600 uppercase">Pagado: ${booking.paidAmount?.toLocaleString('es-CL')}</span>
+                                            <span className="text-[9px] font-bold text-rose-500 uppercase">Debe: ${booking.pendingAmount?.toLocaleString('es-CL')}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

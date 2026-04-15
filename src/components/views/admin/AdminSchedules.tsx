@@ -171,6 +171,36 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
         }
     };
 
+    const handleTogglePartialPayment = async (courtId: string, hour: number, minutes: number) => {
+        const schedule = schedules.find(s => s.courtId === courtId);
+        if (!schedule) return;
+
+        const slot = schedule.slots.find((s: any) => s.hour === hour && (s.minutes || 0) === minutes);
+        if (!slot) return;
+
+        // Cycle through: null (Inherit) -> true (On) -> false (Off)
+        let nextValue;
+        if (slot.partialPaymentEnabled === undefined || slot.partialPaymentEnabled === null) {
+            nextValue = true;
+        } else if (slot.partialPaymentEnabled === true) {
+            nextValue = false;
+        } else {
+            nextValue = null;
+        }
+
+        const key = `${courtId}-${hour}-${minutes || 0}`;
+        setLoadingSlots(prev => ({ ...prev, [key]: true }));
+
+        try {
+            await onUpdateScheduleSlot(courtId, { ...slot, partialPaymentEnabled: nextValue });
+        } catch (err) {
+            // Error handling
+        } finally {
+            setLoadingSlots(prev => ({ ...prev, [key]: false }));
+        }
+    };
+
+
     const handlePriceChange = (courtId: string, hour: number, minutes: number, price: number) => {
         const schedule = schedules.find(s => s.courtId === courtId);
         if (!schedule) return;
@@ -398,6 +428,34 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                                             <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
                                                         </label>
                                                     </div>
+
+                                                    {/* Partial Payment Toggle */}
+                                                    <div className="flex items-center justify-between px-1">
+                                                        <div className="flex flex-col">
+                                                            <label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Abonos</label>
+                                                            <span className="text-[10px] text-slate-400 -mt-1">
+                                                                {slot.partialPaymentEnabled === true ? 'Activado' :
+                                                                 slot.partialPaymentEnabled === false ? 'Desactivado' : 'Heredar'}
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleTogglePartialPayment(court.id, slot.hour, slot.minutes || 0)}
+                                                            disabled={!slot.enabled}
+                                                            className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors focus:outline-none scale-90 ${
+                                                                slot.partialPaymentEnabled === true ? 'bg-blue-500' :
+                                                                slot.partialPaymentEnabled === false ? 'bg-slate-400' : 'bg-slate-200'
+                                                            }`}
+                                                        >
+                                                            <span
+                                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                                                    slot.partialPaymentEnabled === true ? 'translate-x-6' :
+                                                                    slot.partialPaymentEnabled === false ? 'translate-x-1' : 'translate-x-3.5'
+                                                                }`}
+                                                            />
+                                                        </button>
+                                                    </div>
+
                                                     {/* Payment Optional Toggle */}
                                                     <div className="flex items-center justify-between px-1">
                                                         <label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Pago Opcional</label>

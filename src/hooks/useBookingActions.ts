@@ -19,7 +19,7 @@ export const useBookingActions = (user: UserProfile | null) => {
     setSelectedSlot,
   } = useBooking(user);
 
-  const handleConfirmBooking = async (method: 'mercadopago' | 'fintoc' | 'venue' | 'cash', guestDetails?: any) => {
+  const handleConfirmBooking = async (method: 'mercadopago' | 'fintoc' | 'venue' | 'cash', guestDetails?: any, partial: boolean = false) => {
     if (method === 'mercadopago' && selectedSlot) {
       try {
         const init_point = await createMercadoPagoPayment({
@@ -28,6 +28,7 @@ export const useBookingActions = (user: UserProfile | null) => {
           hour: selectedSlot.date.getHours(),
           guest_details: guestDetails,
           user_id: user?.id,
+          partial,
         });
 
         // Redirigir a MercadoPago Checkout

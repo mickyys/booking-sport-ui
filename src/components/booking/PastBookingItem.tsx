@@ -19,11 +19,22 @@ export const PastBookingItem: React.FC<PastBookingItemProps> = ({ booking }) => 
                 <p className="text-xs text-slate-500">
                     {booking.courtName}
                 </p>
+
+                {booking.isPartialPayment && (
+                    <p className="text-[10px] font-bold text-emerald-600 uppercase mt-1">
+                        Abono: ${booking.paidAmount?.toLocaleString('es-CL')}
+                    </p>
+                )}
             </div>
-            <span className="text-sm font-medium text-slate-600">
-                {booking.price ? `$${booking.price.toLocaleString('es-CL')}` : 
-                 booking.final_price ? `$${booking.final_price.toLocaleString('es-CL')}` : 'N/A'}
-            </span>
+            <div className="text-right">
+                <span className="text-sm font-bold text-slate-600 block">
+                    {booking.price ? `$${booking.price.toLocaleString('es-CL')}` :
+                    booking.final_price ? `$${booking.final_price.toLocaleString('es-CL')}` : 'N/A'}
+                </span>
+                {booking.isPartialPayment && (
+                    <span className="text-[10px] font-medium text-slate-400">Total</span>
+                )}
+            </div>
         </div>
     );
 };

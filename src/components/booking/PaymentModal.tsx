@@ -14,7 +14,7 @@ interface PaymentModalProps {
   slot: TimeSlot;
   court: Court;
   onClose: () => void;
-  onConfirm: (method: 'mercadopago' | 'venue', guestDetails?: GuestDetails) => Promise<boolean | void>;
+  onConfirm: (method: 'mercadopago' | 'venue', guestDetails?: GuestDetails, partial?: boolean) => Promise<boolean | void>;
   user: UserProfile | null;
 }
 
@@ -35,7 +35,21 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     phone: ''
   });
   const [errors, setErrors] = useState<Partial<GuestDetails>>({});
+  const [payPartial, setPayPartial] = useState(false);
   const hour = slot.date.getHours();
+  // Determine if partial payment is available for this slot
+  const isPartialAvailable = (() => {
+    if (!center) return false;
+    // Slot hierarchy: true/false overrides center, null inherits
+    if (slot.partialPaymentEnabled === true) return true;
+    if (slot.partialPaymentEnabled === false) return false;
+    return !!center.partialPaymentEnabled;
+  })();
+
+  const partialAmount = isPartialAvailable && center?.partialPaymentPercent
+    ? Math.round(slot.price * (center.partialPaymentPercent || 0 / 100))
+    : 0;
+
 
   const validate = () => {
     const newErrors: Partial<GuestDetails> = {};
@@ -52,7 +66,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
     setProcessing(method);
     try {
-      await onConfirm(method, guestDetails);
+      await onConfirm(method, guestDetails, payPartial);
       // If successful, the modal will likely close via parent state or navigation
     } catch (error) {
       console.error("Booking failed:", error);
@@ -162,6 +176,42 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           </div>
 
           <div className="space-y-3 pt-2 border-t border-slate-100">
+
+          {isPartialAvailable && (
+            <div className="mb-6 bg-blue-50/50 border border-blue-100 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-bold text-slate-900">¿Pagar solo el abono ahora?</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPayPartial(!payPartial)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                    payPartial ? 'bg-blue-600' : 'bg-slate-200'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      payPartial ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 mb-3">
+                {payPartial
+                  ? `Pagarás $${partialAmount.toLocaleString('es-CL')} ahora y $${(slot.price - partialAmount).toLocaleString('es-CL')} en el club.`
+                  : 'Pagarás el total de la reserva ahora.'}
+              </p>
+              <div className="flex justify-between items-center pt-2 border-t border-blue-100/50">
+                <span className="text-xs font-medium text-slate-600 uppercase tracking-wider">Monto a pagar:</span>
+                <span className="text-lg font-black text-blue-700">
+                  ${(payPartial ? partialAmount : slot.price).toLocaleString('es-CL')}
+                </span>
+              </div>
+            </div>
+          )}
+
             <p className="text-sm font-medium text-slate-700 mb-2">
                 {slot.paymentRequired ? 'Selecciona medio de pago:' : slot.paymentOptional ? 'Pago opcional — puedes pagar ahora o confirmar sin pagar' : 'Confirma tu reserva:'}
               </p>

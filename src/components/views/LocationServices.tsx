@@ -42,7 +42,7 @@ export const LocationServices: React.FC<LocationServicesProps> = ({ selectedCent
     };
 
     const initGoogleMap = async () => {
-        const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+        const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
         if (!key) {
             console.warn('VITE_GOOGLE_MAPS_API_KEY not set');
             return;

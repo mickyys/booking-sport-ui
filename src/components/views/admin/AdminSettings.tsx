@@ -1,7 +1,7 @@
 "use client";
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, Globe, Clock, Percent, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { Settings, Save, Globe, Clock, Percent, AlertTriangle, CheckCircle, Info, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
@@ -15,6 +15,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
     const [slug, setSlug] = useState('');
     const [cancellationHours, setCancellationHours] = useState<number>(3);
     const [retentionPercent, setRetentionPercent] = useState<number>(10);
+    const [partialPaymentEnabled, setPartialPaymentEnabled] = useState<boolean>(false);
+    const [partialPaymentPercent, setPartialPaymentPercent] = useState<number>(50);
     const [loadingData, setLoadingData] = useState(true);
     const { updateSportCenterSettings, fetchSportCenterByID, isLoading } = useBookingStore();
     const { getAccessTokenSilently } = useAuth0();
@@ -30,6 +32,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                     setSlug(center.slug || '');
                     setCancellationHours(center.cancellation_hours ?? 3);
                     setRetentionPercent(center.retention_percent ?? 10);
+                    setPartialPaymentEnabled(center.partialPaymentEnabled ?? false);
+                    setPartialPaymentPercent(center.partialPaymentPercent ?? 50);
                 }
             } finally {
                 setLoadingData(false);
@@ -48,6 +52,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                 slug,
                 cancellation_hours: cancellationHours,
                 retention_percent: retentionPercent,
+                partialPaymentEnabled: partialPaymentEnabled,
+                partialPaymentPercent: partialPaymentPercent,
             }, getAccessTokenSilently);
             toast.success("Configuración actualizada con éxito");
             if (onSave) onSave();
@@ -181,6 +187,63 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                                     )}
                                 </p>
                             </div>
+                        </div>
+                    </div>
+
+
+                    {/* Partial Payment Settings */}
+                    <div className="border-t border-slate-200 pt-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <CreditCard className="w-5 h-5 text-blue-500" />
+                            <h4 className="text-base font-bold text-slate-900">Pagos Parciales (Abonos)</h4>
+                        </div>
+                        <p className="text-sm text-slate-500 mb-5">
+                            Permite que los usuarios paguen solo un porcentaje de la reserva online y el resto en el local.
+                        </p>
+
+                        <div className="space-y-5">
+                            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                <div className="space-y-0.5">
+                                    <label className="text-sm font-bold text-slate-900">Activar pagos parciales</label>
+                                    <p className="text-xs text-slate-500 text-balance">Los usuarios podrán elegir pagar un abono al reservar.</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setPartialPaymentEnabled(!partialPaymentEnabled)}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                                        partialPaymentEnabled ? 'bg-slate-900' : 'bg-slate-200'
+                                    }`}
+                                >
+                                    <span
+                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                            partialPaymentEnabled ? 'translate-x-6' : 'translate-x-1'
+                                        }`}
+                                    />
+                                </button>
+                            </div>
+
+                            {partialPaymentEnabled && (
+                                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        <Percent className="w-4 h-4 inline mr-1.5 text-slate-400" />
+                                        Porcentaje de abono requerido
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            max={99}
+                                            value={partialPaymentPercent}
+                                            onChange={(e) => setPartialPaymentPercent(Math.max(1, Math.min(99, Number(e.target.value))))}
+                                            className="w-28 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-center text-lg font-bold"
+                                        />
+                                        <span className="text-sm text-slate-600">% del total</span>
+                                    </div>
+                                    <p className="mt-1.5 text-xs text-slate-500">
+                                        El usuario pagará el {partialPaymentPercent}% al momento de reservar y el {100 - partialPaymentPercent}% restante en el club.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
