@@ -63,6 +63,39 @@ export const AdminDashboardSubPage: React.FC = () => {
     } = useAdminPanel();
     const { getAccessTokenSilently } = useAuth0();
     const router = useRouter();
+    const lastFetchParams = React.useRef<string>("");
+
+    React.useEffect(() => {
+        const currentParams = JSON.stringify({
+            dashboardPage,
+            dashboardDateFilter,
+            dashboardNameFilter,
+            dashboardCodeFilter,
+            dashboardStatusFilter
+        });
+
+        if (lastFetchParams.current === currentParams) return;
+        lastFetchParams.current = currentParams;
+
+        setIsRefreshing(true);
+        fetchAdminDashboard(
+            getAccessTokenSilently,
+            dashboardPage,
+            10,
+            dashboardDateFilter,
+            dashboardNameFilter,
+            dashboardCodeFilter,
+            dashboardStatusFilter
+        ).finally(() => setIsRefreshing(false));
+    }, [
+        fetchAdminDashboard,
+        getAccessTokenSilently,
+        dashboardPage,
+        dashboardDateFilter,
+        dashboardNameFilter,
+        dashboardCodeFilter,
+        dashboardStatusFilter
+    ]);
 
     return (
         <AdminDashboard

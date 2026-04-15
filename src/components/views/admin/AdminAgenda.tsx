@@ -1,35 +1,90 @@
 "use client";
-"use client";
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, User, Mail, Hash, Ban, LayoutDashboard, CalendarRange, CreditCard } from 'lucide-react';
-import { format, addDays, subDays, startOfToday, isSameDay, parseISO } from 'date-fns';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, User, Mail, Hash, Ban, LayoutDashboard, RotateCcw } from 'lucide-react';
+import { format, addDays, subDays, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
-import api from '@/api/axiosInstance';
 import { toast } from 'sonner';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface AdminAgendaProps {
     courts: any[];
 }
 
 export const AdminAgenda: React.FC<AdminAgendaProps> = ({ courts }) => {
-    const { schedules, fetchSchedules, fetchAdminSchedules, weeklySchedules, selectedCenterId, isLoading: storeLoading } = useBookingStore();
+    const { schedules, fetchSchedules, fetchAdminSchedules, weeklySchedules, selectedCenterId, isLoading: storeLoading, payBalance, undoPayBalance } = useBookingStore();
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
     const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
     const [isWeeklyLoading, setIsWeeklyLoading] = useState(false);
+    
+    // Estados para confirmaciones
+    const [showConfirmPay, setShowConfirmPay] = useState<any | null>(null);
+    const [showConfirmUndo, setShowConfirmUndo] = useState<any | null>(null);
+    const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
     const { getAccessTokenSilently } = useAuth0();
 
+    const handlePayBalanceClick = (slot: any) => {
+        if (!slot.booking_id) return;
+        setShowConfirmPay(slot);
+    };
+
+    const handleUndoPayBalanceClick = (slot: any) => {
+        if (!slot.booking_id) return;
+        setShowConfirmUndo(slot);
+    };
+
+    const handleConfirmPay = async () => {
+        if (!showConfirmPay?.booking_id) return;
+        const bId = showConfirmPay.booking_id;
+        setIsProcessing(bId);
+        try {
+            await payBalance(bId, getAccessTokenSilently);
+            toast.success("Saldo cobrado con éxito");
+            showConfirmPay.partialPaymentPaid = true;
+            showConfirmPay.pendingAmount = 0;
+        } catch (error) {
+            toast.error("Error al cobrar saldo");
+        } finally {
+            setIsProcessing(null);
+            setShowConfirmPay(null);
+        }
+    };
+
+    const handleConfirmUndo = async () => {
+        if (!showConfirmUndo?.booking_id) return;
+        const bId = showConfirmUndo.booking_id;
+        setIsProcessing(bId);
+        try {
+            await undoPayBalance(bId, getAccessTokenSilently);
+            toast.success("Cobro deshecho con éxito");
+            showConfirmUndo.partialPaymentPaid = false;
+            showConfirmUndo.pendingAmount = (showConfirmUndo.price || 0) - (showConfirmUndo.paidAmount || 0);
+        } catch (error) {
+            toast.error("Error al deshacer cobro");
+        } finally {
+            setIsProcessing(null);
+            setShowConfirmUndo(null);
+        }
+    };
+
     useEffect(() => {
         if (selectedCenterId && viewMode === 'daily') {
-            // Usar endpoint admin protegido para obtener detalles de cliente
             (async () => {
                 try {
                     await fetchAdminSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
                 } catch (err) {
-                    // Fallback público si falla (no bloqueamos UI)
                     await fetchSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'));
                 }
             })();
@@ -48,7 +103,6 @@ export const AdminAgenda: React.FC<AdminAgendaProps> = ({ courts }) => {
                         try {
                             await fetchAdminSchedules(selectedCenterId, dateStr, getAccessTokenSilently);
                         } catch (err) {
-                            // fallback público
                             await fetchSchedules(selectedCenterId, dateStr);
                         }
                     })
@@ -103,7 +157,6 @@ export const AdminAgenda: React.FC<AdminAgendaProps> = ({ courts }) => {
                 </div>
             </div>
 
-            {/* Controls */}
             <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2 mr-auto">
                     <button onClick={handlePrevDay} className="p-2 hover:bg-slate-50 rounded-full text-slate-600">
@@ -155,7 +208,13 @@ export const AdminAgenda: React.FC<AdminAgendaProps> = ({ courts }) => {
                                 </div>
                                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                                     {courtSchedule.schedule.map((slot: any, idx: number) => (
-                                        <SlotCard key={idx} slot={slot} />
+                                        <SlotCard 
+                                            key={idx} 
+                                            slot={slot} 
+                                            onPayBalance={handlePayBalanceClick} 
+                                            onUndoBalance={handleUndoPayBalanceClick}
+                                            isProcessing={isProcessing === slot.booking_id} 
+                                        />
                                     ))}
                                 </div>
                             </div>
@@ -177,17 +236,72 @@ export const AdminAgenda: React.FC<AdminAgendaProps> = ({ courts }) => {
                                     key={idx}
                                     day={day}
                                     schedule={court ? court.schedule : []}
+                                    onPayBalance={handlePayBalanceClick}
+                                    onUndoBalance={handleUndoPayBalanceClick}
+                                    isProcessing={isProcessing}
                                 />
                             );
                         })}
                     </div>
                 )
             )}
+
+            {/* Modal Confirmar Pago */}
+            <AlertDialog open={!!showConfirmPay} onOpenChange={(open) => !open && setShowConfirmPay(null)}>
+                <AlertDialogContent className="rounded-[2rem] border-slate-200">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-2xl font-black text-slate-900">Confirmar Pago Presencial</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-500 text-base">
+                            ¿Estás seguro de marcar el saldo pendiente de <span className="font-bold text-slate-900">${showConfirmPay?.pendingAmount?.toLocaleString('es-CL')}</span> como pagado en efectivo/presencial?
+                            <br /><br />
+                            Esta acción actualizará el estado de la reserva y registrará tu usuario como responsable.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-3 sm:gap-2">
+                        <AlertDialogCancel className="rounded-2xl font-bold border-slate-200 hover:bg-slate-50 text-slate-600">
+                            Cancelar
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleConfirmPay}
+                            disabled={!!isProcessing}
+                            className="rounded-2xl font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-200"
+                        >
+                            {isProcessing ? 'Confirmando...' : 'Confirmar Pago'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Modal Deshacer Pago */}
+            <AlertDialog open={!!showConfirmUndo} onOpenChange={(open) => !open && setShowConfirmUndo(null)}>
+                <AlertDialogContent className="rounded-[2rem] border-slate-200">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-2xl font-black text-slate-900">Deshacer Cobro de Saldo</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-500 text-base">
+                            ¿Estás seguro de deshacer el cobro del saldo para esta reserva?
+                            <br /><br />
+                            El saldo volverá a figurar como **pendiente** y se registrará tu usuario como responsable de la modificación.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-3 sm:gap-2">
+                        <AlertDialogCancel className="rounded-2xl font-bold border-slate-200 hover:bg-slate-50 text-slate-600">
+                            Cancelar
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleConfirmUndo}
+                            disabled={!!isProcessing}
+                            className="rounded-2xl font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-100"
+                        >
+                            {isProcessing ? 'Procesando...' : 'Deshacer Cobro'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };
 
-const SlotCard: React.FC<{ slot: any }> = ({ slot }) => {
+const SlotCard: React.FC<{ slot: any, onPayBalance: (slot: any) => void, onUndoBalance: (slot: any) => void, isProcessing: boolean }> = ({ slot, onPayBalance, onUndoBalance, isProcessing }) => {
     const isBooked = slot.status === 'booked' || slot.status === 'reserved' || slot.status === 'passed_booked';
     const isBlocked = slot.status === 'closed';
     const isPassed = slot.status === 'passed' && !isBooked;
@@ -203,7 +317,7 @@ const SlotCard: React.FC<{ slot: any }> = ({ slot }) => {
                 <div className="flex justify-between items-center">
                     <span className={`text-sm font-black ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-700'}`}>{slot.hour}:00</span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${slot.status === 'passed_booked' ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700'}`}>
-                        {isInternalBlock ? 'Bloqueo Interno' : isInternalReserva ? 'Reserva Interna' : (slot.status === 'passed_booked' ? 'Arrendado (Pasado)' : 'Reserva')}
+                        {isInternalBlock ? 'Bloqueo' : isInternalReserva ? 'Interna' : (slot.status === 'passed_booked' ? 'Pasado' : 'Reserva')}
                     </span>
                 </div>
                 <div className="space-y-1">
@@ -213,27 +327,57 @@ const SlotCard: React.FC<{ slot: any }> = ({ slot }) => {
                     </div>
                     {slot.customer_phone && (
                         <div className={`flex items-center gap-2 ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-600'}`}>
-                            <span className="text-[10px] font-bold">TEL:</span>
+                            <span className="text-[10px] font-bold text-slate-400">T:</span>
                             <span className="text-[10px] font-medium truncate">{slot.customer_phone}</span>
-                        </div>
-                    )}
-                    {slot.customer_email && slot.customer_email !== 'admin@internal.com' && (
-                        <div className={`flex items-center gap-2 ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-600'}`}>
-                            <Mail size={12} className="shrink-0" />
-                            <span className="text-[10px] font-medium truncate">{slot.customer_email}</span>
                         </div>
                     )}
                     <div className={`flex items-center gap-2 ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-600'}`}>
                         <Hash size={12} className="shrink-0" />
                         <span className="text-[10px] font-mono font-bold">{slot.booking_code || '---'}</span>
                     </div>
-                    <div className="pt-1 mt-1 border-t border-emerald-100/50 flex justify-between items-center">
-                        <span className={`text-[9px] font-bold uppercase ${isInternal ? 'text-orange-600' : 'text-emerald-600'}`}>
-                            {isInternal ? 'Cobro Presencial' : 'Pagado Online'}
-                        </span>
-                        <span className="text-[10px] font-black text-slate-900">
-                            ${slot.price?.toLocaleString('es-CL')}
-                        </span>
+                    <div className="pt-1 mt-1 border-t border-emerald-100/50 flex flex-col gap-1">
+                        <div className="flex justify-between items-center">
+                            <span className={`text-[9px] font-bold uppercase ${isInternal ? 'text-orange-600' : 'text-emerald-600'}`}>
+                                {slot.isPartialPayment ? (slot.partialPaymentPaid ? 'Parcial Saldado' : 'Parcial Pendiente') : (isInternal ? 'Presencial' : 'Online')}
+                            </span>
+                            <span className="text-[10px] font-black text-slate-900">
+                                ${slot.price?.toLocaleString('es-CL')}
+                            </span>
+                        </div>
+                        {slot.isPartialPayment && (
+                            <div className="flex justify-between items-center bg-white/50 p-1.5 rounded-lg border border-emerald-100/30">
+                                <div className="flex flex-col">
+                                    <span className="text-[8px] text-slate-500 font-bold uppercase tracking-tighter">Pagado</span>
+                                    <span className="text-[9px] font-black text-emerald-600">${slot.paidAmount?.toLocaleString('es-CL')}</span>
+                                </div>
+                                <div className="flex flex-col text-right">
+                                    <span className="text-[8px] text-slate-500 font-bold uppercase tracking-tighter">Pendiente</span>
+                                    <span className={`text-[9px] font-black ${slot.partialPaymentPaid ? 'text-slate-400 line-through' : 'text-rose-600'}`}>
+                                        ${slot.pendingAmount?.toLocaleString('es-CL')}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                        {slot.isPartialPayment && (
+                            slot.partialPaymentPaid ? (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onUndoBalance(slot); }}
+                                    disabled={isProcessing}
+                                    className="w-full mt-2 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-[9px] font-bold uppercase hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <RotateCcw size={10} />
+                                    {isProcessing ? '...' : 'Deshacer Cobro'}
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onPayBalance(slot); }}
+                                    disabled={isProcessing}
+                                    className="w-full mt-2 py-1.5 bg-slate-900 text-white rounded-lg text-[9px] font-bold uppercase hover:bg-slate-800 transition-all disabled:opacity-50 shadow-sm"
+                                >
+                                    {isProcessing ? '...' : 'Cobrar Saldo'}
+                                </button>
+                            )
+                        )}
                     </div>
                 </div>
             </div>
@@ -247,7 +391,7 @@ const SlotCard: React.FC<{ slot: any }> = ({ slot }) => {
                     <span className="text-sm font-bold text-slate-400">{slot.hour}:00</span>
                     <Ban size={14} className="text-slate-400" />
                 </div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase mt-2">Bloqueado / Interno</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase mt-2">Bloqueado</p>
             </div>
         );
     }
@@ -256,17 +400,14 @@ const SlotCard: React.FC<{ slot: any }> = ({ slot }) => {
         <div className={`p-4 rounded-2xl border border-dashed transition-all ${isPassed ? 'bg-slate-50/50 border-slate-200 opacity-40' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
             <div className="flex justify-between items-center">
                 <span className={`text-sm font-bold ${isPassed ? 'text-slate-400' : 'text-slate-900'}`}>{slot.hour}:00</span>
-                {!isPassed && <span className="text-[10px] font-bold text-slate-400 uppercase">Disponible</span>}
+                {!isPassed && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Disponible</span>}
             </div>
-            {isPassed && <p className="text-[10px] font-bold text-slate-400 uppercase mt-2">Pasado</p>}
+            {isPassed && <p className="text-[10px] font-bold text-slate-400 uppercase mt-2 tracking-wider">Pasado</p>}
         </div>
     );
 };
 
-const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[] }> = ({ day, schedule }) => {
-    const { payBalance } = useBookingStore();
-    const { getAccessTokenSilently } = useAuth0();
-    const [isPaying, setIsPaying] = useState<string | null>(null);
+const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[], onPayBalance: (slot: any) => void, onUndoBalance: (slot: any) => void, isProcessing: string | null }> = ({ day, schedule, onPayBalance, onUndoBalance, isProcessing }) => {
     const [activeSlot, setActiveSlot] = useState<any | null>(null);
 
     return (
@@ -284,21 +425,6 @@ const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[] }> = ({ day, schedu
                         const isInternalBlock = slot.payment_method === 'internal_block';
                         const isInternalReserva = slot.payment_method === 'internal_reservation';
                         const isInternal = isInternalBlock || isInternalReserva;
-                                            const handlePayBalance = async (e: React.MouseEvent) => {
-                                                e.stopPropagation();
-                                                if (!slot.booking_id) return;
-                                                setIsPaying(slot.booking_id);
-                                                try {
-                                                    await payBalance(slot.booking_id, getAccessTokenSilently);
-                                                    toast.success("Saldo cobrado con éxito");
-                                                    slot.partialPaymentPaid = true;
-                                                } catch (error) {
-                                                    toast.error("Error al cobrar saldo");
-                                                } finally {
-                                                    setIsPaying(null);
-                                                }
-                                            };
-
 
                         return (
                             <div
@@ -306,7 +432,7 @@ const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[] }> = ({ day, schedu
                                 onClick={() => isBooked ? setActiveSlot(activeSlot === slot ? null : slot) : null}
                                 className={`relative p-2.5 rounded-xl border text-[10px] font-bold text-center transition-all cursor-pointer ${
                                     isBooked
-                                        ? (isInternalBlock ? 'bg-slate-300 border-slate-300 text-slate-700' : (slot.status === 'passed_booked' ? 'bg-slate-400 border-slate-400 text-white opacity-75' : 'bg-emerald-500 border-emerald-500 text-white shadow-sm'))
+                                        ? (isInternalBlock ? 'bg-slate-300 border-slate-300 text-slate-700' : (slot.status === 'passed_booked' ? 'bg-slate-400 border-slate-400 text-white opacity-75' : 'bg-emerald-50 border-emerald-50 text-white shadow-sm'))
                                         : isBlocked
                                         ? 'bg-slate-100 border-slate-200 text-slate-400'
                                         : 'bg-white border-slate-100 text-slate-400 border-dashed hover:border-slate-300'
@@ -323,19 +449,19 @@ const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[] }> = ({ day, schedu
                                                     <p className="text-[10px] font-black">{slot.hour}:00</p>
                                                 </div>
                                                 <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase ${isInternal ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                                                    {isInternal ? 'Presencial' : 'Pagado'}
+                                                    {slot.isPartialPayment ? (slot.partialPaymentPaid ? 'Saldado' : 'Pendiente') : (isInternal ? 'Presencial' : 'Online')}
                                                 </span>
                                             </div>
 
-                                                                                        <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl mb-1">
-                                                <span className="text-[9px] text-slate-500 font-bold uppercase">Valor Total</span>
+                                            <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl mb-1">
+                                                <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">Total</span>
                                                 <span className="text-[11px] font-black text-slate-900">${slot.price?.toLocaleString('es-CL')}</span>
                                             </div>
 
                                             {slot.isPartialPayment && (
                                                 <div className="space-y-1.5 p-2 bg-blue-50/30 rounded-xl border border-blue-50">
                                                     <div className="flex justify-between text-[8px]">
-                                                        <span className="text-slate-500">Pagado Online:</span>
+                                                        <span className="text-slate-500">Abonado:</span>
                                                         <span className="font-bold text-emerald-600">${slot.paidAmount?.toLocaleString('es-CL')}</span>
                                                     </div>
                                                     <div className="flex justify-between text-[8px]">
@@ -343,37 +469,34 @@ const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[] }> = ({ day, schedu
                                                         <span className="font-bold text-rose-600">${slot.pendingAmount?.toLocaleString('es-CL')}</span>
                                                     </div>
                                                     {slot.partialPaymentPaid ? (
-                                                        <div className="py-1 text-center bg-emerald-50 text-emerald-600 rounded-lg text-[8px] font-bold uppercase">
-                                                            Saldo Pagado
-                                                        </div>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); onUndoBalance(slot); }}
+                                                            disabled={!!isProcessing}
+                                                            className="w-full py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-[8px] font-bold uppercase hover:bg-slate-50 flex items-center justify-center gap-1"
+                                                        >
+                                                            <RotateCcw size={10} />
+                                                            {isProcessing === slot.booking_id ? '...' : 'Deshacer'}
+                                                        </button>
                                                     ) : (
                                                         <button
-                                                            onClick={handlePayBalance}
-                                                            disabled={isPaying === slot.booking_id}
+                                                            onClick={(e) => { e.stopPropagation(); onPayBalance(slot); }}
+                                                            disabled={!!isProcessing}
                                                             className="w-full py-1.5 bg-slate-900 text-white rounded-lg text-[8px] font-bold uppercase hover:bg-slate-800 disabled:opacity-50"
                                                         >
-                                                            {isPaying === slot.booking_id ? '...' : 'Cobrar Saldo'}
+                                                            {isProcessing === slot.booking_id ? '...' : 'Cobrar Saldo'}
                                                         </button>
                                                     )}
                                                 </div>
                                             )}
 
-
-                                            {isInternalReserva && <p className="text-[8px] font-bold text-orange-600 uppercase mb-1">Reserva Interna</p>}
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 pt-1">
                                                 <User size={10} className="text-slate-400 shrink-0" />
                                                 <p className="text-[10px] font-bold truncate">{slot.customer_name || (isInternalBlock ? 'Bloqueo' : 'Cliente')}</p>
                                             </div>
                                             {slot.customer_phone && (
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-[9px] font-bold text-slate-400">TEL:</span>
+                                                    <span className="text-[9px] font-bold text-slate-400">T:</span>
                                                     <p className="text-[10px] text-slate-500 truncate">{slot.customer_phone}</p>
-                                                </div>
-                                            )}
-                                            {slot.customer_email && slot.customer_email !== 'admin@internal.com' && (
-                                                <div className="flex items-center gap-2">
-                                                    <Mail size={10} className="text-slate-400 shrink-0" />
-                                                    <p className="text-[10px] text-slate-500 truncate">{slot.customer_email}</p>
                                                 </div>
                                             )}
                                             <div className="flex items-center gap-2">

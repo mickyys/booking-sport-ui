@@ -56,6 +56,7 @@ interface BookingState {
   createInternalBooking: (bookingData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   deleteBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   payBalance: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  undoPayBalance: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   deleteSeries: (seriesId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchSportCenterBySlug: (slug: string) => Promise<SportCenter | null>;
   updateSportCenter: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
@@ -293,7 +294,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
         }
       });
-      await api.post(`/bookings/${bookingId}/cancel`, {}, {
+      await api.post(`/admin/bookings/${bookingId}/pay-balance`, {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -986,7 +987,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           scope: "openid profile email"
         }
       });
-      await api.post(`/bookings/${bookingId}/pay-balance`, {}, {
+      await api.post(`/admin/bookings/${bookingId}/pay-balance`, {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -995,6 +996,30 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     } catch (err) {
       console.error("Error paying balance:", err);
       set({ error: 'Failed to pay balance' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  undoPayBalance: async (bookingId: string, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+      await api.patch(`/admin/bookings/${bookingId}/undo-pay-balance`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+    } catch (err) {
+      console.error("Error undoing balance payment:", err);
+      set({ error: 'Failed to undo balance payment' });
       throw err;
     } finally {
       set({ isLoading: false });

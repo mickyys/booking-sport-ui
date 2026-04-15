@@ -258,8 +258,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         <div>{format(parseISO(booking.date), "d MMM, HH:mm", { locale: es })}</div>
                                         {booking.isPartialPayment && (
                                             <div className="mt-1 flex flex-col gap-0.5">
-                                                <span className="text-[10px] font-bold text-emerald-600 uppercase">Abono: ${booking.paidAmount?.toLocaleString('es-CL')}</span>
-                                                <span className="text-[10px] font-bold text-rose-500 uppercase">Pend: ${booking.pendingAmount?.toLocaleString('es-CL')}</span>
+                                                <div className="flex justify-between w-full gap-2">
+                                                    <span className="text-[10px] font-bold text-emerald-600 uppercase">Abono:</span>
+                                                    <span className="text-[10px] font-black text-emerald-700">${booking.paidAmount?.toLocaleString('es-CL')}</span>
+                                                </div>
+                                                <div className="flex justify-between w-full gap-2">
+                                                    <span className="text-[10px] font-bold text-rose-500 uppercase">Pend:</span>
+                                                    <span className={`text-[10px] font-black ${booking.partialPaymentPaid ? 'text-slate-400 line-through' : 'text-rose-600'}`}>
+                                                        ${booking.pendingAmount?.toLocaleString('es-CL')}
+                                                    </span>
+                                                </div>
+                                                {booking.partialPaymentPaid ? (
+                                                    <span className="text-[8px] font-bold text-emerald-600 uppercase mt-0.5 bg-emerald-50 px-1 py-0.5 rounded text-center">Saldado</span>
+                                                ) : (
+                                                    <span className="text-[8px] font-bold text-rose-500 uppercase mt-0.5 bg-rose-50 px-1 py-0.5 rounded text-center">Pendiente</span>
+                                                )}
                                             </div>
                                         )}
                                     </td>
@@ -359,9 +372,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         {format(parseISO(booking.date), "d MMM, HH:mm", { locale: es })}
                                     </p>
                                     {booking.isPartialPayment && (
-                                        <div className="mt-1 flex gap-2">
-                                            <span className="text-[9px] font-bold text-emerald-600 uppercase">Pagado: ${booking.paidAmount?.toLocaleString('es-CL')}</span>
-                                            <span className="text-[9px] font-bold text-rose-500 uppercase">Debe: ${booking.pendingAmount?.toLocaleString('es-CL')}</span>
+                                        <div className="mt-1 flex flex-col gap-1">
+                                            <div className="flex gap-2">
+                                                <span className="text-[9px] font-bold text-emerald-600 uppercase">Pagado: ${booking.paidAmount?.toLocaleString('es-CL')}</span>
+                                                <span className={`text-[9px] font-bold ${booking.partialPaymentPaid ? 'text-slate-400 line-through' : 'text-rose-500'} uppercase`}>
+                                                    Debe: ${booking.pendingAmount?.toLocaleString('es-CL')}
+                                                </span>
+                                            </div>
+                                            <span className={`text-[8px] font-black uppercase self-start px-1.5 py-0.5 rounded ${booking.partialPaymentPaid ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'}`}>
+                                                {booking.partialPaymentPaid ? 'Saldado' : 'Pendiente'}
+                                            </span>
                                         </div>
                                     )}
                                 </div>

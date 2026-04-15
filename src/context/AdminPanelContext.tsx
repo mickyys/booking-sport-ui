@@ -43,16 +43,16 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
         return `${from}|${to}`;
     });
     const { getAccessTokenSilently } = useAuth0();
-    const {
-        fetchAdminCourts,
-        adminCourts,
-        deleteAdminCourt,
-        updateAdminSchedule,
-        updateAdminScheduleSlot,
-        fetchAdminDashboard,
-        adminDashboardData,
-        cancelBooking: storeCancelBooking
-    } = useBookingStore();
+    
+    // Use selectors to avoid unnecessary re-renders when other parts of the store change
+    const fetchAdminCourts = useBookingStore(state => state.fetchAdminCourts);
+    const adminCourts = useBookingStore(state => state.adminCourts);
+    const deleteAdminCourt = useBookingStore(state => state.deleteAdminCourt);
+    const updateAdminSchedule = useBookingStore(state => state.updateAdminSchedule);
+    const updateAdminScheduleSlot = useBookingStore(state => state.updateAdminScheduleSlot);
+    const fetchAdminDashboard = useBookingStore(state => state.fetchAdminDashboard);
+    const adminDashboardData = useBookingStore(state => state.adminDashboardData);
+    const storeCancelBooking = useBookingStore(state => state.cancelBooking);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -60,38 +60,18 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
         fetchAdminCourts(getAccessTokenSilently);
     }, [fetchAdminCourts, getAccessTokenSilently]);
 
-    useEffect(() => {
-        fetchAdminDashboard(
-            getAccessTokenSilently,
-            dashboardPage,
-            10,
-            dashboardDateFilter,
-            dashboardNameFilter,
-            dashboardCodeFilter,
-            dashboardStatusFilter
-        );
-    }, [
-        fetchAdminDashboard,
-        getAccessTokenSilently,
-        dashboardPage,
-        dashboardDateFilter,
-        dashboardNameFilter,
-        dashboardCodeFilter,
-        dashboardStatusFilter
-    ]);
-
-    const backendCourts = adminCourts ? adminCourts.flatMap((ac: any) => ac.courts?.map((c: any) => ({
+    const backendCourts = React.useMemo(() => adminCourts ? adminCourts.flatMap((ac: any) => ac.courts?.map((c: any) => ({
         ...c,
         id: c.id || c._id,
         image: c.image || '/images/cancha1.jpeg',
         centerName: ac.sport_center?.name,
         centerId: ac.sport_center?.id || ac.sport_center?._id,
-    })) || []) : [];
+    })) || []) : [], [adminCourts]);
 
-    const currentSportCenter = adminCourts && adminCourts.length > 0 ? adminCourts[0].sport_center : null;
+    const currentSportCenter = React.useMemo(() => adminCourts && adminCourts.length > 0 ? adminCourts[0].sport_center : null, [adminCourts]);
     const courts = backendCourts;
 
-    const schedules = backendCourts.map(c => ({
+    const schedules = React.useMemo(() => backendCourts.map(c => ({
         courtId: c.id,
         slots: c.schedule?.map((s: any) => ({
             hour: s.hour,
@@ -101,11 +81,11 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
             paymentRequired: s.payment_required,
             paymentOptional: s.payment_optional || false,
         })) || []
-    }));
+    })), [backendCourts]);
 
-    const onSaveCourt = (court: any) => fetchAdminCourts(getAccessTokenSilently);
+    const onSaveCourt = React.useCallback((court: any) => fetchAdminCourts(getAccessTokenSilently), [fetchAdminCourts, getAccessTokenSilently]);
 
-    const onDeleteCourt = async (id: any) => {
+    const onDeleteCourt = React.useCallback(async (id: any) => {
         try {
             await deleteAdminCourt(id, getAccessTokenSilently);
             await fetchAdminCourts(getAccessTokenSilently);
@@ -113,27 +93,27 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
         } catch (error) {
             toast.error("Hubo un error al eliminar la cancha");
         }
-    };
+    }, [deleteAdminCourt, fetchAdminCourts, getAccessTokenSilently]);
 
-    const onUpdateSchedule = async (schedule: any) => {
+    const onUpdateSchedule = React.useCallback(async (schedule: any) => {
         try {
             await updateAdminSchedule(schedule.courtId, schedule.slots, getAccessTokenSilently);
             toast.success("Horario actualizado con éxito");
         } catch (error) {
             toast.error("Error al actualizar horario");
         }
-    };
+    }, [updateAdminSchedule, getAccessTokenSilently]);
 
-    const onUpdateScheduleSlot = async (courtId: string, slot: any) => {
+    const onUpdateScheduleSlot = React.useCallback(async (courtId: string, slot: any) => {
         try {
             await updateAdminScheduleSlot(courtId, slot, getAccessTokenSilently);
             toast.success("Horario actualizado con éxito");
         } catch (error) {
             toast.error("Error al actualizar horario");
         }
-    };
+    }, [updateAdminScheduleSlot, getAccessTokenSilently]);
 
-    const handleDashboardCancel = async (booking: any) => {
+    const handleDashboardCancel = React.useCallback(async (booking: any) => {
         try {
             await storeCancelBooking(booking.id, getAccessTokenSilently);
             toast.success("Reserva cancelada con éxito");
@@ -141,33 +121,52 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
         } catch (error) {
             toast.error("Error al cancelar la reserva");
         }
-    };
+    }, [storeCancelBooking, fetchAdminDashboard, getAccessTokenSilently]);
+
+    const contextValue = React.useMemo(() => ({
+        adminDashboardData,
+        handleDashboardCancel,
+        courts,
+        dashboardPage,
+        dashboardNameFilter,
+        dashboardCodeFilter,
+        dashboardStatusFilter,
+        dashboardDateFilter,
+        setDashboardPage,
+        setDashboardNameFilter,
+        setDashboardCodeFilter,
+        setDashboardStatusFilter,
+        setDashboardDateFilter,
+        onSaveCourt,
+        onDeleteCourt,
+        schedules,
+        onUpdateSchedule,
+        onUpdateScheduleSlot,
+        currentSportCenter,
+        isRefreshing,
+        setIsRefreshing,
+        fetchAdminDashboard
+    }), [
+        adminDashboardData,
+        handleDashboardCancel,
+        courts,
+        dashboardPage,
+        dashboardNameFilter,
+        dashboardCodeFilter,
+        dashboardStatusFilter,
+        dashboardDateFilter,
+        onSaveCourt,
+        onDeleteCourt,
+        schedules,
+        onUpdateSchedule,
+        onUpdateScheduleSlot,
+        currentSportCenter,
+        isRefreshing,
+        fetchAdminDashboard
+    ]);
 
     return (
-        <AdminPanelContext.Provider value={{
-            adminDashboardData,
-            handleDashboardCancel,
-            courts,
-            dashboardPage,
-            dashboardNameFilter,
-            dashboardCodeFilter,
-            dashboardStatusFilter,
-            dashboardDateFilter,
-            setDashboardPage,
-            setDashboardNameFilter,
-            setDashboardCodeFilter,
-            setDashboardStatusFilter,
-            setDashboardDateFilter,
-            onSaveCourt,
-            onDeleteCourt,
-            schedules,
-            onUpdateSchedule,
-            onUpdateScheduleSlot,
-            currentSportCenter,
-            isRefreshing,
-            setIsRefreshing,
-            fetchAdminDashboard
-        }}>
+        <AdminPanelContext.Provider value={contextValue}>
             {children}
         </AdminPanelContext.Provider>
     );
