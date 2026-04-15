@@ -55,10 +55,11 @@ interface BookingState {
   createBooking: (bookingData: any) => Promise<void>;
   createInternalBooking: (bookingData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   deleteBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  payBalance: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   deleteSeries: (seriesId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchSportCenterBySlug: (slug: string) => Promise<SportCenter | null>;
   updateSportCenter: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
-  updateSportCenterSettings: (id: string, settingsData: { slug: string; cancellation_hours: number; retention_percent: number }, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  updateSportCenterSettings: (id: string, settingsData: { slug: string; cancellation_hours: number; retention_percent: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number }, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchSportCenterByID: (id: string, getToken: (options?: any) => Promise<string>) => Promise<any>;
 }
 
@@ -163,7 +164,10 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         courtId: b.court_id,
         centerId: b.sport_center_id,
         paymentMethod: b.payment_method || 'fintoc', // Fintoc as default if not coming from backend
-        fintocPaymentIntentId: b.fintoc_payment_intent_id,
+        fintocPaymentIntentId: b.fintoc_payment_intent_id, paidAmount: b.paid_amount,
+          pendingAmount: b.pending_amount,
+          isPartialPayment: b.is_partial_payment,
+          partialPaymentPaid: b.partial_payment_paid,
         createdAt: b.created_at
       }));
       set({ myBookings: formattedBookings, error: null });
@@ -377,6 +381,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           image: c.image || FALLBACK_IMAGE,
           cancellationHours: c.cancellation_hours,
           retentionPercent: c.retention_percent,
+        partialPaymentEnabled: c.partial_payment_enabled,
+        partialPaymentPercent: c.partial_payment_percent,
           services: c.services || [],
           coordinates
         } as SportCenter;
@@ -429,6 +435,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         image: c.image || FALLBACK_IMAGE,
         cancellationHours: c.cancellation_hours,
         retentionPercent: c.retention_percent,
+        partialPaymentEnabled: c.partial_payment_enabled,
+        partialPaymentPercent: c.partial_payment_percent,
         services: c.services || [],
         coordinates: c.coordinates || { lat: 0, lng: 0 }
       };
@@ -467,7 +475,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
-  updateSportCenterSettings: async (id: string, settingsData: { slug: string; cancellation_hours: number; retention_percent: number }, getToken: (options?: any) => Promise<string>) => {
+  updateSportCenterSettings: async (id: string, settingsData: { slug: string; cancellation_hours: number; retention_percent: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number }, getToken: (options?: any) => Promise<string>) => {
     set({ isLoading: true });
     try {
       const token = await getToken({
@@ -476,7 +484,13 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           scope: "openid profile email"
         }
       });
-      await api.patch(`/admin/sport-centers/${id}/settings`, settingsData, {
+      const { partialPaymentEnabled, partialPaymentPercent, ...rest } = settingsData;
+      const apiPayload = {
+        ...rest,
+        partial_payment_enabled: partialPaymentEnabled,
+        partial_payment_percent: partialPaymentPercent
+      };
+      await api.patch(`/admin/sport-centers/${id}/settings`, apiPayload, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -504,7 +518,17 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           Authorization: `Bearer ${token}`
         }
       });
-      return response.data.center;
+      const center = response.data.center;
+      if (center) {
+        return {
+          ...center,
+          partialPaymentEnabled: center.partial_payment_enabled,
+          partialPaymentPercent: center.partial_payment_percent,
+          cancellationHours: center.cancellation_hours,
+          retentionPercent: center.retention_percent
+        };
+      }
+      return center;
     } catch (err) {
       console.error("Error fetching sport center by ID:", err);
       return null;
@@ -554,9 +578,14 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           ...slot,
           paymentRequired: slot.payment_required,
           paymentOptional: slot.payment_optional,
+          partialPaymentEnabled: slot.partial_payment_enabled,
           customer_name: slot.customer_name,
           customer_email: slot.customer_email,
-          booking_code: slot.booking_code
+          booking_code: slot.booking_code,
+          isPartialPayment: slot.is_partial_payment,
+          paidAmount: slot.paid_amount,
+          pendingAmount: slot.pending_amount,
+          partialPaymentPaid: slot.partial_payment_paid
         }))
       }));
 
@@ -594,10 +623,15 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           ...slot,
           paymentRequired: slot.payment_required,
           paymentOptional: slot.payment_optional,
+          partialPaymentEnabled: slot.partial_payment_enabled,
           customer_name: slot.customer_name,
           customer_email: slot.customer_email,
           customer_phone: slot.customer_phone,
-          booking_code: slot.booking_code
+          booking_code: slot.booking_code,
+          isPartialPayment: slot.is_partial_payment,
+          paidAmount: slot.paid_amount,
+          pendingAmount: slot.pending_amount,
+          partialPaymentPaid: slot.partial_payment_paid
         }))
       }));
 
@@ -688,7 +722,10 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           userName: b.user_name, // Keeping for backward compatibility if needed
           isGuest: b.is_guest,
           paymentMethod: b.payment_method,
-          cancelledBy: b.cancelled_by,
+          cancelledBy: b.cancelled_by, paidAmount: b.paid_amount,
+          pendingAmount: b.pending_amount,
+          isPartialPayment: b.is_partial_payment,
+          partialPaymentPaid: b.partial_payment_paid,
           createdAt: b.created_at
         })),
         totalRecentCount: data.total_recent_count,
@@ -848,7 +885,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         price: Number(slot.price),
         status: slot.enabled ? 'available' : 'closed',
         payment_required: !!slot.paymentRequired,
-        payment_optional: !!slot.paymentOptional
+        payment_optional: !!slot.paymentOptional, partial_payment_enabled: slot.partialPaymentEnabled
       };
 
       await api.patch(`/admin/courts/${courtId}/schedule/slot`, formattedSlot, {
@@ -934,6 +971,30 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     } catch (err) {
       console.error("Error deleting booking:", err);
       set({ error: 'Failed to delete booking' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  payBalance: async (bookingId: string, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+      await api.post(`/bookings/${bookingId}/pay-balance`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+    } catch (err) {
+      console.error("Error paying balance:", err);
+      set({ error: 'Failed to pay balance' });
       throw err;
     } finally {
       set({ isLoading: false });

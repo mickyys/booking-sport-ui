@@ -28,6 +28,10 @@ export function mapBooking(dto: BookingDTO): Booking {
     // pago
     paymentMethod: dto.payment_method === 'venue' ? 'cash' : dto.payment_method,
     fintocPaymentIntentId: undefined,
+    paidAmount: dto.paid_amount,
+    pendingAmount: dto.pending_amount,
+    isPartialPayment: dto.is_partial_payment,
+    partialPaymentPaid: dto.partial_payment_paid,
 
     // cliente
     customerName: dto.customer_name,

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import { Clock, MapPin } from 'lucide-react';
+import { Clock, MapPin, CreditCard } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Booking, Court } from '../../types';
@@ -48,10 +48,30 @@ export const BookingCard: React.FC<BookingCardProps> = ({ booking, courts, isLoa
                         {booking.hour !== undefined ? `${booking.hour}:00` : format(bookingDate, "HH:mm")} hrs •{" "}
                         {booking.courtName || court.name}
                     </p>
-                    {booking.price !== undefined && (
-                        <p className="font-bold text-emerald-700 mt-1">
-                            ${booking.price.toLocaleString('es-CL')}
-                        </p>
+
+                    {booking.isPartialPayment ? (
+                        <div className="mt-2 space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="text-slate-500 font-medium">Pagado Online:</span>
+                                <span className="font-bold text-emerald-600">${booking.paidAmount?.toLocaleString('es-CL')}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="text-slate-500 font-medium">Pendiente en Local:</span>
+                                <span className="font-black text-rose-600">${booking.pendingAmount?.toLocaleString('es-CL')}</span>
+                            </div>
+                            {booking.partialPaymentPaid && (
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 uppercase pt-1">
+                                    <CreditCard size={12} />
+                                    Saldo Pagado
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        booking.price !== undefined && (
+                            <p className="font-bold text-emerald-700 mt-1">
+                                ${booking.price.toLocaleString('es-CL')}
+                            </p>
+                        )
                     )}
                 </div>
             </div>
