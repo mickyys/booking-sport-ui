@@ -83,18 +83,23 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                 finalImageUrl = await uploadImageToCloudinary(localImageFile);
             }
 
-            if (localImageFile || finalImageUrl !== imageUrl) {
-                await updateSportCenterSettings(id, {
-                    image_url: finalImageUrl,
-                }, getAccessTokenSilently);
-            }
+            await updateSportCenterSettings(id, {
+                image_url: finalImageUrl,
+                slug: slug,
+                cancellation_hours: cancellationHours,
+                retention_percent: retentionPercent,
+                partialPaymentEnabled: partialPaymentEnabled,
+                partialPaymentPercent: partialPaymentPercent,
+            }, getAccessTokenSilently);
 
             setLocalImageFile(null);
             setLocalImagePreview(null);
-            toast.success("Imagen actualizada con éxito");
+            setImageUrl(finalImageUrl);
+            toast.success("Configuración actualizada con éxito");
             if (onSave) onSave();
         } catch (error) {
-            toast.error("Error al actualizar la imagen");
+            console.error("Error saving settings:", error);
+            toast.error("Error al actualizar la configuración");
         } finally {
             setIsUploading(false);
         }
