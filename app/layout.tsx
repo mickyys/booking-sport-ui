@@ -6,6 +6,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "ReservaloYA - Reserva tu cancha deportiva",
   description: "La plataforma más fácil para reservar tu cancha de fútbol, pádel y más.",
+  icons: {
+    icon: "/logo/logo-reservaloya.ico",
+  },
 };
 
 export default function RootLayout({
