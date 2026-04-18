@@ -344,7 +344,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
             {courtViewMode === 'single' && selectedCourtId && courts.length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     {slots.map((slot, index) => {
-                        const isBooked = slot.status === 'booked' || slot.status === 'reserved';
+                        const isBooked = slot.status === 'booked' || slot.status === 'reserved' || slot.status === 'passed_booked';
                         const isPassed = slot.status === 'passed';
                         const isClosed = slot.status === 'closed';
                         const isRecurringBooked = slot.status === 'recurring_booked' || slot.is_recurring_weekly;
@@ -464,10 +464,10 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                                         );
                                     }
 
-                                    const isBooked = slot.status === 'booked' || slot.status === 'reserved';
-                                    const isPassed = slot.status === 'passed';
-                                    const isClosed = slot.status === 'closed';
-                                    const isRecurringBooked = slot.status === 'recurring_booked' || slot.is_recurring_weekly;
+                                     const isBooked = slot.status === 'booked' || slot.status === 'reserved' || slot.status === 'passed_booked';
+                                     const isPassed = slot.status === 'passed';
+                                     const isClosed = slot.status === 'closed';
+                                     const isRecurringBooked = slot.status === 'recurring_booked' || slot.is_recurring_weekly;
                                     const isAvailable = !isBooked && !isPassed && !isClosed && !isRecurringBooked;
 
                                     let bgColor = 'bg-white border border-slate-100';
