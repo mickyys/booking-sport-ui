@@ -22,3 +22,40 @@ export const getSportCenterSchedules = async (centerId: string) => {
   const response = await api.get(`/sport-centers/${centerId}/schedules`);
   return response.data;
 };
+
+// Recurring Reservation API
+export const createRecurringReservation = async (data: any, token: string) => {
+  const response = await api.post('/admin/recurring', data, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const getRecurringReservation = async (id: string, token: string) => {
+  const response = await api.get(`/admin/recurring/${id}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const getRecurringReservationsByCenter = async (token: string) => {
+  const response = await api.get('/admin/recurring', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const getRecurringReservationsByCourt = async (courtId: string, token: string) => {
+  const response = await api.get(`/admin/recurring/court/${courtId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const cancelRecurringReservation = async (id: string, token: string, cancelledBy = 'admin', reason = '') => {
+  const response = await api.delete(`/admin/recurring/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { cancelled_by: cancelledBy, reason }
+  });
+  return response.data;
+};

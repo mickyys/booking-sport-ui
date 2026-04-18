@@ -1,10 +1,11 @@
 "use client";
 "use client";
-import React, { useState, useEffect } from 'react';
-import { Settings, Save, Globe, Clock, Percent, AlertTriangle, CheckCircle, Info, CreditCard } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Settings, Save, Globe, Clock, Percent, AlertTriangle, CheckCircle, Info, CreditCard, Upload, Image as ImageIcon, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
+import { uploadImageToCloudinary } from '@/components/booking/CourtImageUpload';
 
 interface AdminSettingsProps {
     sportCenter: any;
@@ -17,9 +18,34 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
     const [retentionPercent, setRetentionPercent] = useState<number>(10);
     const [partialPaymentEnabled, setPartialPaymentEnabled] = useState<boolean>(false);
     const [partialPaymentPercent, setPartialPaymentPercent] = useState<number>(50);
+    const [imageUrl, setImageUrl] = useState<string>('');
+    const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
+    const [localImageFile, setLocalImageFile] = useState<File | null>(null);
     const [loadingData, setLoadingData] = useState(true);
-    const { updateSportCenterSettings, fetchSportCenterByID, isLoading } = useBookingStore();
+    const [isUploading, setIsUploading] = useState(false);
+    const { updateSportCenterSettings, updateSportCenter, fetchSportCenterByID, isLoading } = useBookingStore();
     const { getAccessTokenSilently } = useAuth0();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleImageSelect = (file: File) => {
+        if (!file.type.startsWith('image/')) {
+            toast.error('Por favor selecciona un archivo de imagen');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('La imagen no puede superar 5MB');
+            return;
+        }
+        setLocalImageFile(file);
+        const reader = new FileReader();
+        reader.onload = (e) => setLocalImagePreview(e.target?.result as string);
+        reader.readAsDataURL(file);
+    };
+
+    const handleRemoveImage = () => {
+        setLocalImageFile(null);
+        setLocalImagePreview(null);
+    };
 
     useEffect(() => {
         const loadSportCenter = async () => {
@@ -34,6 +60,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                     setRetentionPercent(center.retention_percent ?? 10);
                     setPartialPaymentEnabled(center.partialPaymentEnabled ?? false);
                     setPartialPaymentPercent(center.partialPaymentPercent ?? 50);
+                    setImageUrl(center.image_url || '');
                 }
             } finally {
                 setLoadingData(false);
@@ -48,17 +75,28 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
 
         try {
             const id = sportCenter.id || sportCenter._id;
-            await updateSportCenterSettings(id, {
-                slug,
-                cancellation_hours: cancellationHours,
-                retention_percent: retentionPercent,
-                partialPaymentEnabled: partialPaymentEnabled,
-                partialPaymentPercent: partialPaymentPercent,
-            }, getAccessTokenSilently);
-            toast.success("Configuración actualizada con éxito");
+            let finalImageUrl = imageUrl;
+
+            if (localImageFile) {
+                setIsUploading(true);
+                toast.info('Subiendo imagen...');
+                finalImageUrl = await uploadImageToCloudinary(localImageFile);
+            }
+
+            if (localImageFile || finalImageUrl !== imageUrl) {
+                await updateSportCenterSettings(id, {
+                    image_url: finalImageUrl,
+                }, getAccessTokenSilently);
+            }
+
+            setLocalImageFile(null);
+            setLocalImagePreview(null);
+            toast.success("Imagen actualizada con éxito");
             if (onSave) onSave();
         } catch (error) {
-            toast.error("Error al actualizar la configuración");
+            toast.error("Error al actualizar la imagen");
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -79,6 +117,50 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                 </div>
 
                 <form onSubmit={handleSave} className="p-8 space-y-6">
+                    {/* Image Upload */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Imagen del Club
+                        </label>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => e.target.files?.[0] && handleImageSelect(e.target.files[0])}
+                            className="hidden"
+                            id="club-image-upload"
+                        />
+                        
+                        {localImagePreview || imageUrl ? (
+                            <div className="relative w-full h-48 rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
+                                <img 
+                                    src={localImagePreview || imageUrl} 
+                                    alt="Preview" 
+                                    className="w-full h-full object-cover"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleRemoveImage}
+                                    className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ) : (
+                            <label
+                                htmlFor="club-image-upload"
+                                className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-slate-400 hover:bg-slate-50 transition-all"
+                            >
+                                <ImageIcon className="w-8 h-8 text-slate-400 mb-2" />
+                                <span className="text-sm text-slate-500">Haz clic para subir una imagen</span>
+                                <span className="text-xs text-slate-400 mt-1">PNG, JPG hasta 5MB</span>
+                            </label>
+                        )}
+                        <p className="mt-2 text-xs text-slate-500">
+                            Esta imagen se visualiza en la página principal del club
+                        </p>
+                    </div>
+
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">
                             Subdominio (Slug)
@@ -248,11 +330,11 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                     <div className="pt-4">
                         <button
                             type="submit"
-                            disabled={isLoading}
+                            disabled={isLoading || isUploading}
                             className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-50"
                         >
                             <Save className="w-5 h-5" />
-                            {isLoading ? 'Guardando...' : 'Guardar Cambios'}
+                            {isLoading || isUploading ? 'Guardando...' : 'Guardar Cambios'}
                         </button>
                     </div>
                 </form>

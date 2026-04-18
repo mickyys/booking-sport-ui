@@ -1,10 +1,11 @@
 "use client";
-import React, { useState } from 'react';
-import { Save } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Save, Loader2 } from 'lucide-react';
 import { Court } from '../../types';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useBookingStore } from '../../store/useBookingStore';
 import { toast } from 'sonner';
+import { CourtImageUpload, uploadImageToCloudinary } from './CourtImageUpload';
 
 interface CourtFormModalProps {
   court: Court | null;
@@ -16,6 +17,10 @@ interface CourtFormModalProps {
 const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave, currentSportCenter: centerFromProps }) => {
   const { adminCourts, createAdminCourt, updateAdminCourt, selectedCenterId } = useBookingStore();
   const { getAccessTokenSilently } = useAuth0();
+  const [isSaving, setIsSaving] = useState(false);
+  const [localImageFile, setLocalImageFile] = useState<File | null>(null);
+  const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getCenterId = () => {
     if (centerFromProps?.id) return centerFromProps.id;
@@ -41,9 +46,55 @@ const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave,
       name: '',
       type: '',
       image: '',
+      image_url: '',
+      y_position: 0,
       centerId: getCenterId()
     }
   );
+
+  const handleImageChange = (url: string, yPos?: number) => {
+    setFormData({ 
+      ...formData, 
+      image: url, 
+      image_url: url,
+      y_position: yPos || 0
+    });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLocalImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setLocalImagePreview(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleFileSelect = (file: File) => {
+    setLocalImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setLocalImagePreview(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setLocalImageFile(null);
+    setLocalImagePreview(null);
+    setFormData({ 
+      ...formData, 
+      image: '', 
+      image_url: '',
+      y_position: 0
+    });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +103,17 @@ const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave,
       return;
     }
 
+    setIsSaving(true);
+
     try {
+      let imageUrl = formData.image || formData.image_url || '';
+      let yPos = formData.y_position || 0;
+
+      if (localImageFile) {
+        toast.info('Subiendo imagen a Cloudinary...');
+        imageUrl = await uploadImageToCloudinary(localImageFile);
+      }
+
       const token = await getAccessTokenSilently({
         authorizationParams: {
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
@@ -63,31 +124,40 @@ const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave,
       if (court) {
         const payload = {
           name: formData.name,
-          description: formData.type
+          description: formData.type,
+          image_url: imageUrl,
+          y_position: yPos
         };
         await updateAdminCourt(court.id, payload, getAccessTokenSilently);
         onSave(formData);
         toast.success('Cancha editada exitosamente');
       } else {
-        // Enlazar con el backend real para creación a través del store
         const payload = {
           sport_center_id: getCenterId(),
           name: formData.name,
-          description: formData.type // Usamos type como description para hacer coincidir el esquema
+          description: formData.type,
+          image_url: imageUrl,
+          y_position: yPos
         };
 
         const savedCourt = await createAdminCourt(payload, getAccessTokenSilently);
 
-        // Pasamos el nuevo court que retorna el backend o el form temporal (enrutando el nuevo ID)
         onSave({
           ...formData,
           id: savedCourt.id || savedCourt._id,
+          image: imageUrl,
+          image_url: imageUrl
         });
         toast.success('Cancha creada y vinculada al centro con éxito');
       }
+
+      setLocalImageFile(null);
+      setLocalImagePreview(null);
     } catch (err: any) {
       console.error(err);
       toast.error(err?.response?.data?.error || 'Error al guardar la cancha en el servidor');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -121,17 +191,15 @@ const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave,
               placeholder="ej: Cancha de pasto sintético con iluminación profesional"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">URL de Imagen</label>
-            <input
-              type="text"
-              className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-emerald-200 outline-none"
-              value={formData.image}
-              onChange={e => setFormData({ ...formData, image: e.target.value })}
-              placeholder="URL de la imagen"
-            />
-            {formData.image && <img src={formData.image} alt="Preview" className="mt-2 w-full h-32 object-cover rounded-lg" />}
-          </div>
+          <CourtImageUpload
+            value={formData.image || formData.image_url || ''}
+            localPreview={localImagePreview}
+            yPosition={formData.y_position}
+            onUrlChange={handleImageChange}
+            onFileSelect={handleFileSelect}
+            onRemove={handleRemoveImage}
+            hasLocalFile={!!localImageFile}
+          />
           <div className="flex gap-3 pt-4">
             <button
               type="button"
@@ -142,10 +210,11 @@ const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave,
             </button>
             <button
               type="submit"
-              className="flex-1 py-2 px-4 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors flex items-center justify-center gap-2"
+              disabled={isSaving}
+              className="flex-1 py-2 px-4 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <Save className="w-4 h-4" />
-              Guardar
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {isSaving ? 'Guardando...' : 'Guardar'}
             </button>
           </div>
         </form>

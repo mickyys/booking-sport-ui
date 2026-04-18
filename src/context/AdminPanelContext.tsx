@@ -63,7 +63,7 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
     const backendCourts = React.useMemo(() => adminCourts ? adminCourts.flatMap((ac: any) => ac.courts?.map((c: any) => ({
         ...c,
         id: c.id || c._id,
-        image: c.image || '/images/cancha1.jpeg',
+        image: c.image_url || c.image || '/images/cancha1.jpeg',
         centerName: ac.sport_center?.name,
         centerId: ac.sport_center?.id || ac.sport_center?._id,
     })) || []) : [], [adminCourts]);

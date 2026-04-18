@@ -157,7 +157,9 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user: userProp
                                         ))}
                                     </div>
                                 ) : (
-                                    <p className="text-slate-500 text-sm">No hay historial disponible.</p>
+                                    <div className="bg-white p-6 rounded-2xl border border-dashed border-slate-300 text-center">
+                                        <p className="text-slate-500">No hay historial disponible.</p>
+                                    </div>
                                 )}
                             </div>
                             <CancelledBookingList bookings={cancelledBookings} isLoading={isCancelledLoading} />

@@ -9,7 +9,6 @@ import { AdminSchedules } from './admin/AdminSchedules';
 import { AdminCalendar } from './admin/AdminCalendar';
 import { AdminAgenda } from './admin/AdminAgenda';
 import { AdminSettings } from './admin/AdminSettings';
-import { AdminSubscriptions } from './admin/AdminSubscriptions';
 import { AdminQR } from './admin/AdminQR';
 import { AdminSidebar } from '@/components/layout/AdminSidebar';
 import { AdminPanelProvider, useAdminPanel } from '@/context/AdminPanelContext';
@@ -131,10 +130,6 @@ export const AdminDashboardSubPage: React.FC = () => {
             }}
         />
     );
-};
-
-export const AdminSubscriptionsSubPage: React.FC = () => {
-    return <AdminSubscriptions />;
 };
 
 export const AdminCourtsSubPage: React.FC = () => {

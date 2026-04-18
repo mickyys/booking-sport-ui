@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { SportCenter, Court, CourtWithSchedule, Booking, BookingDTO } from '../types';
+import { toast } from 'sonner';
+import { SportCenter, Court, CourtWithSchedule, Booking, BookingDTO, RecurringReservation, CreateRecurringReservationDTO } from '../types';
 import api from '../api/axiosInstance';
-import { getUserCancelledBookings } from '../api/bookingApi';
+import { getUserCancelledBookings, createRecurringReservation as createRecurringApi, cancelRecurringReservation as cancelRecurringApi, getRecurringReservationsByCenter } from '../api/bookingApi';
 import { mapBooking } from '../mapper/mapBooking';
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1759210720456-c9814f721479?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvdXRkb29yJTIwc29jY2VyJTIwZmllbGQlMjBuaWdodCUyMGxpZ2h0c3xlbnwxfHx8fDE3NzQ4OTgwODd8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
@@ -24,6 +25,7 @@ interface BookingState {
   recurringSeries: any[];
   sportCenterBySlug: SportCenter | null;
   cities: string[];
+  recurringReservations: RecurringReservation[];
 
 
   // Actions
@@ -60,8 +62,11 @@ interface BookingState {
   deleteSeries: (seriesId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchSportCenterBySlug: (slug: string) => Promise<SportCenter | null>;
   updateSportCenter: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
-  updateSportCenterSettings: (id: string, settingsData: { slug: string; cancellation_hours: number; retention_percent: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number }, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  updateSportCenterSettings: (id: string, settingsData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; image_url?: string }, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchSportCenterByID: (id: string, getToken: (options?: any) => Promise<string>) => Promise<any>;
+  createRecurringReservation: (data: CreateRecurringReservationDTO, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  cancelRecurringReservation: (id: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  fetchRecurringReservationsByCenter: (getToken: (options?: any) => Promise<string>) => Promise<void>;
 }
 
 export const useBookingStore = create<BookingState, [["zustand/persist", Partial<BookingState>]]>(
@@ -112,6 +117,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
   adminDashboardData: null,
   recurringSeries: [],
   sportCenterBySlug: null,
+  recurringReservations: [],
 
   fetchRecurringSeries: async (getToken: (options?: any) => Promise<string>) => {
     set({ isLoading: true });
@@ -122,7 +128,12 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           scope: "openid profile email"
         }
       });
-      const { data } = await api.get('/admin/bookings/series', {
+      const centerId = get().selectedCenterId;
+      const params = new URLSearchParams();
+      if (centerId) {
+        params.append('sport_center_id', centerId);
+      }
+      const { data } = await api.get(`/admin/bookings/series?${params.toString()}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -379,7 +390,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           address: c.address,
           courts: c.courts ?? c.courts_count ?? (Array.isArray(c.courts) ? c.courts.length : undefined),
           contact: c.contact || { phone: '', email: '' },
-          image: c.image || FALLBACK_IMAGE,
+          image: c.image_url || c.image || FALLBACK_IMAGE,
           cancellationHours: c.cancellation_hours,
           retentionPercent: c.retention_percent,
         partialPaymentEnabled: c.partial_payment_enabled,
@@ -476,7 +487,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
-  updateSportCenterSettings: async (id: string, settingsData: { slug: string; cancellation_hours: number; retention_percent: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number }, getToken: (options?: any) => Promise<string>) => {
+  updateSportCenterSettings: async (id: string, settingsData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; image_url?: string }, getToken: (options?: any) => Promise<string>) => {
     set({ isLoading: true });
     try {
       const token = await getToken({
@@ -485,13 +496,14 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           scope: "openid profile email"
         }
       });
-      const { partialPaymentEnabled, partialPaymentPercent, ...rest } = settingsData;
-      const apiPayload = {
-        ...rest,
-        partial_payment_enabled: partialPaymentEnabled,
-        partial_payment_percent: partialPaymentPercent
-      };
-      await api.patch(`/admin/sport-centers/${id}/settings`, apiPayload, {
+      const filteredData: any = {};
+      if (settingsData.image_url) filteredData.image_url = settingsData.image_url;
+      if (settingsData.cancellation_hours !== undefined) filteredData.cancellation_hours = settingsData.cancellation_hours;
+      if (settingsData.retention_percent !== undefined) filteredData.retention_percent = settingsData.retention_percent;
+      if (settingsData.partialPaymentEnabled !== undefined) filteredData.partial_payment_enabled = settingsData.partialPaymentEnabled;
+      if (settingsData.partialPaymentPercent !== undefined) filteredData.partial_payment_percent = settingsData.partialPaymentPercent;
+      if (settingsData.slug) filteredData.slug = settingsData.slug;
+      await api.patch(`/admin/sport-centers/${id}/settings`, filteredData, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -526,7 +538,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           partialPaymentEnabled: center.partial_payment_enabled,
           partialPaymentPercent: center.partial_payment_percent,
           cancellationHours: center.cancellation_hours,
-          retentionPercent: center.retention_percent
+          retentionPercent: center.retention_percent,
+          image_url: center.image_url
         };
       }
       return center;
@@ -612,6 +625,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
 
       const params = new URLSearchParams();
       params.append('all', 'true');
+      params.append('centerId', centerId);
       if (date) params.append('date', date);
 
       const { data } = await api.get(`/admin/sport-centers/schedules/bookings?${params.toString()}`, {
@@ -1031,6 +1045,70 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       get().fetchSportCenters(),
       get().fetchCourts()
     ]);
+  },
+
+  createRecurringReservation: async (data: CreateRecurringReservationDTO, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      await createRecurringApi(data, await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      }));
+      set({ error: null });
+      toast.success('Reserva semanal creada con éxito');
+    } catch (err) {
+      console.error("Error creating recurring reservation:", err);
+      set({ error: 'Failed to create recurring reservation' });
+      toast.error('Error al crear reserva semanal');
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  cancelRecurringReservation: async (id: string, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      await cancelRecurringApi(id, await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      }));
+      set({ error: null });
+      toast.success('Reserva semanal cancelada');
+      // Remove from local state
+      set(state => ({
+        recurringReservations: state.recurringReservations.filter(r => r.id !== id)
+      }));
+    } catch (err) {
+      console.error("Error cancelling recurring reservation:", err);
+      set({ error: 'Failed to cancel recurring reservation' });
+      toast.error('Error al cancelar reserva semanal');
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  fetchRecurringReservationsByCenter: async (getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const result = await getRecurringReservationsByCenter(await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      }));
+      set({ recurringReservations: result.data || [], error: null });
+    } catch (err) {
+      console.error("Error fetching recurring reservations:", err);
+      set({ error: 'Failed to fetch recurring reservations' });
+    } finally {
+      set({ isLoading: false });
+    }
   }
   }),
   {
