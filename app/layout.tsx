@@ -7,7 +7,13 @@ export const metadata: Metadata = {
   title: "ReservaloYA - Reserva tu cancha deportiva",
   description: "La plataforma más fácil para reservar tu cancha de fútbol, pádel y más.",
   icons: {
-    icon: "/logo/logo-reservaloya.ico",
+    icon: [
+      { url: "/logo/favicon.ico", sizes: "any" },
+      { url: "/logo/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/logo/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/logo/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+    apple: "/logo/apple-touch-icon.png",
   },
 };
 

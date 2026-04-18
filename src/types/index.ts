@@ -47,6 +47,7 @@ export interface SportCenter {
   services: string[];
   partialPaymentEnabled?: boolean;
   partialPaymentPercent?: number;
+  isPrivate?: boolean;
 }
 
 export interface Court {

@@ -128,12 +128,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           scope: "openid profile email"
         }
       });
-      const centerId = get().selectedCenterId;
-      const params = new URLSearchParams();
-      if (centerId) {
-        params.append('sport_center_id', centerId);
-      }
-      const { data } = await api.get(`/admin/bookings/series?${params.toString()}`, {
+      const { data } = await api.get(`/admin/bookings/series`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
