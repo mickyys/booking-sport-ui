@@ -390,6 +390,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           retentionPercent: c.retention_percent,
         partialPaymentEnabled: c.partial_payment_enabled,
         partialPaymentPercent: c.partial_payment_percent,
+        isPrivate: c.is_private,
           services: c.services || [],
           coordinates
         } as SportCenter;
@@ -442,6 +443,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         image: c.image || FALLBACK_IMAGE,
         cancellationHours: c.cancellation_hours,
         retentionPercent: c.retention_percent,
+        isPrivate: c.is_private,
         partialPaymentEnabled: c.partial_payment_enabled,
         partialPaymentPercent: c.partial_payment_percent,
         services: c.services || [],
@@ -531,6 +533,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         return {
           ...center,
           partialPaymentEnabled: center.partial_payment_enabled,
+          isPrivate: center.is_private,
           partialPaymentPercent: center.partial_payment_percent,
           cancellationHours: center.cancellation_hours,
           retentionPercent: center.retention_percent,
