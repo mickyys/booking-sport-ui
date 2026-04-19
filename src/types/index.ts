@@ -73,6 +73,40 @@ export interface TimeSlot {
   partialPaymentEnabled?: boolean | null;
 }
 
+export interface CenterTimeSlot {
+  start_time: string;
+  end_time: string;
+}
+
+export interface SportCenter {
+  id: string;
+  name: string;
+  slug: string;
+  location: string;
+  address: string;
+  phone?: string;
+  email?: string;
+  contact?: {
+    phone: string;
+    email: string;
+  },
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
+  image: string;
+  cancellationHours?: number;
+  retentionPercent?: number;
+  courts?: number;
+  services: string[];
+  partialPaymentEnabled?: boolean;
+  partialPaymentPercent?: number;
+  isPrivate?: boolean;
+  default_schedule?: CenterTimeSlot;
+  schedule_overrides?: Record<number, CenterTimeSlot>;
+  active_days?: number[];
+}
+
 export interface Booking {
   id: string
 

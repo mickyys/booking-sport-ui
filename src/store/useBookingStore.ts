@@ -843,7 +843,9 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         price: Number(s.price),
         status: s.enabled ? 'available' : 'closed',
         payment_required: !!s.paymentRequired,
-        payment_optional: !!s.paymentOptional
+        payment_optional: !!s.paymentOptional,
+        partial_payment_enabled: s.partialPaymentEnabled ?? false,
+        day_of_week: s.dayOfWeek !== undefined && s.dayOfWeek !== null ? Number(s.dayOfWeek) : null
       }));
 
       await api.put(`/admin/courts/${courtId}/schedule`, formattedSchedule, {

@@ -111,7 +111,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
     const slots: TimeSlot[] = [];
     schedules.forEach(courtSchedule => {
       courtSchedule.schedule.forEach(slot => {
-        const date = setMinutes(setHours(selectedDay, slot.hour), 0);
+        const date = setMinutes(setHours(selectedDay, slot.hour), slot.minutes || 0);
         let status = slot.status;
 
         // Check if the slot has already passed
@@ -120,7 +120,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
         }
 
         slots.push({
-          id: `${courtSchedule.id}-${format(date, 'yyyy-MM-dd')}-${slot.hour}`,
+          id: `${courtSchedule.id}-${format(date, 'yyyy-MM-dd')}-${slot.hour}-${slot.minutes || 0}`,
           courtId: courtSchedule.id,
           centerId: selectedCenter || '',
           date,

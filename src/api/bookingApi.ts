@@ -1,4 +1,5 @@
 import api from './axiosInstance';
+import { SportCenter, CenterTimeSlot } from '../types';
 
 export const getUserCancelledBookings = async (token: string, page = 1, limit = 5) => {
   const response = await api.get('/bookings/my-cancelled', {
@@ -20,6 +21,17 @@ export const getSportCenterBySlug = async (slug: string) => {
 
 export const getSportCenterSchedules = async (centerId: string) => {
   const response = await api.get(`/sport-centers/${centerId}/schedules`);
+  return response.data;
+};
+
+export const updateSportCenterSchedules = async (centerId: string, data: {
+  default_schedule: CenterTimeSlot;
+  schedule_overrides: Record<number, CenterTimeSlot>;
+  active_days: number[];
+}, token: string) => {
+  const response = await api.put(`/sport-centers/${centerId}/schedules`, data, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
   return response.data;
 };
 

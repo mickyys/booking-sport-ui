@@ -138,13 +138,16 @@ export const AdminCourtsSubPage: React.FC = () => {
 };
 
 export const AdminSchedulesSubPage: React.FC = () => {
-    const { courts, schedules, onUpdateSchedule, onUpdateScheduleSlot } = useAdminPanel();
+    const { courts, schedules, onUpdateSchedule, onUpdateScheduleSlot, centerDefaultSchedule, centerScheduleOverrides, centerActiveDays } = useAdminPanel();
     return (
         <AdminSchedules 
             courts={courts} 
             schedules={schedules} 
             onUpdateSchedule={onUpdateSchedule} 
             onUpdateScheduleSlot={onUpdateScheduleSlot}
+            centerDefaultSchedule={centerDefaultSchedule}
+            centerScheduleOverrides={centerScheduleOverrides}
+            centerActiveDays={centerActiveDays}
         />
     );
 };

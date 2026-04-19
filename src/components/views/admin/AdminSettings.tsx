@@ -1,11 +1,12 @@
 "use client";
-"use client";
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Save, Globe, Clock, Percent, AlertTriangle, CheckCircle, Info, CreditCard, Upload, Image as ImageIcon, X } from 'lucide-react';
+import { Settings, Save, Globe, Clock, Percent, AlertTriangle, CheckCircle, Info, CreditCard, Image as ImageIcon, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
 import { uploadImageToCloudinary } from '@/components/booking/CourtImageUpload';
+import { updateSportCenterSchedules } from '@/api/bookingApi';
+import { CenterTimeSlot } from '@/types';
 
 interface AdminSettingsProps {
     sportCenter: any;
@@ -23,7 +24,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
     const [localImageFile, setLocalImageFile] = useState<File | null>(null);
     const [loadingData, setLoadingData] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
-    const { updateSportCenterSettings, updateSportCenter, fetchSportCenterByID, isLoading } = useBookingStore();
+
+    const { updateSportCenterSettings, fetchSportCenterByID, isLoading } = useBookingStore();
     const { getAccessTokenSilently } = useAuth0();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,6 +63,9 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                     setPartialPaymentEnabled(center.partialPaymentEnabled ?? false);
                     setPartialPaymentPercent(center.partialPaymentPercent ?? 50);
                     setImageUrl(center.image_url || '');
+                    if (center.default_schedule) setDefaultSchedule(center.default_schedule);
+                    if (center.schedule_overrides) setScheduleOverrides(center.schedule_overrides);
+                    if (center.active_days) setActiveDays(center.active_days);
                 }
             } finally {
                 setLoadingData(false);
@@ -85,12 +90,19 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
 
             await updateSportCenterSettings(id, {
                 image_url: finalImageUrl,
-                slug: slug,
+                slug,
                 cancellation_hours: cancellationHours,
                 retention_percent: retentionPercent,
                 partialPaymentEnabled: partialPaymentEnabled,
                 partialPaymentPercent: partialPaymentPercent,
             }, getAccessTokenSilently);
+
+            const token = await getAccessTokenSilently();
+            await updateSportCenterSchedules(id, {
+                default_schedule: defaultSchedule,
+                schedule_overrides: scheduleOverrides,
+                active_days: activeDays
+            }, token);
 
             setLocalImageFile(null);
             setLocalImagePreview(null);
@@ -105,14 +117,29 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
         }
     };
 
-    if (!sportCenter) return <div>No se encontró información del centro deportivo.</div>;
+    if (!sportCenter) return <div className="p-8 text-center text-slate-500">No se encontró información del centro deportivo.</div>;
     if (loadingData) return <div className="flex justify-center p-8 text-slate-500">Cargando configuración...</div>;
 
     const refundPercent = 100 - retentionPercent;
 
+    const daysOfWeek = [
+        { label: 'Domingo', value: 0 },
+        { label: 'Lunes', value: 1 },
+        { label: 'Martes', value: 2 },
+        { label: 'Miércoles', value: 3 },
+        { label: 'Jueves', value: 4 },
+        { label: 'Viernes', value: 5 },
+        { label: 'Sábado', value: 6 },
+    ];
+
+    const toggleDay = (day: number) => {
+        setActiveDays(prev =>
+            prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day].sort()
+        );
+    };
+
     return (
-        <div className="max-w-2xl mx-auto space-y-6">
-            {/* General Settings */}
+        <div className="max-w-2xl mx-auto space-y-6 pb-12">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="p-6 border-b border-slate-100 flex items-center gap-3">
                     <div className="p-2 bg-slate-100 text-slate-600 rounded-lg">
@@ -123,10 +150,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
 
                 <form onSubmit={handleSave} className="p-8 space-y-6">
                     {/* Image Upload */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Imagen del Club
-                        </label>
+                    <div className="space-y-2">
+                        <label className="block text-sm font-medium text-slate-700">Imagen del Club</label>
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -135,41 +160,24 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                             className="hidden"
                             id="club-image-upload"
                         />
-                        
                         {localImagePreview || imageUrl ? (
                             <div className="relative w-full h-48 rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
-                                <img 
-                                    src={localImagePreview || imageUrl} 
-                                    alt="Preview" 
-                                    className="w-full h-full object-cover"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleRemoveImage}
-                                    className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                                >
+                                <img src={localImagePreview || imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                                <button type="button" onClick={handleRemoveImage} className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors">
                                     <X className="w-4 h-4" />
                                 </button>
                             </div>
                         ) : (
-                            <label
-                                htmlFor="club-image-upload"
-                                className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-slate-400 hover:bg-slate-50 transition-all"
-                            >
+                            <label htmlFor="club-image-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-slate-400 hover:bg-slate-50 transition-all">
                                 <ImageIcon className="w-8 h-8 text-slate-400 mb-2" />
                                 <span className="text-sm text-slate-500">Haz clic para subir una imagen</span>
                                 <span className="text-xs text-slate-400 mt-1">PNG, JPG hasta 5MB</span>
                             </label>
                         )}
-                        <p className="mt-2 text-xs text-slate-500">
-                            Esta imagen se visualiza en la página principal del club
-                        </p>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Subdominio (Slug)
-                        </label>
+                    <div className="space-y-2">
+                        <label className="block text-sm font-medium text-slate-700">Subdominio (Slug)</label>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                                 <Globe className="w-4 h-4" />
@@ -183,23 +191,18 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                                 required
                             />
                         </div>
-                        <p className="mt-2 text-xs text-slate-500">
+                        <p className="text-xs text-slate-500">
                             Esto se usará para acceder directamente via <span className="font-bold">{slug || 'tu-club'}.reservaloya.cl</span>
                         </p>
                     </div>
 
-                    {/* Cancellation Policy Section */}
+                    {/* Cancellation Policy */}
                     <div className="border-t border-slate-200 pt-6">
                         <div className="flex items-center gap-2 mb-4">
                             <AlertTriangle className="w-5 h-5 text-amber-500" />
                             <h4 className="text-base font-bold text-slate-900">Política de Cancelación y Devolución</h4>
                         </div>
-                        <p className="text-sm text-slate-500 mb-5">
-                            Configura las reglas de devolución cuando un usuario cancela una reserva.
-                        </p>
-
                         <div className="space-y-5">
-                            {/* Cancellation Hours */}
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">
                                     <Clock className="w-4 h-4 inline mr-1.5 text-slate-400" />
@@ -221,7 +224,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                                 </p>
                             </div>
 
-                            {/* Retention Percent */}
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">
                                     <Percent className="w-4 h-4 inline mr-1.5 text-slate-400" />
@@ -245,90 +247,48 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                         </div>
                     </div>
 
-                    {/* Policy Preview */}
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-                        <div className="flex items-center gap-2 mb-3">
-                            <Info className="w-4 h-4 text-blue-500" />
-                            <span className="text-sm font-bold text-slate-700">Vista previa — Lo que verá el usuario</span>
-                        </div>
-                        <div className="space-y-3">
-                            <div className="flex items-start gap-3">
-                                <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
-                                <p className="text-sm text-slate-700">
-                                    <span className="font-bold text-slate-900">Cancelación con {cancellationHours}+ horas de anticipación:</span>{' '}
-                                    Devolución del <span className="font-bold text-emerald-600">100%</span> del pago.
-                                </p>
-                            </div>
-                            <div className="flex items-start gap-3">
-                                <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
-                                <p className="text-sm text-slate-700">
-                                    <span className="font-bold text-slate-900">Cancelación con menos de {cancellationHours} horas:</span>{' '}
-                                    {retentionPercent === 100 ? (
-                                        <span className="font-bold text-red-600">Sin devolución (retención del 100%).</span>
-                                    ) : retentionPercent === 0 ? (
-                                        <span className="font-bold text-emerald-600">Devolución del 100% (sin retención).</span>
-                                    ) : (
-                                        <>
-                                            Se retiene el <span className="font-bold text-amber-600">{retentionPercent}%</span> y se devuelve el <span className="font-bold text-emerald-600">{refundPercent}%</span>.
-                                        </>
-                                    )}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-
-                    {/* Partial Payment Settings */}
+                    {/* Partial Payment */}
                     <div className="border-t border-slate-200 pt-6">
                         <div className="flex items-center gap-2 mb-4">
                             <CreditCard className="w-5 h-5 text-blue-500" />
                             <h4 className="text-base font-bold text-slate-900">Pagos Parciales (Abonos)</h4>
                         </div>
-                        <p className="text-sm text-slate-500 mb-5">
-                            Permite que los usuarios paguen solo un porcentaje de la reserva online y el resto en el local.
-                        </p>
-
                         <div className="space-y-5">
                             <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="space-y-0.5">
                                     <label className="text-sm font-bold text-slate-900">Activar pagos parciales</label>
-                                    <p className="text-xs text-slate-500 text-balance">Los usuarios podrán elegir pagar un abono al reservar.</p>
+                                    <p className="text-xs text-slate-500">Los usuarios podrán elegir pagar un abono al reservar.</p>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setPartialPaymentEnabled(!partialPaymentEnabled)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                                        partialPaymentEnabled ? 'bg-slate-900' : 'bg-slate-200'
-                                    }`}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${partialPaymentEnabled ? 'bg-slate-900' : 'bg-slate-200'}`}
                                 >
-                                    <span
-                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                            partialPaymentEnabled ? 'translate-x-6' : 'translate-x-1'
-                                        }`}
-                                    />
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${partialPaymentEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
                                 </button>
                             </div>
 
-                            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    <Percent className="w-4 h-4 inline mr-1.5 text-slate-400" />
-                                    Porcentaje de abono requerido
-                                </label>
-                                <div className="flex items-center gap-3">
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        max={99}
-                                        value={partialPaymentPercent}
-                                        onChange={(e) => setPartialPaymentPercent(Math.max(1, Math.min(99, Number(e.target.value))))}
-                                        className="w-28 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-center text-lg font-bold"
-                                    />
-                                    <span className="text-sm text-slate-600">% del total</span>
+                            {partialPaymentEnabled && (
+                                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Porcentaje de abono requerido
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            max={99}
+                                            value={partialPaymentPercent}
+                                            onChange={(e) => setPartialPaymentPercent(Math.max(1, Math.min(99, Number(e.target.value))))}
+                                            className="w-28 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-center text-lg font-bold"
+                                        />
+                                        <span className="text-sm text-slate-600">% del total</span>
+                                    </div>
+                                    <p className="mt-1.5 text-xs text-slate-500">
+                                        El usuario pagará el {partialPaymentPercent}% al momento de reservar y el {100 - partialPaymentPercent}% restante en el club.
+                                    </p>
                                 </div>
-                                <p className="mt-1.5 text-xs text-slate-500">
-                                    El usuario pagará el {partialPaymentPercent}% al momento de reservar y el {100 - partialPaymentPercent}% restante en el club.
-                                </p>
-                            </div>
+                            )}
                         </div>
                     </div>
 
