@@ -87,7 +87,8 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
             enabled: s.status === 'available',
             paymentRequired: s.payment_required,
             paymentOptional: s.payment_optional || false,
-            partialPaymentEnabled: s.partial_payment_enabled ?? false
+            partialPaymentEnabled: s.partial_payment_enabled ?? false,
+            dayOfWeek: s.day_of_week
         })) || []
     })), [backendCourts]);
 

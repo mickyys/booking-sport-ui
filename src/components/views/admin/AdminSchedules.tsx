@@ -125,18 +125,26 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
     const [slotToDelete, setSlotToDelete] = useState<{ courtId: string, hour: number, minutes: number } | null>(null);
 
     const [loadingSlots, setLoadingSlots] = useState<Record<string, boolean>>({});
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
-    const [newSlot, setNewSlot] = useState({ time: '08:00', price: 0, paymentRequired: true, paymentOptional: false });
     const [collapsedCourts, setCollapsedCourts] = useState<Record<string, boolean>>({});
+    const [collapsedDays, setCollapsedDays] = useState<Record<string, Record<string, boolean>>>({});
 
-    const [courtDaySettings, setCourtDaySettings] = useState<Record<string, { dayOfWeek: number; startTime: string; endTime: string; price: number }>>({});
+    const [courtDaySettings, setCourtDaySettings] = useState<Record<string, { dayOfWeek: number | null; startTime: string; endTime: string; price: number }>>({});
     const [showGenerateModal, setShowGenerateModal] = useState(false);
     const [selectedCourtForGen, setSelectedCourtForGen] = useState<string | null>(null);
     const [generatePrice, setGeneratePrice] = useState(0);
 
     const toggleCollapse = (courtId: string) => {
         setCollapsedCourts(prev => ({ ...prev, [courtId]: !prev[courtId] }));
+    };
+
+    const toggleDayCollapse = (courtId: string, dayKey: string) => {
+        setCollapsedDays(prev => ({
+            ...prev,
+            [courtId]: {
+                ...(prev[courtId] || {}),
+                [dayKey]: !(prev[courtId]?.[dayKey])
+            }
+        }));
     };
 
     const toggleAll = (collapse: boolean) => {
@@ -265,12 +273,6 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
         setSlotToDelete(null);
     };
 
-    const openCreateModal = (courtId: string) => {
-        setSelectedCourtId(courtId);
-        setNewSlot({ time: '08:00', price: 0, paymentRequired: true, paymentOptional: false });
-        setIsModalOpen(true);
-    };
-
     const generateSlotsForDay = () => {
         if (!selectedCourtForGen) return;
         
@@ -335,27 +337,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
         onUpdateSchedule({ ...schedule, slots: updatedSlots });
         setShowGenerateModal(false);
         setSelectedCourtForGen(null);
-        toast.success(`${newSlots.length} horarios generados para ${daysOfWeek.find(d => d.value === settings.dayOfWeek)?.label}`);
-    };
-
-    const handleCreateSlot = () => {
-        if (!selectedCourtId) return;
-        const schedule = schedules.find(s => s.courtId === selectedCourtId);
-        if (!schedule) return;
-
-        const [h, m] = newSlot.time.split(':').map(Number);
-
-        // Already exists?
-        if (schedule.slots.some((s: any) => s.hour === h && (s.minutes || 0) === m)) {
-            toast.error("Este horario ya existe");
-            return;
-        }
-
-        const newSlots = [...schedule.slots, { hour: h, minutes: m, price: newSlot.price, enabled: true, paymentRequired: newSlot.paymentRequired, paymentOptional: newSlot.paymentOptional }]
-            .sort((a, b) => (a.hour * 60 + (a.minutes || 0)) - (b.hour * 60 + (b.minutes || 0)));
-
-        onUpdateSchedule({ ...schedule, slots: newSlots });
-        setIsModalOpen(false);
+        toast.success(`${newSlots.length} horarios generados para ${settings.dayOfWeek === null ? 'Horario General' : daysOfWeek.find(d => d.value === settings.dayOfWeek)?.label}`);
     };
 
     return (
@@ -429,13 +411,6 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                     <Calendar size={18} />
                                     Generar
                                 </button>
-                                <button
-                                    onClick={() => openCreateModal(court.id)}
-                                    className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 active:scale-95 shrink-0"
-                                >
-                                    <Plus size={18} />
-                                    Nuevo
-                                </button>
                             </div>
 
                             {/* Slots Grid */}
@@ -447,20 +422,75 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                             <p className="font-medium">Sin horarios configurados</p>
                                         </div>
                                     ) : (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                            {(schedule.slots || []).map((slot: any, index: number) => {
-                                                const slotKey = `${court.id}-${slot.hour}-${slot.minutes || 0}`;
-                                                const isLoading = !!loadingSlots[slotKey];
+                                        <div className="space-y-12">
+                                            {(() => {
+                                                const grouped = (schedule.slots || []).reduce((acc: any, slot: any) => {
+                                                    const day = slot.dayOfWeek === undefined || slot.dayOfWeek === null ? 'null' : slot.dayOfWeek.toString();
+                                                    if (!acc[day]) acc[day] = [];
+                                                    acc[day].push(slot);
+                                                    return acc;
+                                                }, {});
 
-                                                return (
-                                                <div
-                                                    key={`${index}-${slot.hour}-${slot.minutes}`}
-                                                    className={`group/slot relative flex flex-col gap-5 p-6 rounded-[2rem] border-2 transition-all duration-300 ${slot.enabled
-                                                        ? 'border-emerald-100 bg-white shadow-lg shadow-emerald-100/20'
-                                                        : 'border-slate-100 bg-slate-50/50 opacity-70'
-                                                        }`}
-                                                >
-                                                    {/* Delete Button - Top Right Absolute */}
+                                                const sortedDays = Object.keys(grouped).sort((a, b) => {
+                                                    const da = a === 'null' ? -1 : (parseInt(a) === 0 ? 7 : parseInt(a));
+                                                    const db = b === 'null' ? -1 : (parseInt(b) === 0 ? 7 : parseInt(b));
+                                                    return da - db;
+                                                });
+
+                                                return sortedDays.map(dayKey => {
+                                                    const day = dayKey === 'null' ? null : parseInt(dayKey);
+                                                    const daySlots = grouped[dayKey].sort((a: any, b: any) => (a.hour * 60 + (a.minutes || 0)) - (b.hour * 60 + (b.minutes || 0)));
+                                                    const isDayCollapsed = collapsedDays[court.id]?.[dayKey];
+                                                    
+                                                    // Obtener solo los horarios habilitados para el resumen
+                                                    const enabledSlotsSummary = daySlots
+                                                        .filter((s: any) => s.enabled)
+                                                        .map((s: any) => `${String(s.hour).padStart(2, '0')}:${String(s.minutes || 0).padStart(2, '0')}`)
+                                                        .join(', ');
+
+                                                    return (
+                                                        <div key={dayKey} className="space-y-4">
+                                                            <div 
+                                                                className="flex items-center gap-3 cursor-pointer group/day"
+                                                                onClick={() => toggleDayCollapse(court.id, dayKey)}
+                                                            >
+                                                                <div className={`px-4 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all ${day === null ? 'bg-slate-900 text-white' : 'bg-blue-600 text-white shadow-md shadow-blue-100'} ${isDayCollapsed ? 'opacity-90 hover:opacity-100' : ''}`}>
+                                                                    {day === null ? 'Horario General' : daysOfWeek.find(d => d.value === day)?.label}
+                                                                    {isDayCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                                                                </div>
+                                                                <div className="h-px bg-slate-100 flex-1" />
+                                                            </div>
+                                                            
+                                                            {isDayCollapsed && (
+                                                                <div className="px-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                                    {enabledSlotsSummary ? (
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            {enabledSlotsSummary.split(', ').map((hour, i) => (
+                                                                                <span key={i} className="px-3 py-1 bg-slate-50 text-slate-700 text-sm font-bold rounded-xl border border-slate-100">
+                                                                                    {hour}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <p className="text-sm font-bold text-slate-400 italic">No hay horarios habilitados</p>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                            
+                                                            {!isDayCollapsed && (
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                                                    {daySlots.map((slot: any, index: number) => {
+                                                                        const slotKey = `${court.id}-${slot.hour}-${slot.minutes || 0}`;
+                                                                        const isLoading = !!loadingSlots[slotKey];
+
+                                                                        return (
+                                                                            <div
+                                                                                key={`${dayKey}-${index}-${slot.hour}-${slot.minutes}`}
+                                                                                className={`group/slot relative flex flex-col gap-5 p-6 rounded-[2rem] border-2 transition-all duration-300 ${slot.enabled
+                                                                                    ? 'border-emerald-100 bg-white shadow-lg shadow-emerald-100/20'
+                                                                                    : 'border-slate-100 bg-slate-50/50 opacity-70'
+                                                                                    }`}
+                                                                            >                                                    {/* Delete Button - Top Right Absolute */}
                                                     <button
                                                         onClick={() => handleDeleteSlot(court.id, slot.hour, slot.minutes)}
                                                         className="absolute -top-2 -right-2 w-8 h-8 bg-white text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full shadow-md border border-slate-100 flex items-center justify-center transition-all z-10"
@@ -577,93 +607,21 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                                         )}
                                                     </div>
                                                 </div>
-                                            )})}
-                                        </div>
-                                    )}                                    
-                                </div>
+                                            );
+                                            })}
+                                            </div>
+                                            )}
+                                            </div>
+                                            );
+                                            });                    })()}
+                </div>
+            )}                                    
+        </div>
                             )}
                         </div>
                     );
                 })}
             </div>
-
-            {/* Create Schedule Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
-                    <div className="relative bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between mb-8">
-                            <div>
-                                <h4 className="text-2xl font-black text-slate-900 italic underline decoration-emerald-500 decoration-4 underline-offset-4">Nuevo Horario</h4>
-                                <p className="text-slate-500 text-sm mt-2">Configura la hora y el valor de la sesión</p>
-                            </div>
-                            <button
-                                onClick={() => setIsModalOpen(false)}
-                                className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
-                            >
-                                <X size={24} />
-                            </button>
-                        </div>
-
-                        <div className="space-y-6">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2 ml-1 italic">Hora de inicio</label>
-                                <div className="relative">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500">
-                                        <Clock size={20} />
-                                    </div>
-                                    <input
-                                        type="time"
-                                        value={newSlot.time}
-                                        onChange={e => setNewSlot({ ...newSlot, time: e.target.value })}
-                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl py-4 pl-12 pr-6 text-xl font-black focus:border-emerald-500 focus:bg-white outline-none transition-all shadow-sm"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2 ml-1 italic">Valor de la reserva</label>
-                                <div className="relative">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500 font-black text-xl">
-                                        $
-                                    </div>
-                                    <PriceInput
-                                        value={newSlot.price}
-                                        onChange={val => setNewSlot({ ...newSlot, price: val })}
-                                        debounceMs={0}
-                                        placeholder="Ingrese el valor"
-                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl py-4 pl-12 pr-6 text-xl font-black focus:border-emerald-500 focus:bg-white outline-none transition-all shadow-sm"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between bg-slate-50 p-4 rounded-3xl border border-slate-100">
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 italic">Requiere Pago previo</label>
-                                    <p className="text-xs text-slate-500">Muestra la pasarela de pago al reservar</p>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={newSlot.paymentRequired}
-                                        onChange={e => setNewSlot({ ...newSlot, paymentRequired: e.target.checked })}
-                                        className="sr-only peer"
-                                    />
-                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-                                </label>
-                            </div>
-
-                            <button
-                                onClick={handleCreateSlot}
-                                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black text-lg py-4 rounded-3xl shadow-xl shadow-emerald-200 transition-all flex items-center justify-center gap-2 active:scale-95 group"
-                            >
-                                <Plus size={22} className="group-hover:rotate-90 transition-transform duration-300" />
-                                Crear Horario
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Generate Slots Modal */}
             {showGenerateModal && selectedCourtForGen && (
@@ -687,13 +645,14 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-2 ml-1 italic">Día de la semana</label>
                                 <select
-                                    value={courtDaySettings[selectedCourtForGen]?.dayOfWeek ?? 1}
+                                    value={courtDaySettings[selectedCourtForGen]?.dayOfWeek ?? 'null'}
                                     onChange={e => setCourtDaySettings(prev => ({
                                         ...prev,
-                                        [selectedCourtForGen]: { ...prev[selectedCourtForGen], dayOfWeek: parseInt(e.target.value) }
+                                        [selectedCourtForGen]: { ...prev[selectedCourtForGen], dayOfWeek: e.target.value === 'null' ? null : parseInt(e.target.value) }
                                     }))}
                                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl py-4 px-6 text-xl font-black focus:border-blue-500 focus:bg-white outline-none transition-all shadow-sm"
                                 >
+                                    <option value="null">Horario General (Toda la semana)</option>
                                     {daysOfWeek.map(day => (
                                         <option key={day.value} value={day.value}>{day.label}</option>
                                     ))}
