@@ -1,7 +1,7 @@
 "use client";
 
-import { AdminPanel } from '@/components/views/AdminPanel';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { AdminPanel } from '@/components/views/AdminPanel';
 
 export default function AdminLayout({
   children,

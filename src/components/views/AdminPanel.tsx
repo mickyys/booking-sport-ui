@@ -10,6 +10,7 @@ import { AdminCalendar } from './admin/AdminCalendar';
 import { AdminAgenda } from './admin/AdminAgenda';
 import { AdminSettings } from './admin/AdminSettings';
 import { AdminQR } from './admin/AdminQR';
+import { AdminUsers } from './admin/AdminUsers';
 import { AdminSidebar } from '@/components/layout/AdminSidebar';
 import { AdminPanelProvider, useAdminPanel } from '@/context/AdminPanelContext';
 
@@ -170,4 +171,8 @@ export const AdminSettingsSubPage: React.FC = () => {
 export const AdminQRSubPage: React.FC = () => {
     const { currentSportCenter } = useAdminPanel();
     return <AdminQR sportCenter={currentSportCenter} />;
+};
+
+export const AdminUsersSubPage: React.FC = () => {
+    return <AdminUsers />;
 };

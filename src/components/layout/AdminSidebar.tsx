@@ -23,6 +23,7 @@ const navItems = [
   { to: '/admin/recurring', icon: Repeat, label: 'Reservas' },
   { to: '/admin/courts', icon: Trophy, label: 'Canchas' },
   { to: '/admin/schedules', icon: Clock, label: 'Horarios y Tarifas' },
+  { to: '/admin/users', icon: Users, label: 'Usuarios' },
   { to: '/admin/qr', icon: QrCode, label: 'QR' },
   { to: '/admin/settings', icon: Settings, label: 'Configuración' },
 ];

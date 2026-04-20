@@ -521,7 +521,11 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           scope: "openid profile email"
         }
       });
-      const response = await api.get(`/admin/sport-centers/${id}`, {
+      
+      // Si el ID es especial o estamos en admin, podemos usar el nuevo endpoint
+      const url = id === 'my' || !id ? `/admin/my-sport-center` : `/admin/sport-centers/${id}`;
+      
+      const response = await api.get(url, {
         headers: {
           Authorization: `Bearer ${token}`
         }
