@@ -24,6 +24,9 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
     const [localImageFile, setLocalImageFile] = useState<File | null>(null);
     const [loadingData, setLoadingData] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
+    const [defaultSchedule, setDefaultSchedule] = useState<CenterTimeSlot | null>(null);
+    const [scheduleOverrides, setScheduleOverrides] = useState<Record<number, CenterTimeSlot>>({});
+    const [activeDays, setActiveDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
 
     const { updateSportCenterSettings, fetchSportCenterByID, isLoading } = useBookingStore();
     const { getAccessTokenSilently } = useAuth0();
@@ -99,7 +102,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
 
             const token = await getAccessTokenSilently();
             await updateSportCenterSchedules(id, {
-                default_schedule: defaultSchedule,
+                default_schedule: defaultSchedule || { start_time: '09:00', end_time: '22:00' },
                 schedule_overrides: scheduleOverrides,
                 active_days: activeDays
             }, token);
