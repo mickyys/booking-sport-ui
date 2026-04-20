@@ -300,7 +300,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
         }
       });
-      await api.post(`/admin/bookings/${bookingId}/pay-balance`, {}, {
+      await api.post(`/bookings/${bookingId}/cancel`, {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }
