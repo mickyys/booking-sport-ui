@@ -465,7 +465,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                                                 <div className="px-2 animate-in fade-in slide-in-from-top-2 duration-300">
                                                                     {enabledSlotsSummary ? (
                                                                         <div className="flex flex-wrap gap-2">
-                                                                            {enabledSlotsSummary.split(', ').map((hour, i) => (
+                                                                            {enabledSlotsSummary.split(', ').map((hour: string, i: number) => (
                                                                                 <span key={i} className="px-3 py-1 bg-slate-50 text-slate-700 text-sm font-bold rounded-xl border border-slate-100">
                                                                                     {hour}
                                                                                 </span>
