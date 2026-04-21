@@ -16,18 +16,29 @@ export const AdminQR: React.FC<AdminQRProps> = ({ sportCenter: initialSportCente
     const fetchAdminCourts = useBookingStore(state => state.fetchAdminCourts);
     const adminCourts = useBookingStore(state => state.adminCourts);
     const [sportCenter, setSportCenter] = React.useState(initialSportCenter);
+    const [isLoading, setIsLoading] = React.useState(!initialSportCenter);
 
     useEffect(() => {
         if (!initialSportCenter && adminCourts && adminCourts.length > 0) {
             setSportCenter(adminCourts[0].sport_center);
+            setIsLoading(false);
         }
     }, [initialSportCenter, adminCourts]);
 
     useEffect(() => {
-        if (!sportCenter) {
-            fetchAdminCourts(getAccessTokenSilently);
+        if (!sportCenter && !adminCourts) {
+            fetchAdminCourts(getAccessTokenSilently).finally(() => setIsLoading(false));
         }
-    }, [sportCenter, fetchAdminCourts, getAccessTokenSilently]);
+    }, [sportCenter, adminCourts, fetchAdminCourts, getAccessTokenSilently]);
+
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center p-12 text-slate-500">
+                <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mb-4" />
+                <p>Cargando...</p>
+            </div>
+        );
+    }
 
     if (!sportCenter) {
         return (
