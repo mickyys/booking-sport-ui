@@ -18,22 +18,20 @@ export const AdminQR: React.FC<AdminQRProps> = ({ sportCenter: initialSportCente
     const [isLoading, setIsLoading] = useState(!initialSportCenter);
 
     useEffect(() => {
-        if (!sportCenter && !isLoading) {
-            const loadSportCenter = async () => {
-                setIsLoading(true);
-                try {
-                    const center = await fetchSportCenterByID('my', getAccessTokenSilently);
-                    if (center) {
-                        setSportCenter(center);
+        const loadSportCenter = async () => {
+            setIsLoading(true);
+            try {
+                const center = await fetchSportCenterByID('my', getAccessTokenSilently);
+                if (center) {
+                    setSportCenter(center);
                     }
                 } catch (error) {
                     console.error('Error fetching sport center:', error);
                 } finally {
                     setIsLoading(false);
                 }
-            };
+            }
             loadSportCenter();
-        }
     }, []);
 
     if (isLoading) {
