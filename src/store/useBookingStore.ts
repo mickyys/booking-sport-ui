@@ -626,7 +626,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
 
       const params = new URLSearchParams();
       params.append('all', 'true');
-      params.append('centerId', centerId);
       if (date) params.append('date', date);
 
       const { data } = await api.get(`/admin/sport-centers/schedules/bookings?${params.toString()}`, {
