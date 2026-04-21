@@ -153,7 +153,7 @@ export const AdminRecurringClients: React.FC = () => {
         }
     };
 
-    const formatHour = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
+    const formatHour = (hour: number, minutes?: number) => `${String(hour).padStart(2, '0')}:${String(minutes ?? 0).padStart(2, '0')}`;
 
     const formatPrice = (price: number | undefined | null) => {
         const validPrice = price ?? 0;
@@ -324,7 +324,7 @@ export const AdminRecurringClients: React.FC = () => {
                                         <td className="px-6 py-4">
                                             <span className="flex items-center gap-1 text-slate-900 font-medium">
                                                 <Clock size={14} />
-                                                {formatHour(item.hour)}
+                                                {formatHour(item.hour, (item as any).minutes)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">

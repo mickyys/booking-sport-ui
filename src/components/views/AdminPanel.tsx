@@ -134,7 +134,15 @@ export const AdminDashboardSubPage: React.FC = () => {
 };
 
 export const AdminCourtsSubPage: React.FC = () => {
-    const { courts, onSaveCourt, onDeleteCourt, currentSportCenter } = useAdminPanel();
+    const { courts, onSaveCourt, onDeleteCourt, currentSportCenter, fetchAdminCourts } = useAdminPanel();
+    const { getAccessTokenSilently } = useAuth0();
+
+    React.useEffect(() => {
+        if (courts.length === 0) {
+            fetchAdminCourts(getAccessTokenSilently);
+        }
+    }, [courts.length, fetchAdminCourts, getAccessTokenSilently]);
+
     return <AdminCourts courts={courts} onSaveCourt={onSaveCourt} onDeleteCourt={onDeleteCourt} currentSportCenter={currentSportCenter} />;
 };
 

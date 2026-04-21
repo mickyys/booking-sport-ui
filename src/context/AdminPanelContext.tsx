@@ -59,9 +59,7 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
 
     const [isRefreshing, setIsRefreshing] = useState(false);
 
-    useEffect(() => {
-        fetchAdminCourts(getAccessTokenSilently);
-    }, [fetchAdminCourts, getAccessTokenSilently]);
+
 
     const backendCourts = React.useMemo(() => adminCourts ? adminCourts.flatMap((ac: any) => ac.courts?.map((c: any) => ({
         ...c,
