@@ -323,7 +323,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       const token = await getToken({
         authorizationParams: {
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
-        }
+        },
+        cacheMode: 'off'
       });
       await api.delete(`/admin/bookings/series/${seriesId}`, {
         headers: {
@@ -619,7 +620,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         authorizationParams: {
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: 'openid profile email'
-        }
+        },
+        cacheMode: 'off'
       });
 
       const params = new URLSearchParams();
@@ -675,7 +677,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         authorizationParams: {
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
-        }
+        },
+        cacheMode: 'off'
       });
       const { data } = await api.get('/admin/courts', {
         headers: {
@@ -952,7 +955,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         authorizationParams: {
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
-        }
+        },
+        cacheMode: 'off'
       });
       await api.post('/admin/bookings/internal', bookingData, {
         headers: {
@@ -976,7 +980,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         authorizationParams: {
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
-        }
+        },
+        cacheMode: 'off'
       });
       await api.delete(`/admin/bookings/${bookingId}`, {
         headers: {
@@ -1000,7 +1005,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         authorizationParams: {
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
-        }
+        },
+        cacheMode: 'off'
       });
       await api.post(`/admin/bookings/${bookingId}/pay-balance`, {}, {
         headers: {
@@ -1024,7 +1030,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         authorizationParams: {
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
-        }
+        },
+        cacheMode: 'off'
       });
       await api.patch(`/admin/bookings/${bookingId}/undo-pay-balance`, {}, {
         headers: {
@@ -1055,7 +1062,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         authorizationParams: {
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
-        }
+        },
+        cacheMode: 'off'
       }));
       set({ error: null });
       toast.success('Reserva semanal creada con éxito');
@@ -1076,7 +1084,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         authorizationParams: {
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
-        }
+        },
+        cacheMode: 'off'
       }));
       set({ error: null });
       toast.success('Reserva semanal cancelada');
