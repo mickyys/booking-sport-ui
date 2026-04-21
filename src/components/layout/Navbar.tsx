@@ -28,30 +28,6 @@ export const Navbar: React.FC = () => {
           {/* Right side items */}
           <div className="flex items-center gap-1 sm:gap-3 min-w-0">
 
-            {/* Reservar - only for non-admins, hidden on mobile */}
-            {!isAdministrator && (
-              <>
-                <button
-                  onClick={() => router.push('/reservar')}
-                  className={`hidden md:block px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/reservar') ? 'bg-emerald-500 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}`}
-                >
-                  Reservar
-                </button>
-                <button
-                  onClick={() => {
-                    if (pathname === '/') {
-                      document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' });
-                    } else {
-                      router.push('/contacto');
-                    }
-                  }}
-                  className={`hidden lg:block px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/contacto') ? 'bg-emerald-500 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}`}
-                >
-                  Centros Deportivos
-                </button>
-              </>
-            )}
-
             {/* Admin button - always visible */}
             {isAdministrator && (
               <button
