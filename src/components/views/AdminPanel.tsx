@@ -134,8 +134,9 @@ export const AdminDashboardSubPage: React.FC = () => {
 };
 
 export const AdminCourtsSubPage: React.FC = () => {
-    const { courts, onSaveCourt, onDeleteCourt, currentSportCenter, fetchAdminCourts } = useAdminPanel();
+    const { courts, onSaveCourt, onDeleteCourt, currentSportCenter } = useAdminPanel();
     const { getAccessTokenSilently } = useAuth0();
+    const fetchAdminCourts = useBookingStore(state => state.fetchAdminCourts);
 
     React.useEffect(() => {
         if (courts.length === 0) {
