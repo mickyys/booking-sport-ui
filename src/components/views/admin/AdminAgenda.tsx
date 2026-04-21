@@ -17,12 +17,10 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-interface AdminAgendaProps {
-    courts: any[];
-}
-
-export const AdminAgenda: React.FC<AdminAgendaProps> = ({ courts }) => {
+export const AdminAgenda: React.FC = () => {
     const { schedules, fetchSchedules, fetchAdminSchedules, weeklySchedules, selectedCenterId, isLoading: storeLoading, payBalance, undoPayBalance } = useBookingStore();
+
+    const courts = schedules.map(s => ({ id: s.id, name: s.name }));
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
     const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
@@ -121,7 +119,7 @@ export const AdminAgenda: React.FC<AdminAgendaProps> = ({ courts }) => {
         if (courts.length > 0 && !selectedCourtId) {
             setSelectedCourtId(courts[0].id);
         }
-    }, [courts, selectedCourtId]);
+    }, [schedules, selectedCourtId]);
 
     const handlePrevDay = () => setSelectedDate(prev => subDays(prev, 1));
     const handleNextDay = () => setSelectedDate(prev => addDays(prev, 1));

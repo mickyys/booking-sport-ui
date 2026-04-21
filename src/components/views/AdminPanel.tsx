@@ -159,8 +159,7 @@ export const AdminCalendarSubPage: React.FC = () => {
 };
 
 export const AdminAgendaSubPage: React.FC = () => {
-    const { courts } = useAdminPanel();
-    return <AdminAgenda courts={courts} />;
+    return <AdminAgenda />;
 };
 
 export const AdminSettingsSubPage: React.FC = () => {
