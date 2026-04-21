@@ -56,10 +56,18 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
     const fetchAdminDashboard = useBookingStore(state => state.fetchAdminDashboard);
     const adminDashboardData = useBookingStore(state => state.adminDashboardData);
     const storeCancelBooking = useBookingStore(state => state.cancelBooking);
+    const fetchSportCenterByID = useBookingStore(state => state.fetchSportCenterByID);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [loadedSportCenter, setLoadedSportCenter] = useState<any>(null);
 
-
+    React.useEffect(() => {
+        if (!loadedSportCenter) {
+            fetchSportCenterByID('my', getAccessTokenSilently).then((center) => {
+                if (center) setLoadedSportCenter(center);
+            });
+        }
+    }, [getAccessTokenSilently]);
 
     const backendCourts = React.useMemo(() => adminCourts ? adminCourts.flatMap((ac: any) => ac.courts?.map((c: any) => ({
         ...c,
@@ -69,7 +77,11 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
         centerId: ac.sport_center?.id || ac.sport_center?._id,
     })) || []) : [], [adminCourts]);
 
-    const currentSportCenter = React.useMemo(() => adminCourts && adminCourts.length > 0 ? adminCourts[0].sport_center : null, [adminCourts]);
+    const currentSportCenter = React.useMemo(() => {
+        if (loadedSportCenter) return loadedSportCenter;
+        if (adminCourts && adminCourts.length > 0) return adminCourts[0].sport_center;
+        return null;
+    }, [loadedSportCenter, adminCourts]);
     const courts = backendCourts;
 
     const centerDefaultSchedule = React.useMemo(() => currentSportCenter?.default_schedule || { start_time: '19:00', end_time: '20:00' }, [currentSportCenter]);
