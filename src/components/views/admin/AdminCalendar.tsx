@@ -31,6 +31,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
     const {
         schedules,
         fetchAdminSchedules,
+        fetchAdminCourts,
         createInternalBooking,
         deleteBooking,
         deleteSeries,
@@ -39,6 +40,12 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
         cancelRecurringReservation,
         fetchRecurringReservationsByCenter
     } = useBookingStore();
+
+    useEffect(() => {
+        if (courts.length === 0) {
+            fetchAdminCourts(getAccessTokenSilently);
+        }
+    }, [courts.length, fetchAdminCourts, getAccessTokenSilently]);
 
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);

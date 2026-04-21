@@ -1,15 +1,33 @@
 "use client";
 "use client";
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Download, Copy, Share2, Globe, ExternalLink, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { useBookingStore } from '@/store/useBookingStore';
+import { useAuth0 } from '@auth0/auth0-react';
 
 interface AdminQRProps {
     sportCenter: any;
 }
 
-export const AdminQR: React.FC<AdminQRProps> = ({ sportCenter }) => {
+export const AdminQR: React.FC<AdminQRProps> = ({ sportCenter: initialSportCenter }) => {
+    const { getAccessTokenSilently } = useAuth0();
+    const fetchAdminCourts = useBookingStore(state => state.fetchAdminCourts);
+    const adminCourts = useBookingStore(state => state.adminCourts);
+    const [sportCenter, setSportCenter] = React.useState(initialSportCenter);
+
+    useEffect(() => {
+        if (!initialSportCenter && adminCourts && adminCourts.length > 0) {
+            setSportCenter(adminCourts[0].sport_center);
+        }
+    }, [initialSportCenter, adminCourts]);
+
+    useEffect(() => {
+        if (!sportCenter) {
+            fetchAdminCourts(getAccessTokenSilently);
+        }
+    }, [sportCenter, fetchAdminCourts, getAccessTokenSilently]);
 
     if (!sportCenter) {
         return (
