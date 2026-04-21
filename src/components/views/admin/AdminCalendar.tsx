@@ -567,7 +567,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
             {/* Modal de Reserva Interna */}
             {bookingMode && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[32px] p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-300">
+                    <div className="bg-white rounded-[32px] p-6 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-300">
                         <div className="flex justify-between items-start mb-6">
                             <div>
                                 <h3 className="text-2xl font-bold text-slate-900">
@@ -729,7 +729,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                             </div>
                         )}
 
-                        <div className="flex gap-3">
+                        <div className="flex gap-3 mt-6 pt-4 border-t border-slate-100 sticky bottom-0 bg-white">
                             <button
                                 onClick={() => {
                                     setBookingMode(null);

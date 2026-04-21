@@ -46,7 +46,7 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
         return `${from}|${to}`;
     });
     const { getAccessTokenSilently } = useAuth0();
-    
+
     // Use selectors to avoid unnecessary re-renders when other parts of the store change
     const fetchAdminCourts = useBookingStore(state => state.fetchAdminCourts);
     const adminCourts = useBookingStore(state => state.adminCourts);
@@ -62,12 +62,10 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
     const [loadedSportCenter, setLoadedSportCenter] = useState<any>(null);
 
     React.useEffect(() => {
-        if (!loadedSportCenter) {
-            fetchSportCenterByID('my', getAccessTokenSilently).then((center) => {
-                if (center) setLoadedSportCenter(center);
-            });
-        }
-    }, [getAccessTokenSilently]);
+        fetchSportCenterByID('my', getAccessTokenSilently).then((center) => {
+            if (center) setLoadedSportCenter(center);
+        });
+    }, []);
 
     const backendCourts = React.useMemo(() => adminCourts ? adminCourts.flatMap((ac: any) => ac.courts?.map((c: any) => ({
         ...c,
