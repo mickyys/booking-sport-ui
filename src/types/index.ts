@@ -1,4 +1,4 @@
-export type SlotStatus = 'available' | 'reserved' | 'user-reserved' | 'maintenance' | 'booked' | 'closed' | 'passed';
+export type SlotStatus = 'available' | 'reserved' | 'user-reserved' | 'maintenance' | 'booked' | 'closed' | 'passed' | 'recurring_booked' | 'passed_booked';
 
 export interface ScheduleSlot {
   hour: number;
@@ -9,9 +9,13 @@ export interface ScheduleSlot {
   booking_code?: string;
   customer_name?: string;
   customer_email?: string;
+  customer_phone?: string;
   series_id?: string;
   paymentRequired?: boolean;
   paymentOptional?: boolean;
+  partialPaymentEnabled?: boolean | null;
+  is_recurring_weekly?: boolean;
+  recurring_reservation_id?: string;
 }
 
 export interface CourtWithSchedule {
@@ -41,6 +45,9 @@ export interface SportCenter {
   retentionPercent?: number;
   courts?: number;
   services: string[];
+  partialPaymentEnabled?: boolean;
+  partialPaymentPercent?: number;
+  isPrivate?: boolean;
 }
 
 export interface Court {
@@ -49,6 +56,8 @@ export interface Court {
   shortName?: string;
   type: string;
   image: string;
+  image_url?: string;
+  y_position?: number;
   centerId: string;
 }
 
@@ -61,6 +70,41 @@ export interface TimeSlot {
   price: number;
   paymentRequired?: boolean;
   paymentOptional?: boolean;
+  partialPaymentEnabled?: boolean | null;
+}
+
+export interface CenterTimeSlot {
+  start_time: string;
+  end_time: string;
+}
+
+export interface SportCenter {
+  id: string;
+  name: string;
+  slug: string;
+  location: string;
+  address: string;
+  phone?: string;
+  email?: string;
+  contact?: {
+    phone: string;
+    email: string;
+  },
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
+  image: string;
+  cancellationHours?: number;
+  retentionPercent?: number;
+  courts?: number;
+  services: string[];
+  partialPaymentEnabled?: boolean;
+  partialPaymentPercent?: number;
+  isPrivate?: boolean;
+  default_schedule?: CenterTimeSlot;
+  schedule_overrides?: Record<number, CenterTimeSlot>;
+  active_days?: number[];
 }
 
 export interface Booking {
@@ -91,6 +135,10 @@ export interface Booking {
   paymentMethod: 'mercadopago' | 'fintoc' | 'cash'
   payment_method?: string;
   fintocPaymentIntentId?: string
+  paidAmount?: number;
+  pendingAmount?: number;
+  isPartialPayment?: boolean;
+  partialPaymentPaid?: boolean;
 
   // cliente
   userName?: string;
@@ -189,4 +237,39 @@ export interface BookingDTO {
   customer_phone: string
   created_at: string
   updated_at: string
+  paid_amount?: number;
+  pending_amount?: number;
+  is_partial_payment?: boolean;
+  partial_payment_paid?: boolean;
+}
+
+export interface RecurringReservation {
+  id: string;
+  sport_center_id: string;
+  sport_center_name?: string;
+  court_id: string;
+  court_name?: string;
+  customer_name: string;
+  customer_phone: string;
+  hour: number;
+  day_of_week: number; // 0=domingo, 1=lunes, ..., 6=sábado
+  day_of_week_name?: string;
+  price: number;
+  notes?: string;
+  status: 'active' | 'cancelled';
+  cancelled_by?: string;
+  cancel_reason?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateRecurringReservationDTO {
+  court_id: string;
+  sport_center_id?: string;
+  customer_name: string;
+  customer_phone: string;
+  hour: number;
+  price?: number;
+  notes?: string;
+  date: string; // YYYY-MM-DD
 }

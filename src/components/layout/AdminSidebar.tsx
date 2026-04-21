@@ -1,5 +1,7 @@
+"use client";
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
   Trophy, 
@@ -10,16 +12,18 @@ import {
   Menu,
   X,
   Users,
-  QrCode
+  QrCode,
+  Repeat
 } from 'lucide-react';
 
 const navItems = [
   { to: '/admin', icon: CalendarDays, label: 'Agenda Semanal', end: true },
   { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/admin/calendar', icon: CalendarRange, label: 'Bloqueos y Reservas' },
+  { to: '/admin/recurring', icon: Repeat, label: 'Reservas' },
   { to: '/admin/courts', icon: Trophy, label: 'Canchas' },
   { to: '/admin/schedules', icon: Clock, label: 'Horarios y Tarifas' },
-  { to: '/admin/subscriptions', icon: Users, label: 'Suscripciones' },
+  { to: '/admin/users', icon: Users, label: 'Usuarios' },
   { to: '/admin/qr', icon: QrCode, label: 'QR' },
   { to: '/admin/settings', icon: Settings, label: 'Configuración' },
 ];
@@ -30,6 +34,7 @@ interface AdminSidebarProps {
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ sportCenterName }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <>
@@ -58,28 +63,29 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ sportCenterName }) =
           </div>
 
           <nav className="flex-1 space-y-1">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                onClick={() => setIsOpen(false)}
-                className={({ isActive }) => `
-                  flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200
-                  ${isActive 
-                    ? 'bg-slate-900 text-white shadow-lg shadow-slate-200 translate-x-1' 
-                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-                  }
-                `}
-              >
-                {({ isActive }) => (
-                  <>
-                    <item.icon size={20} className={isActive ? 'text-white' : 'text-slate-400'} />
-                    {item.label}
-                  </>
-                )}
-              </NavLink>
-            ))}
+            {navItems.map((item) => {
+              const isActive = item.end
+                ? pathname === item.to
+                : pathname?.startsWith(item.to);
+
+              return (
+                <Link
+                  key={item.to}
+                  href={item.to}
+                  onClick={() => setIsOpen(false)}
+                  className={`
+                    flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200
+                    ${isActive
+                      ? 'bg-slate-900 text-white shadow-lg shadow-slate-200 translate-x-1'
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                    }
+                  `}
+                >
+                  <item.icon size={20} className={isActive ? 'text-white' : 'text-slate-400'} />
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
 
           <div className="mt-auto pt-6 border-t border-slate-100">

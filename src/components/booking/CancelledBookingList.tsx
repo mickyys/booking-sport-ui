@@ -1,3 +1,4 @@
+"use client";
 import React from 'react';
 import { Ban, X } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -28,15 +29,15 @@ export const CancelledBookingList: React.FC<CancelledBookingListProps> = ({ book
               <div className="flex justify-between items-start gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <p className="font-bold text-slate-900">{format(parseISO(booking.date), "d MMM yyyy")}</p>
+                    <p className="font-medium text-slate-900">{format(parseISO(booking.date), "d MMM yyyy")}</p>
                     <span className="text-slate-400">•</span>
-                    <p className="text-slate-600 text-sm">{format(parseISO(booking.date), "HH:mm")} hrs</p>
+                    <p className="text-slate-500">{format(parseISO(booking.date), "HH:mm")} hrs</p>
                   </div>
-                  <p className="text-sm text-slate-500">{booking.sportCenterName}</p>
-                  <p className="text-sm text-slate-500">{booking.courtName}</p>
+                  <p className="text-xs text-slate-500">{booking.sportCenterName}</p>
+                  <p className="text-xs text-slate-500">{booking.courtName}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-slate-500 line-through">${booking.price?.toLocaleString('es-CL')}</p>
+                  <p className="font-medium text-slate-500 line-through">${booking.price?.toLocaleString('es-CL')}</p>
                   <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 mt-1">
                     <X className="w-3 h-3" />
                     Cancelado
@@ -48,7 +49,7 @@ export const CancelledBookingList: React.FC<CancelledBookingListProps> = ({ book
         </div>
       ) : (
         <div className="bg-white p-8 rounded-2xl border border-dashed border-slate-300 text-center">
-          <p className="text-slate-500 text-sm">No hay reservas canceladas.</p>
+          <p className="text-slate-500">No hay reservas canceladas.</p>
         </div>
       )}
     </div>

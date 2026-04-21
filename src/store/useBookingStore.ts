@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { SportCenter, Court, CourtWithSchedule, Booking, BookingDTO } from '../types';
+import { toast } from 'sonner';
+import { SportCenter, Court, CourtWithSchedule, Booking, BookingDTO, RecurringReservation, CreateRecurringReservationDTO } from '../types';
 import api from '../api/axiosInstance';
-import { getUserCancelledBookings } from '../api/bookingApi';
+import { getUserCancelledBookings, createRecurringReservation as createRecurringApi, cancelRecurringReservation as cancelRecurringApi, getRecurringReservationsByCenter } from '../api/bookingApi';
 import { mapBooking } from '../mapper/mapBooking';
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1759210720456-c9814f721479?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvdXRkb29yJTIwc29jY2VyJTIwZmllbGQlMjBuaWdodCUyMGxpZ2h0c3xlbnwxfHx8fDE3NzQ4OTgwODd8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
@@ -24,6 +25,7 @@ interface BookingState {
   recurringSeries: any[];
   sportCenterBySlug: SportCenter | null;
   cities: string[];
+  recurringReservations: RecurringReservation[];
 
 
   // Actions
@@ -55,11 +57,16 @@ interface BookingState {
   createBooking: (bookingData: any) => Promise<void>;
   createInternalBooking: (bookingData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   deleteBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  payBalance: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  undoPayBalance: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   deleteSeries: (seriesId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchSportCenterBySlug: (slug: string) => Promise<SportCenter | null>;
   updateSportCenter: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
-  updateSportCenterSettings: (id: string, settingsData: { slug: string; cancellation_hours: number; retention_percent: number }, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  updateSportCenterSettings: (id: string, settingsData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; image_url?: string }, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchSportCenterByID: (id: string, getToken: (options?: any) => Promise<string>) => Promise<any>;
+  createRecurringReservation: (data: CreateRecurringReservationDTO, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  cancelRecurringReservation: (id: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  fetchRecurringReservationsByCenter: (getToken: (options?: any) => Promise<string>) => Promise<void>;
 }
 
 export const useBookingStore = create<BookingState, [["zustand/persist", Partial<BookingState>]]>(
@@ -70,7 +77,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       try {
         const token = await getToken({
           authorizationParams: {
-            audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+            audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
             scope: "openid profile email"
           }
         });
@@ -110,17 +117,18 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
   adminDashboardData: null,
   recurringSeries: [],
   sportCenterBySlug: null,
+  recurringReservations: [],
 
   fetchRecurringSeries: async (getToken: (options?: any) => Promise<string>) => {
     set({ isLoading: true });
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
-      const { data } = await api.get('/admin/bookings/series', {
+      const { data } = await api.get(`/admin/bookings/series`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -146,7 +154,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -163,7 +171,10 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         courtId: b.court_id,
         centerId: b.sport_center_id,
         paymentMethod: b.payment_method || 'fintoc', // Fintoc as default if not coming from backend
-        fintocPaymentIntentId: b.fintoc_payment_intent_id,
+        fintocPaymentIntentId: b.fintoc_payment_intent_id, paidAmount: b.paid_amount,
+          pendingAmount: b.pending_amount,
+          isPartialPayment: b.is_partial_payment,
+          partialPaymentPaid: b.partial_payment_paid,
         createdAt: b.created_at
       }));
       set({ myBookings: formattedBookings, error: null });
@@ -178,7 +189,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -199,7 +210,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -286,7 +297,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
         }
       });
       await api.post(`/bookings/${bookingId}/cancel`, {}, {
@@ -311,8 +322,9 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
-        }
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+        },
+        cacheMode: 'off'
       });
       await api.delete(`/admin/bookings/series/${seriesId}`, {
         headers: {
@@ -374,9 +386,11 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           address: c.address,
           courts: c.courts ?? c.courts_count ?? (Array.isArray(c.courts) ? c.courts.length : undefined),
           contact: c.contact || { phone: '', email: '' },
-          image: c.image || FALLBACK_IMAGE,
+          image: c.image_url || c.image || FALLBACK_IMAGE,
           cancellationHours: c.cancellation_hours,
           retentionPercent: c.retention_percent,
+        partialPaymentEnabled: c.partial_payment_enabled,
+        partialPaymentPercent: c.partial_payment_percent,
           services: c.services || [],
           coordinates
         } as SportCenter;
@@ -429,6 +443,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         image: c.image || FALLBACK_IMAGE,
         cancellationHours: c.cancellation_hours,
         retentionPercent: c.retention_percent,
+        partialPaymentEnabled: c.partial_payment_enabled,
+        partialPaymentPercent: c.partial_payment_percent,
         services: c.services || [],
         coordinates: c.coordinates || { lat: 0, lng: 0 }
       };
@@ -447,7 +463,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -467,16 +483,23 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
-  updateSportCenterSettings: async (id: string, settingsData: { slug: string; cancellation_hours: number; retention_percent: number }, getToken: (options?: any) => Promise<string>) => {
+  updateSportCenterSettings: async (id: string, settingsData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; image_url?: string }, getToken: (options?: any) => Promise<string>) => {
     set({ isLoading: true });
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
-      await api.patch(`/admin/sport-centers/${id}/settings`, settingsData, {
+      const filteredData: any = {};
+      if (settingsData.image_url) filteredData.image_url = settingsData.image_url;
+      if (settingsData.cancellation_hours !== undefined) filteredData.cancellation_hours = settingsData.cancellation_hours;
+      if (settingsData.retention_percent !== undefined) filteredData.retention_percent = settingsData.retention_percent;
+      if (settingsData.partialPaymentEnabled !== undefined) filteredData.partial_payment_enabled = settingsData.partialPaymentEnabled;
+      if (settingsData.partialPaymentPercent !== undefined) filteredData.partial_payment_percent = settingsData.partialPaymentPercent;
+      if (settingsData.slug) filteredData.slug = settingsData.slug;
+      await api.patch(`/admin/sport-centers/${id}/settings`, filteredData, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -495,16 +518,31 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
-      const response = await api.get(`/admin/sport-centers/${id}`, {
+      
+      // Si el ID es especial o estamos en admin, podemos usar el nuevo endpoint
+      const url = id === 'my' || !id ? `/admin/my-sport-center` : `/admin/sport-centers/${id}`;
+      
+      const response = await api.get(url, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
-      return response.data.center;
+      const center = response.data.center;
+      if (center) {
+        return {
+          ...center,
+          partialPaymentEnabled: center.partial_payment_enabled,
+          partialPaymentPercent: center.partial_payment_percent,
+          cancellationHours: center.cancellation_hours,
+          retentionPercent: center.retention_percent,
+          image_url: center.image_url
+        };
+      }
+      return center;
     } catch (err) {
       console.error("Error fetching sport center by ID:", err);
       return null;
@@ -554,9 +592,14 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           ...slot,
           paymentRequired: slot.payment_required,
           paymentOptional: slot.payment_optional,
+          partialPaymentEnabled: slot.partial_payment_enabled !== undefined ? slot.partial_payment_enabled : (get().sportCenterBySlug?.partialPaymentEnabled ?? false),
           customer_name: slot.customer_name,
           customer_email: slot.customer_email,
-          booking_code: slot.booking_code
+          booking_code: slot.booking_code,
+          isPartialPayment: slot.is_partial_payment,
+          paidAmount: slot.paid_amount,
+          pendingAmount: slot.pending_amount,
+          partialPaymentPaid: slot.partial_payment_paid
         }))
       }));
 
@@ -575,16 +618,17 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: 'openid profile email'
-        }
+        },
+        cacheMode: 'off'
       });
 
       const params = new URLSearchParams();
       params.append('all', 'true');
       if (date) params.append('date', date);
 
-      const { data } = await api.get(`/sport-centers/${centerId}/schedules/bookings?${params.toString()}`, {
+      const { data } = await api.get(`/admin/sport-centers/schedules/bookings?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -594,10 +638,15 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           ...slot,
           paymentRequired: slot.payment_required,
           paymentOptional: slot.payment_optional,
+          partialPaymentEnabled: slot.partial_payment_enabled !== undefined ? slot.partial_payment_enabled : (get().sportCenterBySlug?.partialPaymentEnabled ?? false),
           customer_name: slot.customer_name,
           customer_email: slot.customer_email,
           customer_phone: slot.customer_phone,
-          booking_code: slot.booking_code
+          booking_code: slot.booking_code,
+          isPartialPayment: slot.is_partial_payment,
+          paidAmount: slot.paid_amount,
+          pendingAmount: slot.pending_amount,
+          partialPaymentPaid: slot.partial_payment_paid
         }))
       }));
 
@@ -625,9 +674,10 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
-        }
+        },
+        cacheMode: 'off'
       });
       const { data } = await api.get('/admin/courts', {
         headers: {
@@ -648,7 +698,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -688,7 +738,10 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           userName: b.user_name, // Keeping for backward compatibility if needed
           isGuest: b.is_guest,
           paymentMethod: b.payment_method,
-          cancelledBy: b.cancelled_by,
+          cancelledBy: b.cancelled_by, paidAmount: b.paid_amount,
+          pendingAmount: b.pending_amount,
+          isPartialPayment: b.is_partial_payment,
+          partialPaymentPaid: b.partial_payment_paid,
           createdAt: b.created_at
         })),
         totalRecentCount: data.total_recent_count,
@@ -711,7 +764,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -736,7 +789,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -761,7 +814,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -785,7 +838,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -796,7 +849,9 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         price: Number(s.price),
         status: s.enabled ? 'available' : 'closed',
         payment_required: !!s.paymentRequired,
-        payment_optional: !!s.paymentOptional
+        payment_optional: !!s.paymentOptional,
+        partial_payment_enabled: s.partialPaymentEnabled ?? false,
+        day_of_week: s.dayOfWeek !== undefined && s.dayOfWeek !== null ? Number(s.dayOfWeek) : null
       }));
 
       await api.put(`/admin/courts/${courtId}/schedule`, formattedSchedule, {
@@ -837,7 +892,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         }
       });
@@ -848,7 +903,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         price: Number(slot.price),
         status: slot.enabled ? 'available' : 'closed',
         payment_required: !!slot.paymentRequired,
-        payment_optional: !!slot.paymentOptional
+        payment_optional: !!slot.paymentOptional, partial_payment_enabled: slot.partialPaymentEnabled
       };
 
       await api.patch(`/admin/courts/${courtId}/schedule/slot`, formattedSlot, {
@@ -897,9 +952,10 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
-        }
+        },
+        cacheMode: 'off'
       });
       await api.post('/admin/bookings/internal', bookingData, {
         headers: {
@@ -921,9 +977,10 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const token = await getToken({
         authorizationParams: {
-          audience: import.meta.env.VITE_APP_AUTH0_AUDIENCE,
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
-        }
+        },
+        cacheMode: 'off'
       });
       await api.delete(`/admin/bookings/${bookingId}`, {
         headers: {
@@ -940,11 +997,137 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
+  payBalance: async (bookingId: string, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        },
+        cacheMode: 'off'
+      });
+      await api.post(`/admin/bookings/${bookingId}/pay-balance`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+    } catch (err) {
+      console.error("Error paying balance:", err);
+      set({ error: 'Failed to pay balance' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  undoPayBalance: async (bookingId: string, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        },
+        cacheMode: 'off'
+      });
+      await api.patch(`/admin/bookings/${bookingId}/undo-pay-balance`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+    } catch (err) {
+      console.error("Error undoing balance payment:", err);
+      set({ error: 'Failed to undo balance payment' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
   initialize: async () => {
-    await Promise.all([
-      get().fetchSportCenters(),
-      get().fetchCourts()
-    ]);
+    const currentSportCenters = get().sportCenters;
+    const currentCourts = get().courts;
+    const promises: Promise<void>[] = [];
+    
+    if (!currentSportCenters || currentSportCenters.length === 0) {
+      promises.push(get().fetchSportCenters());
+    }
+    if (!currentCourts || currentCourts.length === 0) {
+      promises.push(get().fetchCourts());
+    }
+    
+    if (promises.length > 0) {
+      await Promise.all(promises);
+    }
+  },
+
+  createRecurringReservation: async (data: CreateRecurringReservationDTO, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      await createRecurringApi(data, await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        },
+        cacheMode: 'off'
+      }));
+      set({ error: null });
+      toast.success('Reserva semanal creada con éxito');
+    } catch (err) {
+      console.error("Error creating recurring reservation:", err);
+      set({ error: 'Failed to create recurring reservation' });
+      toast.error('Error al crear reserva semanal');
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  cancelRecurringReservation: async (id: string, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      await cancelRecurringApi(id, await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        },
+        cacheMode: 'off'
+      }));
+      set({ error: null });
+      toast.success('Reserva semanal cancelada');
+      // Remove from local state
+      set(state => ({
+        recurringReservations: state.recurringReservations.filter(r => r.id !== id)
+      }));
+    } catch (err) {
+      console.error("Error cancelling recurring reservation:", err);
+      set({ error: 'Failed to cancel recurring reservation' });
+      toast.error('Error al cancelar reserva semanal');
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  fetchRecurringReservationsByCenter: async (getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const result = await getRecurringReservationsByCenter(await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      }));
+      set({ recurringReservations: result.data || [], error: null });
+    } catch (err) {
+      console.error("Error fetching recurring reservations:", err);
+      set({ error: 'Failed to fetch recurring reservations' });
+    } finally {
+      set({ isLoading: false });
+    }
   }
   }),
   {

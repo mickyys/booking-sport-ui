@@ -1,0 +1,68 @@
+<<<<<<< SEARCH
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!sportCenter?.id && !sportCenter?._id) return;
+
+        try {
+            const id = sportCenter.id || sportCenter._id;
+            let finalImageUrl = imageUrl;
+
+            if (localImageFile) {
+                setIsUploading(true);
+                toast.info('Subiendo imagen...');
+                finalImageUrl = await uploadImageToCloudinary(localImageFile);
+            }
+
+            if (localImageFile || finalImageUrl !== imageUrl) {
+                await updateSportCenterSettings(id, {
+                    image_url: finalImageUrl,
+                }, getAccessTokenSilently);
+            }
+
+            setLocalImageFile(null);
+            setLocalImagePreview(null);
+            toast.success("Imagen actualizada con éxito");
+            if (onSave) onSave();
+        } catch (error) {
+            toast.error("Error al actualizar la imagen");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+=======
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!sportCenter?.id && !sportCenter?._id) return;
+
+        try {
+            const id = sportCenter.id || sportCenter._id;
+            let finalImageUrl = imageUrl;
+
+            if (localImageFile) {
+                setIsUploading(true);
+                toast.info('Subiendo imagen...');
+                finalImageUrl = await uploadImageToCloudinary(localImageFile);
+            }
+
+            await updateSportCenterSettings(id, {
+                image_url: finalImageUrl,
+                slug: slug,
+                cancellation_hours: cancellationHours,
+                retention_percent: retentionPercent,
+                partialPaymentEnabled: partialPaymentEnabled,
+                partialPaymentPercent: partialPaymentPercent,
+            }, getAccessTokenSilently);
+
+            setLocalImageFile(null);
+            setLocalImagePreview(null);
+            setImageUrl(finalImageUrl);
+            toast.success("Configuración actualizada con éxito");
+            if (onSave) onSave();
+        } catch (error) {
+            console.error("Error saving settings:", error);
+            toast.error("Error al actualizar la configuración");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+>>>>>>> REPLACE

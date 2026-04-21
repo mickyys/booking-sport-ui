@@ -1,3 +1,4 @@
+"use client";
 import React from 'react';
 import { Settings, Star, Info } from 'lucide-react';
 import { UserProfile } from '../../types';

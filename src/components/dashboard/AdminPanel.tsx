@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from 'react';
 import { Calendar, DollarSign, AlertCircle, Ban, Plus, Edit, Trash2 } from 'lucide-react';
 import { format, parseISO, isSameDay, startOfToday } from 'date-fns';
@@ -13,6 +14,7 @@ interface AdminPanelProps {
   onBlockSlot: (slot: TimeSlot) => void;
   onSaveCourt: (court: Court) => void;
   onDeleteCourt: (courtId: string) => void;
+  currentSportCenter?: { id?: string; _id?: string; name?: string } | null;
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({
@@ -22,7 +24,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   onCancelBooking,
   onBlockSlot,
   onSaveCourt,
-  onDeleteCourt
+  onDeleteCourt,
+  currentSportCenter
 }) => {
   const [view, setView] = useState<'dashboard' | 'courts' | 'calendar'>('dashboard');
   const [editingCourt, setEditingCourt] = useState<Court | null>(null);
@@ -250,6 +253,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           court={editingCourt}
           onClose={() => { setShowCourtForm(false); setEditingCourt(null); }}
           onSave={handleSaveCourt}
+          currentSportCenter={currentSportCenter}
         />
       )}
     </div>

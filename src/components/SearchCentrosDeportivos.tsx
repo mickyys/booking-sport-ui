@@ -1,7 +1,8 @@
+"use client";
 import React, { useState, useMemo } from 'react';
 import { Search, MapPin, Clock, ChevronRight, Star, ShowerHead, Car, Trophy, Filter, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Link } from 'react-router';
+import Link from 'next/link';
 
 // Tipos
 interface CentroDeportivo {
@@ -368,7 +369,7 @@ const SearchCentrosDeportivos = () => {
                         ${centro.precioDesde.toLocaleString('es-CL')}
                       </p>
                     </div>
-                    <Link to={`/centro/${centro.id}`} className="no-underline">
+                    <Link href={`/centro/${centro.id}`} className="no-underline">
                       <button className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-all group-hover:gap-3">
                         Ver más
                         <ChevronRight className="w-4 h-4" />
