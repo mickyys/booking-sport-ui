@@ -60,11 +60,16 @@ export const BookingView: React.FC<BookingViewProps> = ({
     }
   }, []);
 
+  const lastFetch = React.useRef<{ center: string; date: string } | null>(null);
+
   // Efecto para recargar horarios cuando cambia el día o el centro
   useEffect(() => {
     if (selectedCenter) {
       const formattedDate = format(selectedDay, 'yyyy-MM-dd');
-      console.log('Fetching schedules for center:', selectedCenter, 'and date:', formattedDate);  
+      if (lastFetch.current?.center === selectedCenter && lastFetch.current?.date === formattedDate) {
+        return;
+      }
+      lastFetch.current = { center: selectedCenter, date: formattedDate };
       fetchSchedules(selectedCenter, formattedDate);
     }
   }, [selectedDay, selectedCenter, fetchSchedules]);

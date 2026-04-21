@@ -25,13 +25,12 @@ interface AdminCalendarProps {
 }
 
 export const AdminCalendar: React.FC<AdminCalendarProps> = ({
-    courts
+    courts: courtsProp
 }) => {
     const { getAccessTokenSilently } = useAuth0();
     const {
         schedules,
         fetchAdminSchedules,
-        fetchAdminCourts,
         createInternalBooking,
         deleteBooking,
         deleteSeries,
@@ -41,11 +40,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
         fetchRecurringReservationsByCenter
     } = useBookingStore();
 
-    useEffect(() => {
-        if (courts.length === 0) {
-            fetchAdminCourts(getAccessTokenSilently);
-        }
-    }, [courts.length, fetchAdminCourts, getAccessTokenSilently]);
+    const courts = schedules.length > 0 ? schedules.map(s => ({ id: s.id, name: s.name })) : courtsProp;
 
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);

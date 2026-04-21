@@ -22,6 +22,7 @@ export default function BookingViewWrapper({ slug }: Props) {
     selectedCenterId,
     setSelectedCenterId,
     fetchSportCenterBySlug,
+    sportCenterBySlug,
     initialize
   } = useBookingStore();
 
@@ -33,15 +34,23 @@ export default function BookingViewWrapper({ slug }: Props) {
     setSelectedSlot
   } = useBookingActions(user);
 
-  useEffect(() => {
-    initialize();
-  }, [initialize]);
+  const initialized = React.useRef(false);
 
   useEffect(() => {
-    if (slug) {
+    if (!initialized.current) {
+      initialized.current = true;
+      initialize();
+    }
+  }, [initialize]);
+
+  const initializedSlug = React.useRef<string | null>(null);
+
+  useEffect(() => {
+    if (slug && sportCenterBySlug?.slug !== slug) {
+      initializedSlug.current = slug;
       fetchSportCenterBySlug(slug);
     }
-  }, [slug, fetchSportCenterBySlug]);
+  }, [slug, fetchSportCenterBySlug, sportCenterBySlug]);
 
   return (
     <>

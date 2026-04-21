@@ -1048,10 +1048,20 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
   },
 
   initialize: async () => {
-    await Promise.all([
-      get().fetchSportCenters(),
-      get().fetchCourts()
-    ]);
+    const currentSportCenters = get().sportCenters;
+    const currentCourts = get().courts;
+    const promises: Promise<void>[] = [];
+    
+    if (!currentSportCenters || currentSportCenters.length === 0) {
+      promises.push(get().fetchSportCenters());
+    }
+    if (!currentCourts || currentCourts.length === 0) {
+      promises.push(get().fetchCourts());
+    }
+    
+    if (promises.length > 0) {
+      await Promise.all(promises);
+    }
   },
 
   createRecurringReservation: async (data: CreateRecurringReservationDTO, getToken: (options?: any) => Promise<string>) => {
