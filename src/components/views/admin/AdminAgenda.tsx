@@ -323,7 +323,7 @@ const SlotCard: React.FC<{ slot: SlotData, onPayBalance: (slot: SlotData) => voi
         return (
             <div className={`p-4 rounded-2xl border space-y-2 ${slot.status === 'passed_booked' ? 'bg-slate-50 border-slate-200 opacity-75' : 'bg-emerald-50 border-emerald-100'}`}>
                 <div className="flex justify-between items-center">
-                    <span className={`text-sm font-black ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-700'}`}>{slot.hour}:{slot.minutes ?? '00'}</span>
+                    <span className={`text-sm font-black ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-700'}`}>{slot.hour}:{String(slot.minutes ?? '00').padStart(2, '0')}</span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${isRecurringBooked ? 'bg-orange-100 text-orange-700' : (slot.status === 'passed_booked' ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700')}`}>
                         {isRecurringBooked ? 'Interna' : (isInternalBlock ? 'Bloqueo' : isInternalReserva ? 'Interna' : (slot.status === 'passed_booked' ? 'Pasado' : 'Reserva'))}
                     </span>
