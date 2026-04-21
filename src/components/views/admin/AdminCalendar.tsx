@@ -55,12 +55,20 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
     const [slotToUnlock, setSlotToUnlock] = useState<{ bookingId?: string, seriesId?: string, recurringId?: string } | null>(null);
 
     useEffect(() => {
-        // Obtenemos el centerId de la cancha seleccionada o del store
         const centerId = courts.find(c => c.id === selectedCourtId)?.centerId || selectedCenterId;
         if (centerId) {
             fetchAdminSchedules(centerId, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
         }
-    }, [selectedDate, selectedCenterId]);
+    }, [selectedDate, selectedCenterId, selectedCourtId, courts.length]);
+
+    useEffect(() => {
+        if (selectedCenterId && courts.length > 0) {
+            const timer = setTimeout(() => {
+                fetchAdminSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [selectedCenterId, courts.length]);
 
     useEffect(() => {
         if (courts.length > 0 && !selectedCourtId) {
@@ -101,6 +109,8 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                 await createRecurringReservation(recurringData, getAccessTokenSilently);
 
                 await fetchAdminSchedules(selectedCenterId!, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
+
+                toast.success('Reserva semanal creada con éxito');
             } catch (error) {
                 console.error("Error creating weekly reservation:", error);
                 if (axios.isAxiosError(error) && error.response?.status === 409) {
@@ -109,6 +119,9 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                     toast.error("Error al crear reserva semanal.");
                 }
             } finally {
+                setBookingMode(null);
+                setGuestInfo({ name: '', phone: '', price: '' });
+                setRecurringType(null);
                 setIsCreating(false);
             }
             return;
@@ -144,11 +157,6 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                 successDates.push(format(currentDate, 'dd/MM'));
             }
 
-            toast.success(weeksToProcess > 1
-                ? `Se crearon ${weeksToProcess} reservas con éxito`
-                : (bookingMode.mode === 'reserve' ? "Reserva guardada con éxito" : "Horario bloqueado")
-            );
-
             setBookingMode(null);
             setGuestInfo({ name: '', phone: '', price: '' });
             setIsRecurring(false);
@@ -156,6 +164,11 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
             setRecurringWeeks(4);
 
             await fetchAdminSchedules(selectedCenterId!, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
+
+            toast.success(weeksToProcess > 1
+                ? `Se crearon ${weeksToProcess} reservas con éxito`
+                : (bookingMode.mode === 'reserve' ? "Reserva guardada con éxito" : "Horario bloqueado")
+            );
         } catch (error) {
             console.error("Error creating bookings:", error);
             if (axios.isAxiosError(error) && error.response?.status === 409) {
