@@ -16,6 +16,15 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ScheduleSlot } from '@/types';
+
+type SlotData = ScheduleSlot & {
+    payment_method?: 'internal_block' | 'internal_reservation' | 'presential' | string;
+    isPartialPayment?: boolean;
+    partialPaymentPaid?: boolean;
+    paidAmount?: number;
+    pendingAmount?: number;
+};
 
 export const AdminAgenda: React.FC = () => {
     const { schedules, fetchSchedules, fetchAdminSchedules, weeklySchedules, selectedCenterId, isLoading: storeLoading, payBalance, undoPayBalance } = useBookingStore();
@@ -27,18 +36,18 @@ export const AdminAgenda: React.FC = () => {
     const [isWeeklyLoading, setIsWeeklyLoading] = useState(false);
     
     // Estados para confirmaciones
-    const [showConfirmPay, setShowConfirmPay] = useState<any | null>(null);
-    const [showConfirmUndo, setShowConfirmUndo] = useState<any | null>(null);
+    const [showConfirmPay, setShowConfirmPay] = useState<SlotData | null>(null);
+    const [showConfirmUndo, setShowConfirmUndo] = useState<SlotData | null>(null);
     const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
     const { getAccessTokenSilently } = useAuth0();
 
-    const handlePayBalanceClick = (slot: any) => {
+    const handlePayBalanceClick = (slot: SlotData) => {
         if (!slot.booking_id) return;
         setShowConfirmPay(slot);
     };
 
-    const handleUndoPayBalanceClick = (slot: any) => {
+    const handleUndoPayBalanceClick = (slot: SlotData) => {
         if (!slot.booking_id) return;
         setShowConfirmUndo(slot);
     };
@@ -205,7 +214,7 @@ export const AdminAgenda: React.FC = () => {
                                     <h3 className="font-bold text-slate-900">{courtSchedule.name}</h3>
                                 </div>
                                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                                    {courtSchedule.schedule.map((slot: any, idx: number) => (
+                                    {courtSchedule.schedule.map((slot: SlotData, idx: number) => (
                                         <SlotCard 
                                             key={idx} 
                                             slot={slot} 
@@ -299,7 +308,7 @@ export const AdminAgenda: React.FC = () => {
     );
 };
 
-const SlotCard: React.FC<{ slot: any, onPayBalance: (slot: any) => void, onUndoBalance: (slot: any) => void, isProcessing: boolean }> = ({ slot, onPayBalance, onUndoBalance, isProcessing }) => {
+const SlotCard: React.FC<{ slot: SlotData, onPayBalance: (slot: SlotData) => void, onUndoBalance: (slot: SlotData) => void, isProcessing: boolean }> = ({ slot, onPayBalance, onUndoBalance, isProcessing }) => {
     const isBooked = slot.status === 'booked' || slot.status === 'reserved' || slot.status === 'passed_booked' || slot.status === 'recurring_booked';
     const isRecurringBooked = slot.status === 'recurring_booked';
     const isBlocked = slot.status === 'closed';
@@ -314,7 +323,7 @@ const SlotCard: React.FC<{ slot: any, onPayBalance: (slot: any) => void, onUndoB
         return (
             <div className={`p-4 rounded-2xl border space-y-2 ${slot.status === 'passed_booked' ? 'bg-slate-50 border-slate-200 opacity-75' : 'bg-emerald-50 border-emerald-100'}`}>
                 <div className="flex justify-between items-center">
-                    <span className={`text-sm font-black ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-700'}`}>{slot.hour}:00</span>
+                    <span className={`text-sm font-black ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-700'}`}>{slot.hour}:{slot.minutes ?? '00'}</span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${isRecurringBooked ? 'bg-orange-100 text-orange-700' : (slot.status === 'passed_booked' ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700')}`}>
                         {isRecurringBooked ? 'Interna' : (isInternalBlock ? 'Bloqueo' : isInternalReserva ? 'Interna' : (slot.status === 'passed_booked' ? 'Pasado' : 'Reserva'))}
                     </span>
@@ -406,7 +415,7 @@ const SlotCard: React.FC<{ slot: any, onPayBalance: (slot: any) => void, onUndoB
     );
 };
 
-const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[], onPayBalance: (slot: any) => void, onUndoBalance: (slot: any) => void, isProcessing: string | null }> = ({ day, schedule, onPayBalance, onUndoBalance, isProcessing }) => {
+const WeeklyDayColumn: React.FC<{ day: Date, schedule: SlotData[], onPayBalance: (slot: SlotData) => void, onUndoBalance: (slot: SlotData) => void, isProcessing: string | null }> = ({ day, schedule, onPayBalance, onUndoBalance, isProcessing }) => {
     const [activeSlot, setActiveSlot] = useState<any | null>(null);
 
     return (
