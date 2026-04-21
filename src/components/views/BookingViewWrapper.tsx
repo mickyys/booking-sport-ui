@@ -22,7 +22,6 @@ export default function BookingViewWrapper({ slug }: Props) {
     selectedCenterId,
     setSelectedCenterId,
     fetchSportCenterBySlug,
-    sportCenterBySlug,
     initialize
   } = useBookingStore();
 
@@ -46,11 +45,11 @@ export default function BookingViewWrapper({ slug }: Props) {
   const initializedSlug = React.useRef<string | null>(null);
 
   useEffect(() => {
-    if (slug && sportCenterBySlug?.slug !== slug) {
+    if (slug && initializedSlug.current !== slug) {
       initializedSlug.current = slug;
       fetchSportCenterBySlug(slug);
     }
-  }, [slug, fetchSportCenterBySlug, sportCenterBySlug]);
+  }, [slug, fetchSportCenterBySlug]);
 
   return (
     <>
