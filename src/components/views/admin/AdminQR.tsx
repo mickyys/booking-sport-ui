@@ -1,6 +1,6 @@
 "use client";
 "use client";
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 import { Download, Copy, Share2, Globe, ExternalLink, Info } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,23 +13,28 @@ interface AdminQRProps {
 
 export const AdminQR: React.FC<AdminQRProps> = ({ sportCenter: initialSportCenter }) => {
     const { getAccessTokenSilently } = useAuth0();
-    const fetchAdminCourts = useBookingStore(state => state.fetchAdminCourts);
-    const adminCourts = useBookingStore(state => state.adminCourts);
-    const [sportCenter, setSportCenter] = React.useState(initialSportCenter);
-    const [isLoading, setIsLoading] = React.useState(!initialSportCenter);
+    const fetchSportCenterByID = useBookingStore(state => state.fetchSportCenterByID);
+    const [sportCenter, setSportCenter] = useState(initialSportCenter);
+    const [isLoading, setIsLoading] = useState(!initialSportCenter);
 
     useEffect(() => {
-        if (!initialSportCenter && adminCourts && adminCourts.length > 0) {
-            setSportCenter(adminCourts[0].sport_center);
-            setIsLoading(false);
+        if (!sportCenter && !isLoading) {
+            const loadSportCenter = async () => {
+                setIsLoading(true);
+                try {
+                    const center = await fetchSportCenterByID('my', getAccessTokenSilently);
+                    if (center) {
+                        setSportCenter(center);
+                    }
+                } catch (error) {
+                    console.error('Error fetching sport center:', error);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            loadSportCenter();
         }
-    }, [initialSportCenter, adminCourts]);
-
-    useEffect(() => {
-        if (!sportCenter && !adminCourts) {
-            fetchAdminCourts(getAccessTokenSilently).finally(() => setIsLoading(false));
-        }
-    }, [sportCenter, adminCourts, fetchAdminCourts, getAccessTokenSilently]);
+    }, []);
 
     if (isLoading) {
         return (
