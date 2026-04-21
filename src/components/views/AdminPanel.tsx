@@ -2,6 +2,7 @@
 import React from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useRouter } from 'next/navigation';
+import { useBookingStore } from '@/store/useBookingStore';
 
 import { AdminDashboard } from './admin/AdminDashboard';
 import { AdminCourts } from './admin/AdminCourts';
