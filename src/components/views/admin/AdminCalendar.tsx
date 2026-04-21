@@ -438,27 +438,34 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
 
                     {/* Hours as rows */}
                     {(() => {
-                        const allHours = new Set<number>();
+                        const allSlots: { hour: number; minutes: number }[] = [];
                         courts.forEach(court => {
                             const schedule = schedules.find(s => s.id === court.id);
                             schedule?.schedule.forEach((slot: any) => {
                                 if (slot.hour >= 8 && slot.hour <= 23) {
-                                    allHours.add(slot.hour);
+                                    allSlots.push({ hour: slot.hour, minutes: slot.minutes || 0 });
                                 }
                             });
                         });
-                        const sortedHours = Array.from(allHours).sort((a, b) => a - b);
+                        const uniqueSlots = allSlots.filter((slot, index, self) =>
+                            index === self.findIndex(s => s.hour === slot.hour && s.minutes === slot.minutes)
+                        );
+                        const sortedSlots = uniqueSlots.sort((a, b) => {
+                            const aMin = a.hour * 60 + a.minutes;
+                            const bMin = b.hour * 60 + b.minutes;
+                            return aMin - bMin;
+                        });
 
-                        return sortedHours.map((hour) => (
-                            <div key={hour} className="flex border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50">
+                        return sortedSlots.map((slotKey) => (
+                            <div key={`${slotKey.hour}-${slotKey.minutes}`} className="flex border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50">
                                 <div className="w-24 shrink-0 p-4 border-r border-slate-200 bg-slate-50/50">
                                     <span className="text-lg font-bold text-slate-600">
-                                        {String(hour).padStart(2, '0')}:00
+                                        {String(slotKey.hour).padStart(2, '0')}:{String(slotKey.minutes).padStart(2, '0')}
                                     </span>
                                 </div>
                                 {courts.map((court) => {
                                     const courtSchedule = schedules.find(s => s.id === court.id);
-                                    const slot = courtSchedule?.schedule.find((s: any) => s.hour === hour);
+                                    const slot = courtSchedule?.schedule.find((s: any) => s.hour === slotKey.hour && (s.minutes || 0) === slotKey.minutes);
                                     
                                     if (!slot) {
                                         return (
