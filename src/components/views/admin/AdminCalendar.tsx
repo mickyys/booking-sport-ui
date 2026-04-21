@@ -1,6 +1,6 @@
 "use client";
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Ban, Calendar, User, Phone, Unlock, CheckCircle, Clock, AlertTriangle, Repeat, X, ChevronLeft, ChevronRight, LayoutGrid, List } from 'lucide-react';
 import { format, startOfToday, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -53,45 +53,35 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
     // Unlock confirmation state
     const [unlockConfirmOpen, setUnlockConfirmOpen] = useState(false);
     const [slotToUnlock, setSlotToUnlock] = useState<{ bookingId?: string, seriesId?: string, recurringId?: string } | null>(null);
+    const fetchRef = useRef<{ date: string; centerId: string } | null>(null);
 
     useEffect(() => {
+        if (!selectedCenterId || courts.length === 0) return;
+        
         const centerId = courts.find(c => c.id === selectedCourtId)?.centerId || selectedCenterId;
-        if (centerId) {
-            fetchAdminSchedules(centerId, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
+        if (!centerId) return;
+        
+        const dateStr = format(selectedDate, 'yyyy-MM-dd');
+        
+        // Evitar llamada duplicada si ya se hizo para la misma combinación
+        if (fetchRef.current?.date === dateStr && fetchRef.current?.centerId === centerId) {
+            return;
         }
+        
+        fetchRef.current = { date: dateStr, centerId };
+        
+        const timer = setTimeout(() => {
+            fetchAdminSchedules(centerId, dateStr, getAccessTokenSilently);
+        }, 100);
+        
+        return () => clearTimeout(timer);
     }, [selectedDate, selectedCenterId, selectedCourtId, courts.length]);
-
-    useEffect(() => {
-        console.log('useEffect - selectedCenterId cambi贸:', selectedCenterId);
-    }, [selectedCenterId]);
-
-    useEffect(() => {
-        if (selectedCenterId && courts.length > 0) {
-            console.log('useEffect load: selectedCenterId =', selectedCenterId);
-            const timer = setTimeout(() => {
-                fetchAdminSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
-            }, 100);
-            return () => clearTimeout(timer);
-        }
-    }, [selectedCenterId, courts.length]);
-
-    useEffect(() => {
-        if (courts.length > 0 && !selectedCourtId) {
-            setSelectedCourtId(courts[0].id);
-        }
-    }, [courts, selectedCourtId]);
 
     useEffect(() => {
         if (!unlockConfirmOpen) {
             setSlotToUnlock(null);
         }
     }, [unlockConfirmOpen]);
-
-    useEffect(() => {
-        if (courts.length > 0 && !selectedCourtId) {
-            setSelectedCourtId(courts[0].id);
-        }
-    }, [courts, selectedCourtId]);
 
     const handleInternalReserve = async () => {
         if (!bookingMode) return;
