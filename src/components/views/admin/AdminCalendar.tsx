@@ -104,6 +104,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                     customer_name: guestInfo.name,
                     customer_phone: guestInfo.phone,
                     hour: bookingMode.slot.hour,
+                    minutes: bookingMode.slot.minutes || 0,
                     price: parseFloat(guestInfo.price) || bookingMode.slot.price,
                     notes: '',
                     date: format(selectedDate, 'yyyy-MM-dd')
