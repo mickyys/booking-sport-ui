@@ -315,8 +315,8 @@ const SlotCard: React.FC<{ slot: any, onPayBalance: (slot: any) => void, onUndoB
             <div className={`p-4 rounded-2xl border space-y-2 ${slot.status === 'passed_booked' ? 'bg-slate-50 border-slate-200 opacity-75' : 'bg-emerald-50 border-emerald-100'}`}>
                 <div className="flex justify-between items-center">
                     <span className={`text-sm font-black ${slot.status === 'passed_booked' ? 'text-slate-500' : 'text-emerald-700'}`}>{slot.hour}:00</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${isRecurringBooked ? 'bg-amber-100 text-amber-700' : (slot.status === 'passed_booked' ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700')}`}>
-                        {isRecurringBooked ? 'Recurrente' : (isInternalBlock ? 'Bloqueo' : isInternalReserva ? 'Interna' : (slot.status === 'passed_booked' ? 'Pasado' : 'Reserva'))}
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${isRecurringBooked ? 'bg-orange-100 text-orange-700' : (slot.status === 'passed_booked' ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700')}`}>
+                        {isRecurringBooked ? 'Interna' : (isInternalBlock ? 'Bloqueo' : isInternalReserva ? 'Interna' : (slot.status === 'passed_booked' ? 'Pasado' : 'Reserva'))}
                     </span>
                 </div>
                 <div className="space-y-1">
@@ -431,7 +431,7 @@ const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[], onPayBalance: (slo
                                 onClick={() => isBooked ? setActiveSlot(activeSlot === slot ? null : slot) : null}
                                 className={`relative p-2.5 rounded-xl border text-[10px] font-bold text-center transition-all cursor-pointer ${
                                     isBooked
-                                        ? (isInternalBlock ? 'bg-slate-300 border-slate-300 text-slate-700' : (slot.status === 'passed_booked' ? 'bg-slate-400 border-slate-400 text-white opacity-75' : (slot.status === 'recurring_booked' ? 'bg-amber-100 border-amber-200 text-amber-700' : 'bg-emerald-50 border-emerald-50 text-white shadow-sm')))
+                                        ? (isInternalBlock ? 'bg-slate-300 border-slate-300 text-slate-700' : (slot.status === 'passed_booked' ? 'bg-slate-400 border-slate-400 text-white opacity-75' : (slot.status === 'recurring_booked' ? 'bg-orange-100 border-orange-200 text-orange-700' : 'bg-emerald-50 border-emerald-50 text-white shadow-sm')))
                                         : isBlocked
                                         ? 'bg-slate-100 border-slate-200 text-slate-400'
                                         : 'bg-white border-slate-100 text-slate-400 border-dashed hover:border-slate-300'
@@ -447,7 +447,7 @@ const WeeklyDayColumn: React.FC<{ day: Date, schedule: any[], onPayBalance: (slo
                                                     <Clock size={12} className={slot.status === 'passed_booked' ? 'text-slate-400' : 'text-emerald-500'} />
                                                     <p className="text-[10px] font-black">{slot.hour}:00</p>
                                                 </div>
-                                                <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase ${slot.status === 'recurring_booked' ? 'bg-amber-100 text-amber-600' : (isInternal ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600')}`}>
+                                                <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase ${slot.status === 'recurring_booked' ? 'bg-orange-100 text-orange-600' : (isInternal ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600')}`}>
                                                     {slot.status === 'recurring_booked' ? 'Recurrente' : (slot.isPartialPayment ? (slot.partialPaymentPaid ? 'Pagado' : 'Pendiente') : (isInternal ? 'Presencial' : 'Online'))}
                                                 </span>
                                             </div>

@@ -265,7 +265,9 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold text-slate-900">Calendario de Reservas</h2>
-                    <p className="text-slate-500 mt-1">Selecciona un horario disponible para crear una reserva interna o bloquear la cancha.</p>
+                    <p className="text-slate-500 mt-1">
+                        {format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
+                    </p>
                 </div>
                 <div className="flex gap-2">
                     <button
@@ -367,7 +369,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                                     <div className="flex items-center gap-1">
                                         {isRecurringBooked && <Repeat size={14} className="text-amber-600" />}
                                         <span className={`text-lg font-bold ${isBooked || isRecurringBooked ? 'text-slate-400' : 'text-slate-900'}`}>
-                                            {String(slot.hour).padStart(2, '0')}:00
+                                            {String(slot.hour).padStart(2, '0')}:{String(slot.minutes || 0).padStart(2, '0')}
                                         </span>
                                     </div>
 
@@ -440,7 +442,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                         courts.forEach(court => {
                             const schedule = schedules.find(s => s.id === court.id);
                             schedule?.schedule.forEach((slot: any) => {
-                                if (slot.hour >= 8 && slot.hour <= 22) {
+                                if (slot.hour >= 8 && slot.hour <= 23) {
                                     allHours.add(slot.hour);
                                 }
                             });
@@ -562,7 +564,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                                     {bookingMode.mode === 'reserve' ? 'Nueva Reserva' : 'Bloquear Horario'}
                                 </h3>
                                 <p className="text-slate-500 text-sm mt-1">
-                                    <span className="font-bold text-slate-900">{format(selectedDate, "EEEE d 'de' MMMM 'de' yyyy", { locale: es })}</span> a las {bookingMode.slot.hour}:00
+                                    <span className="font-bold text-slate-900">{format(selectedDate, "EEEE d 'de' MMMM 'de' yyyy", { locale: es })}</span> a las {String(bookingMode.slot.hour).padStart(2, '0')}:{String(bookingMode.slot.minutes || 0).padStart(2, '0')}
                                 </p>
                             </div>
                             <button
@@ -702,7 +704,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                                             <span className="font-bold text-sm">Reserva Semanal Indefinida</span>
                                         </div>
                                         <p className="text-amber-600 text-sm">
-                                            El horario se reservará <strong>cada {format(selectedDate, 'EEEE', { locale: es })}</strong> a las {bookingMode.slot.hour}:00 de forma indefinida.
+                                            El horario se reservará <strong>cada {format(selectedDate, 'EEEE', { locale: es })}</strong> a las {String(bookingMode.slot.hour).padStart(2, '0')}:{String(bookingMode.slot.minutes || 0).padStart(2, '0')} de forma indefinida.
                                         </p>
                                     </div>
                                 )}
