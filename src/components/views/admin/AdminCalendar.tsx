@@ -100,14 +100,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
 
                 await createRecurringReservation(recurringData, getAccessTokenSilently);
 
-                toast.success('Reserva semanal creada con éxito');
-                setBookingMode(null);
-                setGuestInfo({ name: '', phone: '', price: '' });
-                setRecurringType(null);
-
-                if (selectedCenterId) {
-                    fetchAdminSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
-                }
+                await fetchAdminSchedules(selectedCenterId!, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
             } catch (error) {
                 console.error("Error creating weekly reservation:", error);
                 if (axios.isAxiosError(error) && error.response?.status === 409) {
@@ -162,9 +155,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
             setRecurringType(null);
             setRecurringWeeks(4);
 
-            if (selectedCenterId) {
-                fetchAdminSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
-            }
+            await fetchAdminSchedules(selectedCenterId!, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
         } catch (error) {
             console.error("Error creating bookings:", error);
             if (axios.isAxiosError(error) && error.response?.status === 409) {
@@ -193,9 +184,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
         try {
             await deleteBooking(slotToUnlock.bookingId, getAccessTokenSilently);
             toast.success("Horario desbloqueado con éxito");
-            if (selectedCenterId) {
-                fetchAdminSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
-            }
+            await fetchAdminSchedules(selectedCenterId!, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
         } catch (error) {
             toast.error("Error al desbloquear");
         } finally {
@@ -209,9 +198,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
         try {
             await (deleteSeries as any)(slotToUnlock.seriesId, getAccessTokenSilently);
             toast.success("Toda la serie de reservas eliminada");
-            if (selectedCenterId) {
-                fetchAdminSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
-            }
+            await fetchAdminSchedules(selectedCenterId!, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
         } catch (error) {
             toast.error("Error al desbloquear toda la serie");
         } finally {
@@ -225,9 +212,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
         try {
             await cancelRecurringReservation(slotToUnlock.recurringId, getAccessTokenSilently);
             toast.success("Reserva semanal cancelada");
-            if (selectedCenterId) {
-                fetchAdminSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
-            }
+            await fetchAdminSchedules(selectedCenterId!, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
         } catch (error) {
             toast.error("Error al cancelar reserva semanal");
         } finally {
