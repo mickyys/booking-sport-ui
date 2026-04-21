@@ -128,7 +128,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
     const [collapsedCourts, setCollapsedCourts] = useState<Record<string, boolean>>({});
     const [collapsedDays, setCollapsedDays] = useState<Record<string, Record<string, boolean>>>({});
 
-    const [courtDaySettings, setCourtDaySettings] = useState<Record<string, { dayOfWeek: number | null; startTime: string; endTime: string; price: number }>>({});
+    const [courtDaySettings, setCourtDaySettings] = useState<Record<string, { dayOfWeek: number | null; startTime: string; endTime: string; price: number; isRange: boolean }>>({});
     const [showGenerateModal, setShowGenerateModal] = useState(false);
     const [selectedCourtForGen, setSelectedCourtForGen] = useState<string | null>(null);
 
@@ -287,23 +287,20 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
 
         {
             const [startH, startM] = (settings[courtId]?.startTime || '09:00').split(':').map(Number);
-            const [endH, endM] = (settings[courtId]?.endTime || '22:00').split(':').map(Number);
+            const [endH, endM] = (settings[courtId]?.endTime || '09:00').split(':').map(Number);
             
             const startMinutes = startH * 60 + startM;
             const endMinutes = endH * 60 + endM;
             
             const courtSettings = settings[courtId];
+            const isRange = courtSettings?.isRange ?? false;
             const newSlots: any[] = [];
             
-            let currentMin = startMinutes;
-            while (currentMin < endMinutes) {
-                const hour = Math.floor(currentMin / 60);
-                const minutes = currentMin % 60;
-                
-                if (!schedule.slots.some((s: any) => s.hour === hour && (s.minutes || 0) === minutes)) {
+            if (!isRange) {
+                if (!schedule.slots.some((s: any) => s.hour === startH && (s.minutes || 0) === startM)) {
                     newSlots.push({
-                        hour,
-                        minutes,
+                        hour: startH,
+                        minutes: startM,
                         price: courtSettings?.price || 0,
                         enabled: true,
                         paymentRequired: true,
@@ -311,20 +308,38 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                         dayOfWeek: courtSettings?.dayOfWeek ?? null
                     });
                 }
-                
-                currentMin += 60;
-            }
+            } else {
+                let currentMin = startMinutes;
+                while (currentMin < endMinutes) {
+                    const hour = Math.floor(currentMin / 60);
+                    const minutes = currentMin % 60;
+                    
+                    if (!schedule.slots.some((s: any) => s.hour === hour && (s.minutes || 0) === minutes)) {
+                        newSlots.push({
+                            hour,
+                            minutes,
+                            price: courtSettings?.price || 0,
+                            enabled: true,
+                            paymentRequired: true,
+                            paymentOptional: false,
+                            dayOfWeek: courtSettings?.dayOfWeek ?? null
+                        });
+                    }
+                    
+                    currentMin += 60;
+                }
 
-            if (endMinutes > startMinutes && !schedule.slots.some((s: any) => s.hour === endH && (s.minutes || 0) === endM)) {
-                newSlots.push({
-                    hour: endH,
-                    minutes: endM,
-                    price: courtSettings?.price || 0,
-                    enabled: true,
-                    paymentRequired: true,
-                    paymentOptional: false,
-                    dayOfWeek: courtSettings?.dayOfWeek ?? null
-                });
+                if (endMinutes > startMinutes && !schedule.slots.some((s: any) => s.hour === endH && (s.minutes || 0) === endM)) {
+                    newSlots.push({
+                        hour: endH,
+                        minutes: endM,
+                        price: courtSettings?.price || 0,
+                        enabled: true,
+                        paymentRequired: true,
+                        paymentOptional: false,
+                        dayOfWeek: courtSettings?.dayOfWeek ?? null
+                    });
+                }
             }
 
             if (newSlots.length > 0) {
@@ -333,7 +348,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
         }
 
         if (allNewSlots.length === 0) {
-            toast.error("Los horarios ya existen para esta cancha");
+            toast.error("El horario ya existe para esta cancha");
             return;
         }
 
@@ -347,7 +362,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
 
         setShowGenerateModal(false);
         setCourtDaySettings({});
-        toast.success(`${allNewSlots.reduce((acc, c) => acc + c.slots.length, 0)} horarios generados`);
+        toast.success(`${allNewSlots.reduce((acc, c) => acc + c.slots.length, 0)} horario(s) generado(s)`);
     };
 
     return (
@@ -405,13 +420,15 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                 <button
                                     onClick={() => {
                                         setSelectedCourtForGen(court.id);
+                                        const defaultHour = centerDefaultSchedule.start_time.split(':')[0] + ':00';
                                         setCourtDaySettings(prev => ({ 
                                             ...prev, 
                                             [court.id]: { 
                                                 dayOfWeek: 1, 
-                                                startTime: centerDefaultSchedule.start_time, 
-                                                endTime: centerDefaultSchedule.end_time,
-                                                price: 0
+                                                startTime: defaultHour, 
+                                                endTime: defaultHour,
+                                                price: 0,
+                                                isRange: false
                                             } 
                                         }));
                                         setShowGenerateModal(true);
@@ -687,7 +704,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2 ml-1 italic">Inicio</label>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2 ml-1 italic">Hora</label>
                                     <input
                                         type="time"
                                         value={courtDaySettings[selectedCourtForGen || '']?.startTime ?? '09:00'}
@@ -707,8 +724,36 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl py-4 px-6 text-xl font-black focus:border-blue-500 focus:bg-white outline-none transition-all shadow-sm"
                                     />
                                 </div>
+                                <div className="flex items-end">
+                                    <button
+                                        onClick={() => {
+                                            setCourtDaySettings(prev => {
+                                                const courtId = selectedCourtForGen;
+                                                if (!courtId) return prev;
+                                                const currentIsRange = prev[courtId]?.isRange ?? false;
+                                                return {
+                                                    ...prev,
+                                                    [courtId]: {
+                                                        ...prev[courtId],
+                                                        isRange: !currentIsRange,
+                                                    }
+                                                };
+                                            });
+                                        }}
+                                        className={`w-full py-4 px-4 rounded-3xl text-base font-bold transition-all border-2 ${
+                                            (courtDaySettings[selectedCourtForGen || '']?.isRange ?? false)
+                                                ? 'bg-blue-50 border-blue-500 text-blue-700'
+                                                : 'bg-slate-50 border-slate-100 text-slate-500'
+                                        }`}
+                                    >
+                                        {(courtDaySettings[selectedCourtForGen || '']?.isRange ?? false) ? 'Rango activo' : 'Activar rango'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {courtDaySettings[selectedCourtForGen || '']?.isRange && (
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2 ml-1 italic">Fin</label>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2 ml-1 italic">Hasta</label>
                                     <input
                                         type="time"
                                         value={courtDaySettings[selectedCourtForGen || '']?.endTime ?? '22:00'}
@@ -728,7 +773,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl py-4 px-6 text-xl font-black focus:border-blue-500 focus:bg-white outline-none transition-all shadow-sm"
                                     />
                                 </div>
-                            </div>
+                            )}
 
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-2 ml-1 italic">Valor de la reserva</label>
@@ -760,7 +805,9 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                             </div>
 
                             <p className="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg">
-                                Se generarán horarios cada hora desde el inicio hasta el fin (sin incluir el último).
+                                {!courtDaySettings[selectedCourtForGen || '']?.isRange 
+                                    ? 'Se creará un solo horario.' 
+                                    : 'Se creará un rango de horarios cada hora desde Hora hasta (sin incluir) Hasta.'}
                             </p>
 
                             <button
