@@ -62,7 +62,12 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
     }, [selectedDate, selectedCenterId, selectedCourtId, courts.length]);
 
     useEffect(() => {
+        console.log('useEffect - selectedCenterId cambi贸:', selectedCenterId);
+    }, [selectedCenterId]);
+
+    useEffect(() => {
         if (selectedCenterId && courts.length > 0) {
+            console.log('useEffect load: selectedCenterId =', selectedCenterId);
             const timer = setTimeout(() => {
                 fetchAdminSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
             }, 100);
@@ -90,6 +95,15 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
 
     const handleInternalReserve = async () => {
         if (!bookingMode) return;
+        
+        const currentCenterId = selectedCenterId;
+        console.log('handleInternalReserve: selectedCenterId =', currentCenterId);
+        
+        if (!currentCenterId) {
+            toast.error('No se ha seleccionado un centro deportivo');
+            return;
+        }
+        
         setIsCreating(true);
 
         // Handle weekly indefinite recurring reservation
@@ -97,7 +111,6 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
             try {
                 const recurringData = {
                     court_id: bookingMode.slot.courtId,
-                    sport_center_id: selectedCenterId || undefined,
                     customer_name: guestInfo.name,
                     customer_phone: guestInfo.phone,
                     hour: bookingMode.slot.hour,
@@ -108,7 +121,9 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
 
                 await createRecurringReservation(recurringData, getAccessTokenSilently);
 
-                await fetchAdminSchedules(selectedCenterId!, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
+                if (selectedCenterId) {
+                    await fetchAdminSchedules(selectedCenterId, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
+                }
 
                 toast.success('Reserva semanal creada con éxito');
             } catch (error) {
@@ -138,10 +153,9 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
 
                 const bookingData: any = {
                     court_id: bookingMode.slot.courtId,
-                    sport_center_id: selectedCenterId, // Agregado para asegurar consistencia
                     date: currentDate.toISOString(),
                     hour: bookingMode.slot.hour,
-                    customer_name: guestInfo.name, // Sin el (R) para que el agrupamiento sea limpio
+                    customer_name: guestInfo.name,
                     customer_phone: guestInfo.phone,
                     guest_details: bookingMode.mode === 'reserve' ? {
                         name: guestInfo.name,
@@ -166,7 +180,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
             await fetchAdminSchedules(selectedCenterId!, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
 
             toast.success(weeksToProcess > 1
-                ? `Se crearon ${weeksToProcess} reservas con éxito`
+                ? `Se creadas ${weeksToProcess} reservas con éxito`
                 : (bookingMode.mode === 'reserve' ? "Reserva guardada con éxito" : "Horario bloqueado")
             );
         } catch (error) {
