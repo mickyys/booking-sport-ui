@@ -274,18 +274,25 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
 
     const generateSlotsForDay = () => {
         const settings = courtDaySettings;
-        if (!settings) return;
+        if (!settings || !selectedCourtForGen) return;
 
+        const courtId = selectedCourtForGen;
         const allNewSlots: { courtId: string; slots: any[] }[] = [];
         
-        schedules.forEach(schedule => {
-            const [startH, startM] = (settings[schedule.courtId]?.startTime || '09:00').split(':').map(Number);
-            const [endH, endM] = (settings[schedule.courtId]?.endTime || '22:00').split(':').map(Number);
+        const schedule = schedules.find(s => s.courtId === courtId);
+        if (!schedule) {
+            setShowGenerateModal(false);
+            return;
+        }
+
+        {
+            const [startH, startM] = (settings[courtId]?.startTime || '09:00').split(':').map(Number);
+            const [endH, endM] = (settings[courtId]?.endTime || '22:00').split(':').map(Number);
             
             const startMinutes = startH * 60 + startM;
             const endMinutes = endH * 60 + endM;
             
-            const courtSettings = settings[schedule.courtId];
+            const courtSettings = settings[courtId];
             const newSlots: any[] = [];
             
             let currentMin = startMinutes;
@@ -321,26 +328,26 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
             }
 
             if (newSlots.length > 0) {
-                allNewSlots.push({ courtId: schedule.courtId, slots: newSlots });
+                allNewSlots.push({ courtId, slots: newSlots });
             }
-        });
+        }
 
         if (allNewSlots.length === 0) {
-            toast.error("Los horarios ya existen para todas las canchas");
+            toast.error("Los horarios ya existen para esta cancha");
             return;
         }
 
         allNewSlots.forEach(({ courtId, slots }) => {
-            const schedule = schedules.find(s => s.courtId === courtId);
-            if (!schedule) return;
+            const sched = schedules.find(s => s.courtId === courtId);
+            if (!sched) return;
             
-            const updatedSlots = [...schedule.slots, ...slots].sort((a, b) => (a.hour * 60 + (a.minutes || 0)) - (b.hour * 60 + (b.minutes || 0)));
-            onUpdateSchedule({ ...schedule, slots: updatedSlots });
+            const updatedSlots = [...sched.slots, ...slots].sort((a, b) => (a.hour * 60 + (a.minutes || 0)) - (b.hour * 60 + (b.minutes || 0)));
+            onUpdateSchedule({ ...sched, slots: updatedSlots });
         });
 
         setShowGenerateModal(false);
         setCourtDaySettings({});
-        toast.success(`${allNewSlots.reduce((acc, c) => acc + c.slots.length, 0)} horarios generados para todas las canchas`);
+        toast.success(`${allNewSlots.reduce((acc, c) => acc + c.slots.length, 0)} horarios generados`);
     };
 
     return (
@@ -647,27 +654,26 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                         <div className="space-y-6">
                             <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
                                 <p className="text-sm font-bold text-blue-800">
-                                    Se generarán horarios para <span className="underline">{schedules.length} canchas</span> con la misma configuración.
+                                    Generando horarios para <span className="underline">{courts?.find(c => c.id === selectedCourtForGen)?.name || 'cancha'}</span>
                                 </p>
                             </div>
 
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-2 ml-1 italic">Día de la semana</label>
                                 <select
-                                    value={courtDaySettings[schedules[0]?.courtId]?.dayOfWeek ?? 'null'}
+                                    value={courtDaySettings[selectedCourtForGen || '']?.dayOfWeek ?? 'null'}
                                     onChange={e => {
                                         const val = e.target.value === 'null' ? null : parseInt(e.target.value);
                                         setCourtDaySettings(prev => {
-                                            const newSettings = { ...prev };
-                                            schedules.forEach(s => {
-                                                newSettings[s.courtId] = { 
-                                                    dayOfWeek: val, 
-                                                    startTime: newSettings[s.courtId]?.startTime || '09:00',
-                                                    endTime: newSettings[s.courtId]?.endTime || '22:00',
-                                                    price: newSettings[s.courtId]?.price || 0
-                                                };
-                                            });
-                                            return newSettings;
+                                            const courtId = selectedCourtForGen;
+                                            if (!courtId) return prev;
+                                            return {
+                                                ...prev,
+                                                [courtId]: {
+                                                    ...prev[courtId],
+                                                    dayOfWeek: val,
+                                                }
+                                            };
                                         });
                                     }}
                                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl py-4 px-6 text-xl font-black focus:border-blue-500 focus:bg-white outline-none transition-all shadow-sm"
@@ -684,20 +690,18 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                     <label className="block text-sm font-bold text-slate-700 mb-2 ml-1 italic">Inicio</label>
                                     <input
                                         type="time"
-                                        value={courtDaySettings[schedules[0]?.courtId]?.startTime ?? '09:00'}
+                                        value={courtDaySettings[selectedCourtForGen || '']?.startTime ?? '09:00'}
                                         onChange={e => {
                                             setCourtDaySettings(prev => {
-                                                const newSettings = { ...prev };
-                                                schedules.forEach(s => {
-                                                    newSettings[s.courtId] = { 
-                                                        ...newSettings[s.courtId],
+                                                const courtId = selectedCourtForGen;
+                                                if (!courtId) return prev;
+                                                return {
+                                                    ...prev,
+                                                    [courtId]: {
+                                                        ...prev[courtId],
                                                         startTime: e.target.value,
-                                                        dayOfWeek: newSettings[s.courtId]?.dayOfWeek ?? null,
-                                                        endTime: newSettings[s.courtId]?.endTime || '22:00',
-                                                        price: newSettings[s.courtId]?.price || 0
-                                                    };
-                                                });
-                                                return newSettings;
+                                                    }
+                                                };
                                             });
                                         }}
                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl py-4 px-6 text-xl font-black focus:border-blue-500 focus:bg-white outline-none transition-all shadow-sm"
@@ -707,20 +711,18 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                     <label className="block text-sm font-bold text-slate-700 mb-2 ml-1 italic">Fin</label>
                                     <input
                                         type="time"
-                                        value={courtDaySettings[schedules[0]?.courtId]?.endTime ?? '22:00'}
+                                        value={courtDaySettings[selectedCourtForGen || '']?.endTime ?? '22:00'}
                                         onChange={e => {
                                             setCourtDaySettings(prev => {
-                                                const newSettings = { ...prev };
-                                                schedules.forEach(s => {
-                                                    newSettings[s.courtId] = { 
-                                                        ...newSettings[s.courtId],
+                                                const courtId = selectedCourtForGen;
+                                                if (!courtId) return prev;
+                                                return {
+                                                    ...prev,
+                                                    [courtId]: {
+                                                        ...prev[courtId],
                                                         endTime: e.target.value,
-                                                        dayOfWeek: newSettings[s.courtId]?.dayOfWeek ?? null,
-                                                        startTime: newSettings[s.courtId]?.startTime || '09:00',
-                                                        price: newSettings[s.courtId]?.price || 0
-                                                    };
-                                                });
-                                                return newSettings;
+                                                    }
+                                                };
                                             });
                                         }}
                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl py-4 px-6 text-xl font-black focus:border-blue-500 focus:bg-white outline-none transition-all shadow-sm"
@@ -736,21 +738,19 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                     </div>
                                     <input
                                         type="number"
-                                        value={courtDaySettings[schedules[0]?.courtId]?.price ?? 0}
+                                        value={courtDaySettings[selectedCourtForGen || '']?.price ?? 0}
                                         onChange={e => {
                                             const val = parseInt(e.target.value) || 0;
                                             setCourtDaySettings(prev => {
-                                                const newSettings = { ...prev };
-                                                schedules.forEach(s => {
-                                                    newSettings[s.courtId] = { 
-                                                        ...newSettings[s.courtId],
+                                                const courtId = selectedCourtForGen;
+                                                if (!courtId) return prev;
+                                                return {
+                                                    ...prev,
+                                                    [courtId]: {
+                                                        ...prev[courtId],
                                                         price: val,
-                                                        dayOfWeek: newSettings[s.courtId]?.dayOfWeek ?? null,
-                                                        startTime: newSettings[s.courtId]?.startTime || '09:00',
-                                                        endTime: newSettings[s.courtId]?.endTime || '22:00'
-                                                    };
-                                                });
-                                                return newSettings;
+                                                    }
+                                                };
                                             });
                                         }}
                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl py-4 pl-12 pr-6 text-xl font-black focus:border-blue-500 focus:bg-white outline-none transition-all shadow-sm"
