@@ -119,12 +119,35 @@ export const AdminRecurringClients: React.FC = () => {
     const activeWeekly = recurringReservations.filter(r => r.status === 'active');
     const activeSeries = recurringSeries;
 
-    const filteredItems = allItems.filter(item => {
-        if ((item as any).status === 'cancelled') return false;
-        if (activeTab === 'weekly') return item.type === 'weekly';
-        if (activeTab === 'series') return item.type === 'series';
-        return true;
-    });
+    const filteredItems = allItems
+        .filter(item => {
+            if ((item as any).status === 'cancelled') return false;
+            if (activeTab === 'weekly') return item.type === 'weekly';
+            if (activeTab === 'series') return item.type === 'series';
+            return true;
+        })
+        .sort((a, b) => {
+            const getDayValue = (item: CombinedItem) => {
+                let day;
+                if (item.type === 'weekly') {
+                    day = (item as RecurringReservation).day_of_week;
+                } else {
+                    day = parseISO((item as RecurringSeries).start_date).getDay();
+                }
+                // Map 0 (Sunday) to 7 to make Monday (1) the first day and Sunday the last
+                return day === 0 ? 7 : day;
+            };
+
+            const dayA = getDayValue(a);
+            const dayB = getDayValue(b);
+
+            if (dayA !== dayB) {
+                return dayA - dayB;
+            }
+
+            // If same day, sort by hour
+            return a.hour - b.hour;
+        });
 
     const handleViewDetail = (item: CombinedItem) => {
         setSelectedItem(item);
