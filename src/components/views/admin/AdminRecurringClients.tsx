@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Repeat, Phone, Clock, Calendar, X, Trash2, AlertTriangle, CalendarRange, RefreshCw } from 'lucide-react';
+import { Repeat, Phone, Clock, Calendar, X, Trash2, AlertTriangle, CalendarRange, RefreshCw, ChevronRight } from 'lucide-react';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/components/ui/use-mobile';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -80,6 +81,7 @@ export const AdminRecurringClients: React.FC = () => {
         deleteSeries
     } = useBookingStore();
 
+    const isMobile = useIsMobile();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [selectedItem, setSelectedItem] = useState<CombinedItem | null>(null);
@@ -269,7 +271,7 @@ export const AdminRecurringClients: React.FC = () => {
                 </button>
             </div>
 
-            {/* Table */}
+            {/* Table or Mobile Cards */}
             <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden">
                 {loading ? (
                     <div className="p-12 text-center">
@@ -280,6 +282,66 @@ export const AdminRecurringClients: React.FC = () => {
                         <Repeat className="w-12 h-12 text-slate-200 mx-auto mb-4" />
                         <h4 className="text-slate-900 font-bold">No hay clientes recurrentes</h4>
                         <p className="text-slate-400 text-sm mt-1">Los clientes con reservas recurrentes aparecerán aquí</p>
+                    </div>
+                ) : isMobile ? (
+                    <div className="p-4 space-y-4">
+                        {filteredItems.map((item) => (
+                            <div 
+                                key={`${item.type}-${item.id}`}
+                                className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm active:shadow-md transition-all space-y-4 relative overflow-hidden group"
+                                onClick={() => handleViewDetail(item)}
+                            >
+                                <div className="flex justify-between items-start">
+                                    <div className="space-y-1 flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <p className="font-black text-slate-900 text-lg truncate">{item.customer_name}</p>
+                                            {getItemTypeBadge(item)}
+                                        </div>
+                                        <p className="text-sm text-slate-500 flex items-center gap-1.5 font-medium">
+                                            <Phone size={14} className="text-slate-400" />
+                                            {item.customer_phone}
+                                        </p>
+                                    </div>
+                                    <div className="p-2 bg-slate-50 rounded-xl text-slate-400 group-active:text-slate-900 transition-colors">
+                                        <ChevronRight size={20} />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 pt-2">
+                                    <div className="bg-slate-50/50 p-3 rounded-2xl space-y-1 border border-slate-50">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cancha</p>
+                                        <p className="text-sm font-bold text-slate-900 truncate">
+                                            {item.type === 'weekly' ? (item as RecurringReservation).court_name : (item as RecurringSeries).court_name}
+                                        </p>
+                                    </div>
+                                    <div className="bg-slate-50/50 p-3 rounded-2xl space-y-1 border border-slate-50">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Horario</p>
+                                        <div className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
+                                            <Calendar size={12} className="text-emerald-500" />
+                                            {getItemDay(item)} • {formatHour(item.hour, (item as any).minutes)}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2">
+                                    <div className="space-y-0.5">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Precio p/h</p>
+                                        <p className="text-xl font-black text-emerald-600">
+                                            {formatPrice((item as any).price)}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleCancelClick(item);
+                                        }}
+                                        className="p-3 text-red-600 bg-red-50 rounded-2xl hover:bg-red-100 transition-colors border border-red-100 active:scale-95"
+                                    >
+                                        <Trash2 size={20} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
