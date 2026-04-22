@@ -1,5 +1,4 @@
 "use client";
-"use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useParams, useSearchParams } from 'next/navigation';
@@ -8,6 +7,8 @@ import { format, startOfToday, addDays, setHours, setMinutes, parseISO, isAfter,
 import { es } from 'date-fns/locale';
 import { TimeSlot, UserProfile, SportCenter, Court, CourtWithSchedule } from '@/types';
 import { useBookingStore } from '@/store/useBookingStore';
+import { useIsMobile } from '@/components/ui/use-mobile';
+import { BookingSlotCard } from '@/components/booking/BookingSlotCard';
 
 interface BookingViewProps {
   onBookSlot: (slot: TimeSlot) => void;
@@ -29,8 +30,9 @@ export const BookingView: React.FC<BookingViewProps> = ({
   courts
 }) => {
   const { schedules, isLoading, fetchSchedules, fetchSportCenterBySlug } = useBookingStore();
-    const params = useParams(); const slug = params?.slug as string | undefined;
+  const params = useParams(); const slug = params?.slug as string | undefined;
   const [selectedDay, setSelectedDay] = useState<Date>(startOfToday());
+  const isMobile = useIsMobile();
 
   const searchParams = useSearchParams();
 
@@ -272,6 +274,16 @@ export const BookingView: React.FC<BookingViewProps> = ({
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredSlots.map((slot) => {
+                  if (isMobile) {
+                    return (
+                      <BookingSlotCard
+                        key={slot.id}
+                        slot={slot}
+                        court={courts.find(c => c.id === slot.courtId)}
+                        onClick={handleSlotClick}
+                      />
+                    );
+                  }
                   return (
                     <motion.div
                       key={slot.id}
