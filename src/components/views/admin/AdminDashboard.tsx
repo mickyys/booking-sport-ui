@@ -254,7 +254,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         {booking.court_name || courts.find(c => c.id === booking.courtId)?.name}
                                     </td>
                                     <td className="px-6 py-4 text-slate-600">
-                                    <div>{format(booking.date, "d MMM", { locale: es })} {booking.hour}:{String(booking.minutes ?? '00').padStart(2, '0')}</div>
+                                    <div>{format(booking.date, "d MMM", { locale: es })}, {booking.hour}:{String(booking.minutes ?? '00').padStart(2, '0')}</div>
                                         {booking.isPartialPayment && (
                                             <div className="mt-1 flex flex-col gap-0.5">
                                                 <div className="flex justify-between w-full gap-2">
@@ -371,8 +371,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fecha y Hora</p>
-                                    <p className="text-xs font-medium text-slate-700">
-                                        {format(parseISO(booking.date), "d MMM, HH:mm", { locale: es })}
+                                    <p className="text-xs font-medium text-slate-700">                                        
+                                        <div>{format(booking.date, "d MMM", { locale: es })}, {booking.hour}:{String(booking.minutes ?? '00').padStart(2, '0')}</div>
                                     </p>
                                     {booking.isPartialPayment && (
                                         <div className="mt-1 flex flex-col gap-1">
