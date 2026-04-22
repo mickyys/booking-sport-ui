@@ -254,7 +254,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                         {booking.court_name || courts.find(c => c.id === booking.courtId)?.name}
                                     </td>
                                     <td className="px-6 py-4 text-slate-600">
-                                    <div>{booking.hour}:{String(booking.minutes ?? '00').padStart(2, '0')}</div>
+                                    <div>{format(booking.date, "d MMM")} {booking.hour}:{String(booking.minutes ?? '00').padStart(2, '0')}</div>
                                         {booking.isPartialPayment && (
                                             <div className="mt-1 flex flex-col gap-0.5">
                                                 <div className="flex justify-between w-full gap-2">
