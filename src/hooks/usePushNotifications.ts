@@ -12,7 +12,6 @@ export const usePushNotifications = () => {
     try {
       const accessToken = await getAccessTokenSilently();
       
-      // Get basic device info from user agent
       const userAgent = window.navigator.userAgent;
       let deviceName = 'Web Browser';
       let osVersion = 'Unknown OS';
@@ -24,13 +23,10 @@ export const usePushNotifications = () => {
       if (userAgent.indexOf('Android') !== -1) osVersion = 'Android';
       if (userAgent.indexOf('like Mac') !== -1) osVersion = 'iOS';
 
-      // Simple browser detection
       if (userAgent.indexOf('Chrome') !== -1) deviceName = 'Chrome Browser';
       else if (userAgent.indexOf('Firefox') !== -1) deviceName = 'Firefox Browser';
       else if (userAgent.indexOf('Safari') !== -1) deviceName = 'Safari Browser';
       else if (userAgent.indexOf('Edge') !== -1) deviceName = 'Edge Browser';
-
-      console.log('Registering device for push notifications with info:', { deviceName, osVersion });
 
       await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/users/devices`,
@@ -46,7 +42,7 @@ export const usePushNotifications = () => {
           },
         }
       );
-      console.log('Device registered for push notifications with info:', { deviceName, osVersion });
+      console.log('Device registered for push notifications');
 
     } catch (err) {
       console.error('Error registering device:', err);
@@ -61,15 +57,17 @@ export const usePushNotifications = () => {
     if (isAuthenticated) {
       const setupNotifications = async () => {
         try {
+          if ('serviceWorker' in navigator) {
+            // Registering the service worker ensures background notifications work
+            await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+          }
+
           const token = await requestForToken();
           if (token) {
             setPermissionStatus('granted');
             await registerDevice(token);
-          } else {
-            // Re-check permission if token failed
-            if ('Notification' in window) {
-              setPermissionStatus(Notification.permission);
-            }
+          } else if ('Notification' in window) {
+            setPermissionStatus(Notification.permission);
           }
         } catch (error) {
           console.error('Error in setupNotifications:', error);
@@ -84,12 +82,20 @@ export const usePushNotifications = () => {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    onMessageListener().then((payload: any) => {
-      toast.info(payload.notification.title, {
-        description: payload.notification.body,
-      });
+    const unsubscribe = onMessageListener((payload: any) => {
+      if (payload?.notification) {
+        toast.info(payload.notification.title, {
+          description: payload.notification.body,
+        });
+      }
       console.log('Message received in foreground:', payload);
     });
+
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
   }, []);
 
   return { permissionStatus };
