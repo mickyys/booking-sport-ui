@@ -24,6 +24,7 @@ export interface CourtWithSchedule {
   schedule: ScheduleSlot[];
 }
 
+
 export interface SportCenter {
   id: string;
   name: string;
