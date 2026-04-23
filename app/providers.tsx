@@ -4,6 +4,7 @@
 import React from 'react';
 import { Auth0Provider } from '@auth0/auth0-react';
 import { Toaster } from 'sonner';
+import { PushNotificationManager } from '../src/components/PushNotificationManager';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN || "";
@@ -18,6 +19,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE
       }}
     >
+      <PushNotificationManager />
       {children}
       <Toaster richColors position="top-center" />
     </Auth0Provider>

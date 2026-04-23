@@ -35,6 +35,13 @@ export const updateSportCenterSchedules = async (centerId: string, data: {
   return response.data;
 };
 
+export const getMySportCenter = async (token: string) => {
+  const response = await api.get('/admin/my-sport-center', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
 // Recurring Reservation API
 export const createRecurringReservation = async (data: any, token: string) => {
   const response = await api.post('/admin/recurring', data, {
