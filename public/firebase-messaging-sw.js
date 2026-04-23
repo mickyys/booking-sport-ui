@@ -1,7 +1,7 @@
-importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
+importScripts("https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js");
 
-// Configuración de Firebase para el Service Worker
+// Configuración Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyC8v73P2-_AxVKlyalzeG7GlNj3J05o9xw",
   authDomain: "reservaloya-2a59c.firebaseapp.com",
@@ -12,40 +12,62 @@ const firebaseConfig = {
   measurementId: "G-47X0NH1R7M"
 };
 
+// Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
+
 const messaging = firebase.messaging();
 
+// Manejar mensajes cuando la app está en background
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  const notificationTitle = payload.notification.title;
+  console.log("[firebase-messaging-sw.js] Received background message ", payload);
+
+  // Soporta notification o data payload
+  const notificationTitle =
+    payload.notification?.title ||
+    payload.data?.title ||
+    "Nueva notificación";
+
   const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/logo/favicon-32x32.png',
-    data: payload.data,
+    body: payload.notification?.body || payload.data?.body || "",
+    icon: "/logo/favicon-32x32.png",
+    badge: "/logo/favicon-32x32.png",
+    data: payload.data || {},
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-self.addEventListener('notificationclick', (event) => {
-  console.log('[firebase-messaging-sw.js] Notification click Received.');
+// Evento cuando el usuario hace click en la notificación
+self.addEventListener("notificationclick", (event) => {
+  console.log("[firebase-messaging-sw.js] Notification click received.");
+
   event.notification.close();
 
   const bookingId = event.notification.data?.booking_id;
+
+  let urlToOpen = "/admin/dashboard";
+
   if (bookingId) {
-    const urlToOpen = new URL(`/admin/dashboard?booking_id=${bookingId}`, self.location.origin).href;
-    event.waitUntil(
-      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+    urlToOpen = `/admin/dashboard?booking_id=${bookingId}`;
+  }
+
+  const fullUrl = new URL(urlToOpen, self.location.origin).href;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true })
+      .then((windowClients) => {
+        // Si la ventana ya está abierta, enfocarla
         for (let i = 0; i < windowClients.length; i++) {
           const client = windowClients[i];
-          if (client.url === urlToOpen && 'focus' in client) {
+          if (client.url === fullUrl && "focus" in client) {
             return client.focus();
           }
         }
+
+        // Si no está abierta, abrir una nueva
         if (self.clients.openWindow) {
-          return self.clients.openWindow(urlToOpen);
+          return self.clients.openWindow(fullUrl);
         }
       })
-    );
-  }
+  );
 });
