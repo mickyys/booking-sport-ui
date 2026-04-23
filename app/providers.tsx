@@ -1,12 +1,19 @@
 "use client";
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Auth0Provider } from '@auth0/auth0-react';
 import { Toaster } from 'sonner';
 import { PushNotificationManager } from '../src/components/PushNotificationManager';
+import { useBookingStore } from '../src/store/useBookingStore';
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const initializeStore = useBookingStore(state => state.initialize);
+
+  useEffect(() => {
+    initializeStore();
+  }, [initializeStore]);
+
   const domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN || "";
   const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID || "";
 
