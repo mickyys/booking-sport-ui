@@ -75,6 +75,7 @@ export const useBookingActions = (user: UserProfile | null) => {
           hour: selectedSlot.date.getHours(),
           guest_details: guestDetails,
           user_id: user?.id,
+          partial: partial,
         });
 
         toast.success("¡Reserva confirmada exitosamente!");
