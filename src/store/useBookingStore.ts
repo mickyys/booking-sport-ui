@@ -90,9 +90,9 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           courtName: b.court_name,
           courtId: b.court_id,
           centerId: b.sport_center_id,
-          paymentMethod: b.payment_method,
-          paidAmount: b.paid_amount,
-          pendingAmount: b.pending_amount,
+          paymentMethod: b.booking_detail.payment_method,
+          paidAmount: b.booking_detail.paid_amount,
+          pendingAmount: b.booking_detail.pending_amount,
           createdAt: b.created_at
 
         }));
