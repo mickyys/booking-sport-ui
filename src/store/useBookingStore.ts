@@ -245,6 +245,9 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       set({ 
         currentBooking: { 
           ...data.booking_detail, 
+          paidAmount: data.booking_detail.paid_amount,
+          pendingAmount: data.booking_detail.pending_amount,
+          isPartialPayment: data.booking_detail.is_partial_payment,
           cancellationPolicy: data.cancellation_policy,
           canCancel: data.can_cancel,
           refundPercentage: data.refund_percentage,
