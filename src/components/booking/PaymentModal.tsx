@@ -40,11 +40,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   // Determine if partial payment is available for this slot
   const isPartialAvailable = (() => {
     if (!center) return false;
-    // Slot hierarchy: true/false overrides center, null inherits
     if (slot.partialPaymentEnabled === true) return true;
     if (slot.partialPaymentEnabled === false) return false;
     return !!center.partialPaymentEnabled;
   })();
+
+  const isPaymentRequired = slot.paymentRequired || payPartial;
 
   const partialAmount = isPartialAvailable && center?.partialPaymentPercent
     ? Math.round(slot.price * ((center.partialPaymentPercent || 0) / 100))
@@ -210,10 +211,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             )}
 
             <p className="text-sm font-medium text-slate-700 mb-2">
-              {slot.paymentRequired ? 'Selecciona medio de pago:' : slot.paymentOptional ? 'Pago opcional — puedes pagar ahora o confirmar sin pagar' : 'Confirma tu reserva:'}
+              {isPaymentRequired ? 'Selecciona medio de pago:' : slot.paymentOptional ? 'Pago opcional — puedes pagar ahora o confirmar sin pagar' : 'Confirma tu reserva:'}
             </p>
 
-            {slot.paymentRequired && (
+            {isPaymentRequired && (
               <button
                 disabled={processing !== null}
                 onClick={() => handlePayment('mercadopago')}
