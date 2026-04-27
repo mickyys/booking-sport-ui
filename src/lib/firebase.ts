@@ -1,5 +1,5 @@
-import { initializeApp } from 'firebase/app';
-import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging';
+import { initializeApp, getApp, getApps } from 'firebase/app';
+import { getMessaging, getToken, onMessage, Messaging, MessagePayload } from 'firebase/messaging';
 import { getAnalytics, isSupported } from "firebase/analytics";
 
 const firebaseConfig = {
@@ -12,42 +12,62 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
-const app = initializeApp(firebaseConfig);
+// Check if we have at least the essential config
+const hasConfig = !!firebaseConfig.apiKey && !!firebaseConfig.projectId;
 
 let messaging: Messaging | null = null;
-if (typeof window !== 'undefined') {
-  messaging = getMessaging(app);
-  // Initialize Analytics only if supported and in browser
-  isSupported().then(yes => yes && getAnalytics(app));
+
+if (typeof window !== 'undefined' && hasConfig) {
+  try {
+    const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+    messaging = getMessaging(app);
+    // Initialize Analytics only if supported and in browser
+    isSupported().then(yes => yes && getAnalytics(app));
+  } catch (error) {
+    console.error("Firebase initialization failed", error);
+  }
 }
 
 export { messaging };
 
 export const requestForToken = async () => {
-  if (!messaging) return null;
-  
-  console.log(process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY)
+  if (!messaging) {
+    console.warn("Firebase messaging not initialized. Check your configuration.");
+    return null;
+  }
   
   try {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      // Only request if permission is default
+      if (Notification.permission === 'default') {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          return null;
+        }
+      } else if (Notification.permission === 'denied') {
+        return null;
+      }
+    }
+
     const currentToken = await getToken(messaging, {
       vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
     });
+
     if (currentToken) {
       return currentToken;
     } else {
-      console.log('No registration token available. Request permission to generate one.');
+      console.log('No registration token available.');
       return null;
     }
   } catch (err) {
-    console.log('An error occurred while retrieving token. ', err);
+    console.error('An error occurred while retrieving token. ', err);
     return null;
   }
 };
 
-export const onMessageListener = () =>
-  new Promise((resolve) => {
-    if (!messaging) return;
-    onMessage(messaging, (payload) => {
-      resolve(payload);
-    });
+export const onMessageListener = (callback: (payload: MessagePayload) => void) => {
+  if (!messaging) return () => {};
+  return onMessage(messaging, (payload) => {
+    callback(payload);
   });
+};
