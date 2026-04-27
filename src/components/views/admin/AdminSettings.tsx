@@ -5,8 +5,6 @@ import { toast } from 'sonner';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
 import { uploadImageToCloudinary } from '@/components/booking/CourtImageUpload';
-import { updateSportCenterSchedules } from '@/api/bookingApi';
-import { CenterTimeSlot } from '@/types';
 
 interface AdminSettingsProps {
     sportCenter: any;
@@ -99,13 +97,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                 partialPaymentEnabled: partialPaymentEnabled,
                 partialPaymentPercent: partialPaymentPercent,
             }, getAccessTokenSilently);
-
-            const token = await getAccessTokenSilently();
-            await updateSportCenterSchedules(id, {
-                default_schedule: defaultSchedule || { start_time: '09:00', end_time: '22:00' },
-                schedule_overrides: scheduleOverrides,
-                active_days: activeDays
-            }, token);
 
             setLocalImageFile(null);
             setLocalImagePreview(null);
@@ -271,8 +262,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                                 </button>
                             </div>
 
-                            {partialPaymentEnabled && (
-                                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
                                     <label className="block text-sm font-medium text-slate-700 mb-2">
                                         Porcentaje de abono requerido
                                     </label>
@@ -291,7 +281,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                                         El usuario pagará el {partialPaymentPercent}% al momento de reservar y el {100 - partialPaymentPercent}% restante en el club.
                                     </p>
                                 </div>
-                            )}
                         </div>
                     </div>
 
