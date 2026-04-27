@@ -37,7 +37,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     phone: ''
   });
   const [errors, setErrors] = useState<Partial<GuestDetails>>({});
-  const [payPartial, setPayPartial] = useState(false);
+  const [payPartial, setPayPartial] = useState(true);
 
   // Determine if partial payment is available for this slot
   const isPartialAvailable = (() => {
@@ -83,25 +83,25 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/70 backdrop-blur-sm">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className={`bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden max-h-[90vh] overflow-y-auto ${showPolicies ? 'hidden' : 'block'}`}
+        initial={{ opacity: 0, y: 100 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`bg-white md:rounded-2xl shadow-2xl w-full md:max-w-md overflow-hidden md:max-h-[90vh] md:overflow-y-auto flex flex-col ${showPolicies ? 'hidden' : 'block'} rounded-t-2xl md:rounded-2xl`}
       >
-        <div className="bg-slate-900 p-6 text-white flex justify-between items-start sticky top-0 z-10">
+        <div className="bg-slate-900 p-4 md:p-6 text-white flex justify-between items-start sticky top-0 z-10">
           <div>
             <h3 className="text-xl font-bold">Confirmar Reserva</h3>
             <p className="text-slate-400 text-sm mt-1">
               {user ? `Reservando como ${user.name}` : 'Completa tus datos para reservar'}
             </p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white" disabled={processing !== null}>
+          <button onClick={onClose} className="text-slate-400 hover:text-white -mt-1 -mr-2 p-2" disabled={processing !== null}>
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 md:p-6 overflow-y-auto flex-1">
           <div className="flex items-center gap-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
             <img src={court.image} alt="Cancha" className="w-16 h-16 rounded-lg object-cover" />
             <div className="flex-1">
@@ -329,6 +329,62 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               }
             </p>
           </div>
+        </div>
+
+        {/* Botón fijo en móvil */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-safe">
+          {isPaymentRequired && (
+            <button
+              disabled={processing !== null}
+              onClick={() => handlePayment('mercadopago')}
+              className="w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all bg-blue-600 hover:bg-blue-700 border-blue-600 text-white"
+            >
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5" />
+                <span className="font-bold">
+                  {payPartial ? `Pagar $${partialAmount.toLocaleString('es-CL')}` : `Pagar $${slot.price.toLocaleString('es-CL')}`}
+                </span>
+              </div>
+              {processing === 'mercadopago' ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <ChevronRight className="w-5 h-5" />
+              )}
+            </button>
+          )}
+          {slot.paymentOptional && !slot.paymentRequired && (
+            <div className="flex gap-3">
+              <button
+                disabled={processing !== null}
+                onClick={() => handlePayment('mercadopago')}
+                className="flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-blue-500 bg-blue-50 hover:bg-blue-100 text-blue-700 transition-all"
+              >
+                <CreditCard className="w-5 h-5" />
+                <span className="font-bold">Pagar</span>
+              </button>
+              <button
+                disabled={processing !== null}
+                onClick={() => handlePayment('venue')}
+                className="flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-emerald-500 bg-emerald-500 hover:bg-emerald-600 text-white transition-all"
+              >
+                <span className="font-bold">Confirmar</span>
+              </button>
+            </div>
+          )}
+          {!slot.paymentRequired && !slot.paymentOptional && (
+            <button
+              disabled={processing !== null}
+              onClick={() => handlePayment('venue')}
+              className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white"
+            >
+              <span className="font-bold text-lg">Confirmar Reserva</span>
+              {processing === 'venue' ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <ChevronRight className="w-5 h-5" />
+              )}
+            </button>
+          )}
         </div>
       </motion.div>
 
