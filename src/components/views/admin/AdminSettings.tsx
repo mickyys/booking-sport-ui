@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
 import { uploadImageToCloudinary } from '@/components/booking/CourtImageUpload';
+import { CenterTimeSlot } from '@/types';
 
 interface AdminSettingsProps {
     sportCenter: any;
