@@ -9,12 +9,19 @@ import { useAuth0 } from '@auth0/auth0-react';
  */
 export function PushNotificationManager() {
   // We call the hook to ensure initialization logic runs
-  usePushNotifications();
+  console.log('[PushNotificationManager] Rendering...');
   const { isAuthenticated } = useAuth0();
+  console.log('[PushNotificationManager] isAuthenticated:', isAuthenticated);
+  
+  usePushNotifications();
+  
+  console.log('[PushNotificationManager] usePushNotifications called');
 
   if (!isAuthenticated) {
+    console.log('[PushNotificationManager] Not authenticated, returning null');
     return null;
   }
 
+  console.log('[PushNotificationManager] Authenticated, still returning null (no UI)');
   return null;
 }

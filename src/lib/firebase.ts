@@ -31,36 +31,58 @@ if (typeof window !== 'undefined' && hasConfig) {
 export { messaging };
 
 export const requestForToken = async () => {
+  console.log('[Firebase] requestForToken called');
+  console.log('[Firebase] messaging available:', !!messaging);
+  
   if (!messaging) {
-    console.warn("Firebase messaging not initialized. Check your configuration.");
+    console.warn("[Firebase] Firebase messaging not initialized. Check your configuration.");
+    console.warn("[Firebase] VAPID_KEY set:", !!process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY);
+    console.warn("[Firebase] API_KEY set:", !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
     return null;
   }
   
   try {
+    console.log('[Firebase] Checking Notification permission...');
+    console.log('[Firebase] Notification in window:', typeof window !== 'undefined' && 'Notification' in window);
+    
     if (typeof window !== 'undefined' && 'Notification' in window) {
+      console.log('[Firebase] Current Notification.permission:', Notification.permission);
+      
       // Only request if permission is default
       if (Notification.permission === 'default') {
+        console.log('[Firebase] Requesting permission from user...');
         const permission = await Notification.requestPermission();
+        console.log('[Firebase] Permission result:', permission);
         if (permission !== 'granted') {
           return null;
         }
       } else if (Notification.permission === 'denied') {
+        console.log('[Firebase] Permission already denied');
         return null;
+      } else if (Notification.permission === 'granted') {
+        console.log('[Firebase] Permission already granted');
       }
+    } else {
+      console.log('[Firebase] Notifications not supported');
+      return null;
     }
 
+    console.log('[Firebase] Getting FCM token...');
+    console.log('[Firebase] VAPID key:', process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY ? 'set' : 'not set');
+    
     const currentToken = await getToken(messaging, {
       vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
     });
 
     if (currentToken) {
+      console.log('[Firebase] Token obtained successfully');
       return currentToken;
     } else {
-      console.log('No registration token available.');
+      console.log('[Firebase] No registration token available.');
       return null;
     }
   } catch (err) {
-    console.error('An error occurred while retrieving token. ', err);
+    console.error('[Firebase] Error getting token: ', err);
     return null;
   }
 };

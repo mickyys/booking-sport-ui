@@ -8,10 +8,18 @@ export const usePushNotifications = () => {
   const { isAuthenticated, getAccessTokenSilently } = useAuth0();
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
 
+  useEffect(() => {
+    console.log('[PushNotifications] Component mounted');
+  }, []);
+
+  useEffect(() => {
+    console.log('[PushNotifications] isAuthenticated changed:', isAuthenticated);
+  }, [isAuthenticated]);
+
   const registerDevice = async (token: string) => {
     try {
       const accessToken = await getAccessTokenSilently();
-      
+
       const userAgent = window.navigator.userAgent;
       let deviceName = 'Web Browser';
       let osVersion = 'Unknown OS';
@@ -42,27 +50,37 @@ export const usePushNotifications = () => {
           },
         }
       );
-      console.log('Device registered for push notifications');
+      console.log('[PushNotifications] Device registered for push notifications');
 
     } catch (err) {
-      console.error('Error registering device:', err);
+      console.error('[PushNotifications] Error registering device:', err);
     }
   };
 
   useEffect(() => {
+    console.log('[PushNotifications] isAuthenticated changed:', isAuthenticated);
+
     if (typeof window !== 'undefined' && 'Notification' in window) {
+      console.log('[PushNotifications] Current permission status:', Notification.permission);
       setPermissionStatus(Notification.permission);
     }
 
     if (isAuthenticated) {
+      console.log('[PushNotifications] Setting up...');
       const setupNotifications = async () => {
         try {
           if ('serviceWorker' in navigator) {
-            // Registering the service worker ensures background notifications work
+            console.log('[PushNotifications] Registering service worker...');
             await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            console.log('[PushNotifications] Service worker registered');
+          } else {
+            console.log('[PushNotifications] Service worker not supported');
           }
 
+          console.log('[PushNotifications] Requesting token...');
           const token = await requestForToken();
+          console.log('[PushNotifications] Token result:', token ? 'success' : 'null');
+
           if (token) {
             setPermissionStatus('granted');
             await registerDevice(token);
@@ -70,7 +88,7 @@ export const usePushNotifications = () => {
             setPermissionStatus(Notification.permission);
           }
         } catch (error) {
-          console.error('Error in setupNotifications:', error);
+          console.error('[PushNotifications] Error in setupNotifications:', error);
           if ('Notification' in window) {
             setPermissionStatus(Notification.permission);
           }
