@@ -67,6 +67,12 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
         });
     }, []);
 
+    React.useEffect(() => {
+        if (!adminCourts || adminCourts.length === 0) {
+            fetchAdminCourts(getAccessTokenSilently);
+        }
+    }, []);
+
     const backendCourts = React.useMemo(() => adminCourts ? adminCourts.flatMap((ac: any) => ac.courts?.map((c: any) => ({
         ...c,
         id: c.id || c._id,
