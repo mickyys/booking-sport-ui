@@ -39,22 +39,24 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
     const retentionPercent = cancellationPolicy?.retention_percent ?? 10;
 
     const dateObj = currentBooking?.date ? new Date(currentBooking.date) : null;
-    const formattedDate = dateObj 
+    const formattedDate = dateObj
         ? dateObj.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
         : '';
-    const formattedTime = currentBooking?.hour !== undefined 
-        ? `${String(currentBooking.hour).padStart(2, '0')}:00 hrs` 
+    const formattedTime = currentBooking?.hour !== undefined
+        ? `${String(currentBooking.hour).padStart(2, '0')}:00 hrs`
         : '';
 
     // Handle both snake_case (from API) and camelCase (from store)
-    const displayPrice = currentBooking?.price ?? currentBooking?.paid_amount ?? 0;
+    const displayPrice = currentBooking?.paidAmount ?? 0;
+    const pendingAmount = currentBooking?.pendingAmount ?? 0;
+    const isTotalPaid = pendingAmount === 0;
     const centerName = currentBooking?.sport_center_name ?? currentBooking?.sportCenterName ?? 'Cancha';
     const courtName = currentBooking?.court_name ?? currentBooking?.courtName ?? 'Cancha';
     const bookingCode = currentBooking?.booking_code ?? currentBooking?.bookingCode ?? code;
 
     return (
         <div className="min-h-screen bg-slate-50 pt-8 pb-20 px-4">
-            <motion.div 
+            <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="max-w-2xl mx-auto"
@@ -130,12 +132,25 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
                                     <div className="flex items-start gap-3">
                                         <CreditCard className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
                                         <div className="flex-1">
-                                            <p className="text-xs text-slate-500 uppercase tracking-wide">Total pagado</p>
+                                            <p className="text-xs text-slate-500 uppercase tracking-wide">Monto abonado</p>
                                             <p className="text-lg font-bold text-emerald-600">
                                                 ${displayPrice?.toLocaleString('es-CL') ?? '0'}
                                             </p>
                                         </div>
                                     </div>
+
+                                    {!isTotalPaid && (
+                                        <div className="flex items-start gap-3">
+                                            <CreditCard className="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5" />
+                                            <div className="flex-1">
+                                                <p className="text-xs text-slate-500 uppercase tracking-wide">Monto pendiente</p>
+                                                <p className="text-lg font-bold text-gray-600">
+                                                    ${pendingAmount?.toLocaleString('es-CL') ?? '0'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
                                 </div>
                             </div>
 
@@ -171,14 +186,14 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
 
                         {/* Action Buttons */}
                         <div className="flex flex-col sm:flex-row gap-3">
-                            <button 
+                            <button
                                 onClick={onGoToProfile || (() => router.push('/mis-reservas'))}
                                 className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors"
                             >
                                 <Calendar className="w-5 h-5" />
                                 Ver Mis Reservas
                             </button>
-                            <button 
+                            <button
                                 onClick={onGoHome || (() => router.push('/'))}
                                 className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors"
                             >

@@ -137,7 +137,6 @@ export interface Booking {
   payment_method?: string;
   fintocPaymentIntentId?: string
   paidAmount?: number;
-  paid_amount?: number;
   pendingAmount?: number;
   isPartialPayment?: boolean;
   partialPaymentPaid?: boolean;
