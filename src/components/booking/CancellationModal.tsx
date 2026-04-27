@@ -65,6 +65,21 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
     if (!detail) return null;
     const { booking_detail: booking, cancellation_policy, hours_until_match, can_cancel, refund_percentage, max_refund_amount } = detail;
 
+    const formatTimeRemaining = (hours: number) => {
+        if (hours >= 24) {
+            const days = Math.floor(hours / 24);
+            const remainingHours = Math.floor(hours % 24);
+            if (remainingHours === 0) {
+                return `Faltan <strong>${days} día${days > 1 ? 's' : ''}</strong> para el inicio`;
+            }
+            return `Faltan <strong>${days} día${days > 1 ? 's' : ''} y ${remainingHours} hora${remainingHours > 1 ? 's' : ''}</strong> para el inicio`;
+        } else {
+            const floorHours = Math.floor(hours);
+            const minutes = Math.round((hours % 1) * 60);
+            return `Faltan <strong>${floorHours} hora${floorHours !== 1 ? 's' : ''} y ${minutes} minuto${minutes !== 1 ? 's' : ''}</strong> para el inicio`;
+        }
+    };
+
     const bookingDate = parseISO(booking.date);
     const fee = booking.price - max_refund_amount;
 
@@ -203,9 +218,7 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                                             <p className="text-sm text-blue-900 font-medium mb-1">
                                                 Tiempo restante hasta el partido
                                             </p>
-                                            <p className="text-sm text-blue-800">
-                                                Faltan <strong>{Math.floor(hours_until_match)} horas y {Math.round((hours_until_match % 1) * 60)} minutos</strong> para el inicio.
-                                            </p>
+                                            <p className="text-sm text-blue-800" dangerouslySetInnerHTML={{ __html: formatTimeRemaining(hours_until_match) }} />
                                         </div>
                                     </div>
                                 </div>
