@@ -205,14 +205,17 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
         const slot = schedule.slots.find((s: any) => s.hour === hour && (s.minutes || 0) === minutes);
         if (!slot) return;
 
-        // Toggle between true and false
         const nextValue = slot.partialPaymentEnabled === true ? false : true;
 
         const key = `${courtId}-${hour}-${minutes || 0}`;
         setLoadingSlots(prev => ({ ...prev, [key]: true }));
 
         try {
-            await onUpdateScheduleSlot(courtId, { ...slot, partialPaymentEnabled: nextValue });
+            await onUpdateScheduleSlot(courtId, { 
+                ...slot, 
+                partialPaymentEnabled: nextValue,
+                paymentRequired: nextValue ? true : slot.paymentRequired,
+            });
         } catch (err) {
             // Error handling
         } finally {
