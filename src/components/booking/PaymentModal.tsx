@@ -1,8 +1,8 @@
 "use client";
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { X, MapPin, CreditCard, ChevronRight, Info, ShieldAlert } from 'lucide-react';
-import { format } from 'date-fns';
+import { X, MapPin, CreditCard, ChevronRight, Info, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { format, differenceInHours } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TimeSlot, Court, UserProfile, GuestDetails } from '../../types';
 import { useBookingStore } from '../../store/useBookingStore';
@@ -29,6 +29,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const center = sportCenters.find(c => c.id === slot.centerId);
   const [processing, setProcessing] = useState<null | 'mercadopago' | 'venue'>(null);
   const [showPolicies, setShowPolicies] = useState(false);
+  const hoursUntilBooking = differenceInHours(slot.date, new Date());
+  const hasLimitedRefund = center?.cancellationHours !== undefined && hoursUntilBooking < center.cancellationHours;
   const [guestDetails, setGuestDetails] = useState<GuestDetails>({
     name: user?.name || '',
     email: user?.email || '',
@@ -115,6 +117,25 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               <p className="text-slate-900 font-bold text-lg mt-1">${slot.price.toLocaleString('es-CL')}</p>
             </div>
           </div>
+
+          {hasLimitedRefund && (
+            <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-900">Reserva con poco tiempo de anticipación</p>
+                <p className="text-xs text-amber-800 mt-1">
+                  Quedan solo <span className="font-bold">{hoursUntilBooking} horas</span> para tu reserva.
+                  {center?.retentionPercent === 100 ? (
+                    <> Si cancelas ahora, <span className="font-bold">no podrás obtener reembolso</span> según la política del centro.</>
+                  ) : center?.cancellationHours && center?.retentionPercent ? (
+                    <> Si cancelas ahora, se retendrá el <span className="font-bold">{center.retentionPercent}%</span> del monto.</>
+                  ) : (
+                    <> Si cancelas después, no podrás obtener reembolso completo.</>
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="mb-6 space-y-4">
             {!user && (
