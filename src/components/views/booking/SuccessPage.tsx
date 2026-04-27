@@ -25,7 +25,8 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 };
 
 export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfile }) => {
-    const router = useRouter(); const searchParams = useSearchParams();
+    const router = useRouter(); 
+    const searchParams = useSearchParams();
     const { currentBooking } = useBookingStore();
 
 

@@ -91,7 +91,10 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           courtId: b.court_id,
           centerId: b.sport_center_id,
           paymentMethod: b.payment_method,
+          paidAmount: b.paid_amount,
+          pendingAmount: b.pending_amount,
           createdAt: b.created_at
+
         }));
         set({ error: null, cancelledBookings: formatted });
         return formatted;
