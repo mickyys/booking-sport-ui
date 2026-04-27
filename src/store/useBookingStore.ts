@@ -238,7 +238,17 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const { data } = await api.get(`/bookings/code/${code}`);
       // Return same shape as fetchBookingDetail (backend returns booking_detail + metadata)
-      set({ currentBooking: data.booking_detail, error: null });
+      // Store both booking detail and cancellation policy
+      set({ 
+        currentBooking: { 
+          ...data.booking_detail, 
+          cancellationPolicy: data.cancellation_policy,
+          canCancel: data.can_cancel,
+          refundPercentage: data.refund_percentage,
+          maxRefundAmount: data.max_refund_amount,
+        }, 
+        error: null 
+      });
       return data;
     } catch (err) {
       console.error("Error fetching booking by code:", err);

@@ -137,6 +137,7 @@ export interface Booking {
   payment_method?: string;
   fintocPaymentIntentId?: string
   paidAmount?: number;
+  paid_amount?: number;
   pendingAmount?: number;
   isPartialPayment?: boolean;
   partialPaymentPaid?: boolean;
@@ -160,7 +161,20 @@ export interface Booking {
   bookingCode: string
   booking_code?: string;
 
+  // del backend (snake_case)
+  court_name?: string;
+  sport_center_name?: string;
+
   series_id?: string;
+
+  // política de cancelación
+  cancellationPolicy?: {
+    limit_hours: number;
+    retention_percent: number;
+  };
+  canCancel?: boolean;
+  refundPercentage?: number;
+  maxRefundAmount?: number;
 
   // auditoría
   createdAt: string
