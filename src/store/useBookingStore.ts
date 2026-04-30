@@ -300,8 +300,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     set({ isLoading: true });
     try {
       const { data } = await api.post('/bookings', bookingData);
-      set({ currentBooking: data.booking, error: null });
-      return data.booking;
+      set({ currentBooking: data, error: null });
+      return data;
     } catch (err) {
       console.error("Error creating booking:", err);
       set({ error: 'Failed to create booking' });
