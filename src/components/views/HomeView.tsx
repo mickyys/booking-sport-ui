@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { useBookingStore } from '@/store/useBookingStore';
 import SearchHero from '@/components/search/SearchHero';
@@ -187,7 +187,19 @@ const SportCenterSearchPage: React.FC = () => {
             ))}
           </div>
         ) : (
-          !isLoading && <EmptySearchResults />
+          <AnimatePresence mode="wait">
+            {!isLoading && (
+              <motion.div
+                key="empty-results"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <EmptySearchResults />
+              </motion.div>
+            )}
+          </AnimatePresence>
         )}
         
         {/* Loading overlay - only shown when searching with existing results */}

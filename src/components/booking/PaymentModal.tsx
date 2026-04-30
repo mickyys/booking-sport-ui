@@ -353,6 +353,15 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               )}
             </button>
           )}
+          {!slot.paymentRequired && !slot.paymentOptional && (
+            <button
+              disabled={processing !== null}
+              onClick={() => handlePayment('venue')}
+              className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-emerald-500 bg-emerald-500 hover:bg-emerald-600 text-white transition-all"
+            >
+              <span className="font-bold">Confirmar Reserva</span>
+            </button>
+          )}
           {slot.paymentOptional && !slot.paymentRequired && (
             <div className="flex gap-3">
               <button
