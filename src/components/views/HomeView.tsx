@@ -10,13 +10,14 @@ import SportCenterCard from '@/components/search/SportCenterCard';
 import SearchFeatures from '@/components/search/SearchFeatures';
 import EmptySearchResults from '@/components/search/EmptySearchResults';
 import { ContactForm } from '@/components/ContactForm';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 const SportCenterSearchPage: React.FC = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { sportCenters, isLoading, cities, fetchCities, fetchSportCenters } = useBookingStore();
 
-  // UI state
+  // Initialize state from URL params
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -24,6 +25,22 @@ const SportCenterSearchPage: React.FC = () => {
   const [selectedHour, setSelectedHour] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [hasInteracted, setHasInteracted] = useState(false);
+
+  // Sync state with URL on mount
+  useEffect(() => {
+    const city = searchParams.get('city');
+    const name = searchParams.get('name');
+    const hour = searchParams.get('hour');
+    const date = searchParams.get('date');
+
+    if (city) setSelectedCity(city);
+    if (name) {
+      setSearchTerm(name);
+      setDebouncedSearchTerm(name);
+    }
+    if (hour) setSelectedHour(hour);
+    if (date) setSelectedDate(date);
+  }, [searchParams]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchTerm(value);
@@ -77,9 +94,11 @@ const SportCenterSearchPage: React.FC = () => {
     setSelectedCity('Todas');
     setSelectedHour('');
     setSearchTerm('');
+    setDebouncedSearchTerm('');
     setSelectedDate(todayISO);
     setShowFilters(false);
-  }, [todayISO]);
+    router.replace('/', { scroll: false });
+  }, [todayISO, router]);
 
   // Initial fetch
   useEffect(() => {
@@ -94,12 +113,22 @@ const SportCenterSearchPage: React.FC = () => {
     const cityParam = selectedCity && selectedCity !== 'Todas' ? selectedCity : undefined;
 
     fetchSportCenters?.({
-      name: searchTerm || undefined,
+      name: debouncedSearchTerm || undefined,
       city: cityParam,
       date: selectedDate || undefined,
       hour: hourParam,
     });
-  }, [searchTerm, selectedCity, selectedHour, selectedDate, fetchSportCenters, hasInteracted]);
+
+    // Update URL with current filters
+    const params = new URLSearchParams();
+    if (debouncedSearchTerm) params.set('name', debouncedSearchTerm);
+    if (selectedCity && selectedCity !== 'Todas') params.set('city', selectedCity);
+    if (selectedHour) params.set('hour', selectedHour);
+    if (selectedDate && selectedDate !== todayISO) params.set('date', selectedDate);
+    
+    const newUrl = params.toString() ? `?${params.toString()}` : '/';
+    router.replace(newUrl, { scroll: false });
+  }, [debouncedSearchTerm, selectedCity, selectedHour, selectedDate, fetchSportCenters, hasInteracted, router, todayISO]);
 
   const showInitialLoading = isLoading && sportCenters.length === 0;
 

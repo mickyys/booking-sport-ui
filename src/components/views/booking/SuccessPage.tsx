@@ -27,9 +27,15 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfile }) => {
     const router = useRouter(); 
     const searchParams = useSearchParams();
-    const { currentBooking, fetchBookingByCode } = useBookingStore();
+    const { currentBooking, fetchBookingByCode, isLoading } = useBookingStore();
 
     const code = searchParams.get('code');
+
+    React.useEffect(() => {
+        if (code && code !== 'N/A' && !currentBooking) {
+            fetchBookingByCode(code);
+        }
+    }, [code, fetchBookingByCode, currentBooking]);
 
     const booking = currentBooking;
 
@@ -55,6 +61,35 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
     const courtName = booking?.court_name ?? booking?.courtName ?? 'Cancha';
     const bookingCode = booking?.booking_code ?? booking?.bookingCode ?? code;
     const isFreeBooking = booking?.payment_method === 'venue' || booking?.payment_method === 'cash';
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+                    <p className="text-slate-600 font-medium">Cargando detalles de tu reserva...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!booking && code && code !== 'N/A') {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+                <div className="text-center">
+                    <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                    <h1 className="text-2xl font-bold text-slate-800 mb-2">No se encontró la reserva</h1>
+                    <p className="text-slate-600 mb-4">No pudimos cargar los detalles de tu reserva</p>
+                    <button
+                        onClick={() => router.push('/')}
+                        className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors"
+                    >
+                        Volver al inicio
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-slate-50 pt-8 pb-20 px-4">

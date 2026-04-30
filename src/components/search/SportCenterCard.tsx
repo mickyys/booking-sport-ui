@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { MapPin, Trophy, Car, ShowerHead, ChevronRight, Info, Map, ShieldAlert } from 'lucide-react';
 import { SportCenter } from '../../types';
@@ -15,9 +16,23 @@ interface SportCenterCardProps {
 }
 
 const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index, date, today }) => {
+  const searchParams = useSearchParams();
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
-  const dateQuery = date && today && date !== today ? `?date=${encodeURIComponent(date)}` : '';
+  
+  // Preserve current filters when navigating
+  const city = searchParams.get('city');
+  const name = searchParams.get('name');
+  const hour = searchParams.get('hour');
+  
+  const additionalParams = new URLSearchParams();
+  if (city) additionalParams.set('city', city);
+  if (name) additionalParams.set('name', name);
+  if (hour) additionalParams.set('hour', hour);
+  
+  const baseQuery = date && today && date !== today ? `?date=${encodeURIComponent(date)}` : '';
+  const dateQuery = baseQuery ? `${baseQuery}&` : '?';
+  const fullQuery = additionalParams.toString() ? `${dateQuery}${additionalParams.toString()}` : baseQuery || '';
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -25,7 +40,7 @@ const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index, date, 
       transition={{ delay: index * 0.1 }}
       className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 border border-slate-200 flex flex-col"
     >
-      <Link href={`/${center.slug}/reservar${dateQuery}`} className="no-underline">
+      <Link href={`/${center.slug}/reservar${fullQuery}`} className="no-underline">
         {/* Image */}
         <div className="relative h-56 overflow-hidden">
           <img
@@ -104,7 +119,7 @@ const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index, date, 
 
         {/* Price and CTA */}
         <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-auto">
-          <Link href={`/${center.slug}/reservar${dateQuery}`} className="no-underline ml-auto">
+          <Link href={`/${center.slug}/reservar${fullQuery}`} className="no-underline ml-auto">
             <button className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-all group-hover:gap-3 cursor-pointer">
               Ver más
               <ChevronRight className="w-4 h-4" />
