@@ -228,11 +228,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   </span>
                 </div>
               </div>
-            )}
-
-            <p className="text-sm font-medium text-slate-700 mb-2">
-              {isPaymentRequired ? 'Selecciona medio de pago:' : slot.paymentOptional ? 'Pago opcional — puedes pagar ahora o confirmar sin pagar' : 'Confirma tu reserva:'}
-            </p>
+            )}            
 
             {isPaymentRequired && (
               <button
@@ -262,8 +258,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
             {slot.paymentOptional && !slot.paymentRequired && (
               <div className="space-y-3">
-
-
                 <button
                   disabled={processing !== null}
                   onClick={() => handlePayment('venue')}
