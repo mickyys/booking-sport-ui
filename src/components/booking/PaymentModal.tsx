@@ -173,9 +173,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 type="tel"
                 className={`w-full px-4 py-2 rounded-lg border ${errors.phone ? 'border-red-500' : 'border-slate-200'} focus:ring-2 focus:ring-emerald-200 outline-none`}
                 value={guestDetails.phone}
-                onChange={e => setGuestDetails({ ...guestDetails, phone: e.target.value })}
-                placeholder="+56 9 1234 5678"
+                onChange={e => setGuestDetails({ ...guestDetails, phone: e.target.value.replace(/\D/g, '') })}
+                placeholder="912345678"
                 disabled={processing !== null}
+                maxLength={12}
               />
               {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
             </div>

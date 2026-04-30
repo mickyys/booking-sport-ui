@@ -27,33 +27,34 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfile }) => {
     const router = useRouter(); 
     const searchParams = useSearchParams();
-    const { currentBooking } = useBookingStore();
-
+    const { currentBooking, fetchBookingByCode } = useBookingStore();
 
     const code = searchParams.get('code');
 
-    const paymentMethodLabel =
-        PAYMENT_METHOD_LABELS[currentBooking?.payment_method ?? ''] ?? 'Online';
+    const booking = currentBooking;
 
-    const cancellationPolicy = currentBooking?.cancellationPolicy;
+    const paymentMethodLabel =
+        PAYMENT_METHOD_LABELS[booking?.payment_method ?? ''] ?? 'Online';
+
+    const cancellationPolicy = booking?.cancellationPolicy;
     const limitHours = cancellationPolicy?.limit_hours ?? 3;
     const retentionPercent = cancellationPolicy?.retention_percent ?? 10;
 
-    const dateObj = currentBooking?.date ? new Date(currentBooking.date) : null;
+    const dateObj = booking?.date ? new Date(booking.date) : null;
     const formattedDate = dateObj
         ? dateObj.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
         : '';
-    const formattedTime = currentBooking?.hour !== undefined
-        ? `${String(currentBooking.hour).padStart(2, '0')}:00 hrs`
+    const formattedTime = booking?.hour !== undefined
+        ? `${String(booking.hour).padStart(2, '0')}:00 hrs`
         : '';
 
-    // Handle both snake_case (from API) and camelCase (from store)
-    const displayPrice = currentBooking?.paidAmount ?? 0;
-    const pendingAmount = currentBooking?.pendingAmount ?? 0;
+    const displayPrice = booking?.paidAmount ?? 0;
+    const pendingAmount = booking?.pendingAmount ?? 0;
     const isTotalPaid = pendingAmount === 0;
-    const centerName = currentBooking?.sport_center_name ?? currentBooking?.sportCenterName ?? 'Cancha';
-    const courtName = currentBooking?.court_name ?? currentBooking?.courtName ?? 'Cancha';
-    const bookingCode = currentBooking?.booking_code ?? currentBooking?.bookingCode ?? code;
+    const centerName = booking?.sport_center_name ?? booking?.sportCenterName ?? 'Cancha';
+    const courtName = booking?.court_name ?? booking?.courtName ?? 'Cancha';
+    const bookingCode = booking?.booking_code ?? booking?.bookingCode ?? code;
+    const isFreeBooking = booking?.payment_method === 'venue' || booking?.payment_method === 'cash';
 
     return (
         <div className="min-h-screen bg-slate-50 pt-8 pb-20 px-4">
@@ -77,8 +78,12 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
                 {/* Main Card */}
                 <div className="bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden mb-6">
                     <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-8 text-white text-center">
-                        <h1 className="text-3xl font-bold mb-2">¡Pago Exitoso!</h1>
-                        <p className="text-emerald-100">Tu reserva ha sido confirmada</p>
+                        <h1 className="text-3xl font-bold mb-2">
+                            {isFreeBooking ? '¡Reserva Confirmada!' : '¡Pago Exitoso!'}
+                        </h1>
+                        <p className="text-emerald-100">
+                            {isFreeBooking ? 'Tu reserva ha sido confirmada' : 'Tu reserva ha sido confirmada'}
+                        </p>
                     </div>
 
                     <div className="p-8">
@@ -156,28 +161,34 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
                             </div>
 
                             {/* Información de confirmación */}
-                            <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                                <div className="flex items-start gap-3">
-                                    <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                                    <div>
-                                        <p className="text-sm text-blue-900 font-medium mb-1">Confirmación enviada</p>
-                                        <p className="text-sm text-blue-800">
-                                            Hemos enviado los detalles de tu reserva a tu correo electrónico.
-                                        </p>
+                            {!isFreeBooking && (
+                                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                                    <div className="flex items-start gap-3">
+                                        <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-sm text-blue-900 font-medium mb-1">Confirmación enviada</p>
+                                            <p className="text-sm text-blue-800">
+                                                Hemos enviado los detalles de tu reserva a tu correo electrónico.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
 
-                            {/* Política de cancelación - Mostrar siempre cuando hay pago */}
+                            {/* Política de cancelación */}
                             <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
                                 <div className="flex items-start gap-3">
                                     <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                                     <div>
                                         <p className="text-sm text-amber-900 font-medium mb-1">Política de cancelación</p>
                                         <p className="text-sm text-amber-800">
-                                            Puedes cancelar hasta <strong>{limitHours} horas antes</strong> del horario reservado para recibir el reembolso completo.
-                                            {retentionPercent > 0 && (
-                                                <> Si cancelas con menos de {limitHours} horas, se retendrá el <strong>{retentionPercent}%</strong> como cargo por cancelación.</>
+                                            {isFreeBooking ? (
+                                                <>Puedes cancelar tu reserva contactando directamente con el centro deportivo.</>
+                                            ) : (
+                                                <>Puedes cancelar hasta <strong>{limitHours} horas antes</strong> del horario reservado para recibir el reembolso completo.
+                                                {retentionPercent > 0 && (
+                                                    <> Si cancelas con menos de {limitHours} horas, se retendrá el <strong>{retentionPercent}%</strong> como cargo por cancelación.</>
+                                                )}</>
                                             )}
                                         </p>
                                     </div>

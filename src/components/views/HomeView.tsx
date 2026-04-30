@@ -18,6 +18,7 @@ const SportCenterSearchPage: React.FC = () => {
 
   // UI state
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCity, setSelectedCity] = useState('Todas');
   const [selectedHour, setSelectedHour] = useState('');
@@ -28,6 +29,14 @@ const SportCenterSearchPage: React.FC = () => {
     setSearchTerm(value);
     setHasInteracted(true);
   }, []);
+
+  // Debounce para la búsqueda
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const handleCityChange = useCallback((value: string) => {
     setSelectedCity(value);
@@ -60,9 +69,9 @@ const SportCenterSearchPage: React.FC = () => {
     return (
       (selectedCity && selectedCity !== 'Todas') ||
       !!selectedHour ||
-      !!searchTerm
+      !!debouncedSearchTerm
     );
-  }, [selectedCity, selectedHour, searchTerm]);
+  }, [selectedCity, selectedHour, debouncedSearchTerm]);
 
   const clearFilters = useCallback(() => {
     setSelectedCity('Todas');

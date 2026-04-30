@@ -55,7 +55,7 @@ interface BookingState {
   updateAdminSchedule: (courtId: string, schedule: any[], getToken: (options?: any) => Promise<string>) => Promise<void>;
   updateAdminScheduleSlot: (courtId: string, slot: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   updateAgentSportCenter?: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
-  createBooking: (bookingData: any) => Promise<void>;
+  createBooking: (bookingData: any) => Promise<any>;
   createInternalBooking: (bookingData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   deleteBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   payBalance: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
@@ -299,8 +299,9 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
   createBooking: async (bookingData: any) => {
     set({ isLoading: true });
     try {
-      await api.post('/bookings', bookingData);
-      set({ error: null });
+      const { data } = await api.post('/bookings', bookingData);
+      set({ currentBooking: data.booking, error: null });
+      return data.booking;
     } catch (err) {
       console.error("Error creating booking:", err);
       set({ error: 'Failed to create booking' });

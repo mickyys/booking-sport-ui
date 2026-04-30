@@ -69,7 +69,7 @@ export const useBookingActions = (user: UserProfile | null) => {
 
     if (method === 'venue' && selectedSlot) {
       try {
-        await createBooking({
+        const booking = await createBooking({
           court_id: selectedSlot.courtId,
           date: selectedSlot.date.toISOString(),
           hour: selectedSlot.date.getHours(),
@@ -80,7 +80,7 @@ export const useBookingActions = (user: UserProfile | null) => {
 
         toast.success("¡Reserva confirmada exitosamente!");
         setSelectedSlot(null);
-        router.push('/');
+        router.push(`/booking/success?code=${booking?.booking_code ?? 'N/A'}`);
         return true;
       } catch (error) {
         if (axios.isAxiosError(error) && error.response?.status === 409) {
