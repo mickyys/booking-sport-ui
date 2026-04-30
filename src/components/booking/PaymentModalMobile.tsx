@@ -112,7 +112,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
             </div>
           </div>
 
-          {hasLimitedRefund && (
+          {(hasLimitedRefund && (slot.paymentRequired || slot.paymentOptional)) && (
             <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
