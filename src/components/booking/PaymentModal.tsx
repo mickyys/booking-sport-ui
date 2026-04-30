@@ -87,9 +87,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       <motion.div
         initial={{ opacity: 0, y: 100 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`bg-white md:rounded-2xl shadow-2xl w-full md:max-w-md overflow-hidden md:max-h-[90vh] md:overflow-y-auto flex flex-col max-h-[90vh] md:max-h-[90vh] ${showPolicies ? 'hidden' : 'block'} rounded-t-2xl md:rounded-2xl`}
+        className={`bg-white md:rounded-2xl shadow-2xl w-full md:max-w-md overflow-hidden md:max-h-[90vh] md:overflow-y-auto flex flex-col h-screen md:h-auto ${showPolicies ? 'hidden' : 'block'} rounded-t-2xl md:rounded-2xl`}
       >
-        <div className="bg-slate-900 p-4 md:p-6 text-white flex justify-between items-start sticky top-0 z-10">
+        <div className="bg-slate-900 p-4 md:p-6 text-white flex justify-between items-start sticky top-0 z-10 md:rounded-t-2xl">
           <div>
             <h3 className="text-xl font-bold">Confirmar Reserva</h3>
             <p className="text-slate-400 text-sm mt-1">
