@@ -19,7 +19,7 @@ export const useBookingActions = (user: UserProfile | null) => {
     setSelectedSlot,
   } = useBooking(user);
 
-  const handleConfirmBooking = async (method: 'mercadopago' | 'fintoc' | 'venue' | 'cash', guestDetails?: any, partial: boolean = false) => {
+  const handleConfirmBooking = async (method: 'mercadopago' | 'fintoc' | 'venue' | 'presential' | 'cash', guestDetails?: any, partial: boolean = false) => {
     if (method === 'mercadopago' && selectedSlot) {
       try {
         const init_point = await createMercadoPagoPayment({
@@ -67,7 +67,7 @@ export const useBookingActions = (user: UserProfile | null) => {
       }
     }
 
-    if (method === 'venue' && selectedSlot) {
+    if ((method === 'venue' || method === 'presential') && selectedSlot) {
       try {
         const booking = await createBooking({
           court_id: selectedSlot.courtId,

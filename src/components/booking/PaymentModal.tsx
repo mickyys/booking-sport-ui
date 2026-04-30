@@ -14,7 +14,7 @@ interface PaymentModalProps {
   slot: TimeSlot;
   court: Court;
   onClose: () => void;
-  onConfirm: (method: 'mercadopago' | 'venue', guestDetails?: GuestDetails, partial?: boolean) => Promise<boolean | void>;
+  onConfirm: (method: 'mercadopago' | 'venue' | 'presential', guestDetails?: GuestDetails, partial?: boolean) => Promise<boolean | void>;
   user: UserProfile | null;
 }
 
@@ -27,7 +27,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 }) => {
   const { sportCenters, fetchSchedules } = useBookingStore();
   const center = sportCenters.find(c => c.id === slot.centerId);
-  const [processing, setProcessing] = useState<null | 'mercadopago' | 'venue'>(null);
+  const [processing, setProcessing] = useState<null | 'mercadopago' | 'venue' | 'presential'>(null);
   const [showPolicies, setShowPolicies] = useState(false);
   const hoursUntilBooking = differenceInHours(slot.date, new Date());
   const hasLimitedRefund = center?.cancellationHours !== undefined && hoursUntilBooking < center.cancellationHours;
@@ -64,7 +64,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handlePayment = async (method: 'mercadopago' | 'venue') => {
+  const handlePayment = async (method: 'mercadopago' | 'venue' | 'presential') => {
     if (!validate()) return;
 
     setProcessing(method);
