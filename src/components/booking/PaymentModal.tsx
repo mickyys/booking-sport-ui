@@ -37,7 +37,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     phone: ''
   });
   const [errors, setErrors] = useState<Partial<GuestDetails>>({});
-  const [payPartial, setPayPartial] = useState(true);
+  const [payPartial, setPayPartial] = useState(false);
 
   // Determine if partial payment is available for this slot
   const isPartialAvailable = (() => {
