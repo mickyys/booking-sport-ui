@@ -87,7 +87,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       <motion.div
         initial={{ opacity: 0, y: 100 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`bg-white md:rounded-2xl shadow-2xl w-full md:max-w-md overflow-hidden md:max-h-[90vh] md:overflow-y-auto flex flex-col ${showPolicies ? 'hidden' : 'block'} rounded-t-2xl md:rounded-2xl`}
+        className={`bg-white md:rounded-2xl shadow-2xl w-full md:max-w-md overflow-hidden md:max-h-[90vh] md:overflow-y-auto flex flex-col max-h-[90vh] md:max-h-[90vh] ${showPolicies ? 'hidden' : 'block'} rounded-t-2xl md:rounded-2xl`}
       >
         <div className="bg-slate-900 p-4 md:p-6 text-white flex justify-between items-start sticky top-0 z-10">
           <div>
@@ -101,7 +101,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           </button>
         </div>
 
-        <div className="p-4 md:p-6 overflow-y-auto flex-1">
+        <div className="p-4 md:p-6 overflow-y-auto flex-1 pb-24 md:pb-6">
           <div className="flex items-center gap-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
             <img src={court.image} alt="Cancha" className="w-16 h-16 rounded-lg object-cover" />
             <div className="flex-1">
