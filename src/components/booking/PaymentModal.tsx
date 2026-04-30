@@ -1,8 +1,8 @@
 "use client";
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { X, MapPin, CreditCard, ChevronRight, Info, ShieldAlert } from 'lucide-react';
-import { format } from 'date-fns';
+import { X, MapPin, CreditCard, ChevronRight, Info, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { format, differenceInHours } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TimeSlot, Court, UserProfile, GuestDetails } from '../../types';
 import { useBookingStore } from '../../store/useBookingStore';
@@ -14,7 +14,7 @@ interface PaymentModalProps {
   slot: TimeSlot;
   court: Court;
   onClose: () => void;
-  onConfirm: (method: 'mercadopago' | 'venue', guestDetails?: GuestDetails, partial?: boolean) => Promise<boolean | void>;
+  onConfirm: (method: 'mercadopago' | 'venue' | 'presential', guestDetails?: GuestDetails, partial?: boolean) => Promise<boolean | void>;
   user: UserProfile | null;
 }
 
@@ -27,24 +27,27 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 }) => {
   const { sportCenters, fetchSchedules } = useBookingStore();
   const center = sportCenters.find(c => c.id === slot.centerId);
-  const [processing, setProcessing] = useState<null | 'mercadopago' | 'venue'>(null);
+  const [processing, setProcessing] = useState<null | 'mercadopago' | 'venue' | 'presential'>(null);
   const [showPolicies, setShowPolicies] = useState(false);
+  const hoursUntilBooking = differenceInHours(slot.date, new Date());
+  const hasLimitedRefund = center?.cancellationHours !== undefined && hoursUntilBooking < center.cancellationHours;
   const [guestDetails, setGuestDetails] = useState<GuestDetails>({
     name: user?.name || '',
     email: user?.email || '',
     phone: ''
   });
   const [errors, setErrors] = useState<Partial<GuestDetails>>({});
-  const [payPartial, setPayPartial] = useState(false);
+  const [payPartial, setPayPartial] = useState(true);
 
   // Determine if partial payment is available for this slot
   const isPartialAvailable = (() => {
     if (!center) return false;
-    // Slot hierarchy: true/false overrides center, null inherits
     if (slot.partialPaymentEnabled === true) return true;
     if (slot.partialPaymentEnabled === false) return false;
     return !!center.partialPaymentEnabled;
   })();
+
+  const isPaymentRequired = slot.paymentRequired || payPartial;
 
   const partialAmount = isPartialAvailable && center?.partialPaymentPercent
     ? Math.round(slot.price * ((center.partialPaymentPercent || 0) / 100))
@@ -61,7 +64,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handlePayment = async (method: 'mercadopago' | 'venue') => {
+  const handlePayment = async (method: 'mercadopago' | 'venue' | 'presential') => {
     if (!validate()) return;
 
     setProcessing(method);
@@ -80,25 +83,25 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/70 backdrop-blur-sm">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className={`bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden max-h-[90vh] overflow-y-auto ${showPolicies ? 'hidden' : 'block'}`}
+        initial={{ opacity: 0, y: 100 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`bg-white md:rounded-2xl shadow-2xl w-full md:max-w-md overflow-hidden md:max-h-[90vh] md:overflow-y-auto flex flex-col ${showPolicies ? 'hidden' : 'block'} rounded-t-2xl md:rounded-2xl`}
       >
-        <div className="bg-slate-900 p-6 text-white flex justify-between items-start sticky top-0 z-10">
+        <div className="bg-slate-900 p-4 md:p-6 text-white flex justify-between items-start sticky top-0 z-10">
           <div>
             <h3 className="text-xl font-bold">Confirmar Reserva</h3>
             <p className="text-slate-400 text-sm mt-1">
               {user ? `Reservando como ${user.name}` : 'Completa tus datos para reservar'}
             </p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white" disabled={processing !== null}>
+          <button onClick={onClose} className="text-slate-400 hover:text-white -mt-1 -mr-2 p-2" disabled={processing !== null}>
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 md:p-6 overflow-y-auto flex-1">
           <div className="flex items-center gap-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
             <img src={court.image} alt="Cancha" className="w-16 h-16 rounded-lg object-cover" />
             <div className="flex-1">
@@ -114,6 +117,25 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               <p className="text-slate-900 font-bold text-lg mt-1">${slot.price.toLocaleString('es-CL')}</p>
             </div>
           </div>
+
+          {hasLimitedRefund && (
+            <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-900">Reserva con poco tiempo de anticipación</p>
+                <p className="text-xs text-amber-800 mt-1">
+                  Quedan solo <span className="font-bold">{hoursUntilBooking} horas</span> para tu reserva.
+                  {center?.retentionPercent === 100 ? (
+                    <> Si cancelas ahora, <span className="font-bold">no podrás obtener reembolso</span> según la política del centro.</>
+                  ) : center?.cancellationHours && center?.retentionPercent ? (
+                    <> Si cancelas ahora, se retendrá el <span className="font-bold">{center.retentionPercent}%</span> del monto.</>
+                  ) : (
+                    <> Si cancelas después, no podrás obtener reembolso completo.</>
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="mb-6 space-y-4">
             {!user && (
@@ -151,9 +173,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 type="tel"
                 className={`w-full px-4 py-2 rounded-lg border ${errors.phone ? 'border-red-500' : 'border-slate-200'} focus:ring-2 focus:ring-emerald-200 outline-none`}
                 value={guestDetails.phone}
-                onChange={e => setGuestDetails({ ...guestDetails, phone: e.target.value })}
-                placeholder="+56 9 1234 5678"
+                onChange={e => setGuestDetails({ ...guestDetails, phone: e.target.value.replace(/\D/g, '') })}
+                placeholder="912345678"
                 disabled={processing !== null}
+                maxLength={12}
               />
               {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
             </div>
@@ -210,10 +233,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             )}
 
             <p className="text-sm font-medium text-slate-700 mb-2">
-              {slot.paymentRequired ? 'Selecciona medio de pago:' : slot.paymentOptional ? 'Pago opcional — puedes pagar ahora o confirmar sin pagar' : 'Confirma tu reserva:'}
+              {isPaymentRequired ? 'Selecciona medio de pago:' : slot.paymentOptional ? 'Pago opcional — puedes pagar ahora o confirmar sin pagar' : 'Confirma tu reserva:'}
             </p>
 
-            {slot.paymentRequired && (
+            {isPaymentRequired && (
               <button
                 disabled={processing !== null}
                 onClick={() => handlePayment('mercadopago')}
@@ -307,6 +330,62 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               }
             </p>
           </div>
+        </div>
+
+        {/* Botón fijo en móvil */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-safe">
+          {isPaymentRequired && (
+            <button
+              disabled={processing !== null}
+              onClick={() => handlePayment('mercadopago')}
+              className="w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all bg-blue-600 hover:bg-blue-700 border-blue-600 text-white"
+            >
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5" />
+                <span className="font-bold">
+                  {payPartial ? `Pagar $${partialAmount.toLocaleString('es-CL')}` : `Pagar $${slot.price.toLocaleString('es-CL')}`}
+                </span>
+              </div>
+              {processing === 'mercadopago' ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <ChevronRight className="w-5 h-5" />
+              )}
+            </button>
+          )}
+          {slot.paymentOptional && !slot.paymentRequired && (
+            <div className="flex gap-3">
+              <button
+                disabled={processing !== null}
+                onClick={() => handlePayment('mercadopago')}
+                className="flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-blue-500 bg-blue-50 hover:bg-blue-100 text-blue-700 transition-all"
+              >
+                <CreditCard className="w-5 h-5" />
+                <span className="font-bold">Pagar</span>
+              </button>
+              <button
+                disabled={processing !== null}
+                onClick={() => handlePayment('venue')}
+                className="flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-emerald-500 bg-emerald-500 hover:bg-emerald-600 text-white transition-all"
+              >
+                <span className="font-bold">Confirmar</span>
+              </button>
+            </div>
+          )}
+          {!slot.paymentRequired && !slot.paymentOptional && (
+            <button
+              disabled={processing !== null}
+              onClick={() => handlePayment('venue')}
+              className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white"
+            >
+              <span className="font-bold text-lg">Confirmar Reserva</span>
+              {processing === 'venue' ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <ChevronRight className="w-5 h-5" />
+              )}
+            </button>
+          )}
         </div>
       </motion.div>
 

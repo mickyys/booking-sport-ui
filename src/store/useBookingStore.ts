@@ -18,6 +18,7 @@ interface BookingState {
   isCancelledLoading: boolean;
   currentBooking: Booking | null;
   selectedCenterId: string | null;
+  apiUrl: string | null;
   isLoading: boolean;
   error: string | null;
   adminCourts: any[];
@@ -54,7 +55,7 @@ interface BookingState {
   updateAdminSchedule: (courtId: string, schedule: any[], getToken: (options?: any) => Promise<string>) => Promise<void>;
   updateAdminScheduleSlot: (courtId: string, slot: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   updateAgentSportCenter?: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
-  createBooking: (bookingData: any) => Promise<void>;
+  createBooking: (bookingData: any) => Promise<any>;
   createInternalBooking: (bookingData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   deleteBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   payBalance: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
@@ -89,8 +90,11 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           courtName: b.court_name,
           courtId: b.court_id,
           centerId: b.sport_center_id,
-          paymentMethod: b.payment_method,
+          paymentMethod: b.booking_detail.payment_method,
+          paidAmount: b.booking_detail.paid_amount,
+          pendingAmount: b.booking_detail.pending_amount,
           createdAt: b.created_at
+
         }));
         set({ error: null, cancelledBookings: formatted });
         return formatted;
@@ -111,6 +115,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
   isCancelledLoading: false,
   currentBooking: null,
   selectedCenterId: null,
+  apiUrl: null,
   isLoading: false,
   error: null,
   adminCourts: [],
@@ -236,7 +241,20 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     try {
       const { data } = await api.get(`/bookings/code/${code}`);
       // Return same shape as fetchBookingDetail (backend returns booking_detail + metadata)
-      set({ currentBooking: data.booking_detail, error: null });
+      // Store both booking detail and cancellation policy
+      set({ 
+        currentBooking: { 
+          ...data.booking_detail, 
+          paidAmount: data.booking_detail.paid_amount,
+          pendingAmount: data.booking_detail.pending_amount,
+          isPartialPayment: data.booking_detail.is_partial_payment,
+          cancellationPolicy: data.cancellation_policy,
+          canCancel: data.can_cancel,
+          refundPercentage: data.refund_percentage,
+          maxRefundAmount: data.max_refund_amount,
+        }, 
+        error: null 
+      });
       return data;
     } catch (err) {
       console.error("Error fetching booking by code:", err);
@@ -281,8 +299,9 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
   createBooking: async (bookingData: any) => {
     set({ isLoading: true });
     try {
-      await api.post('/bookings', bookingData);
-      set({ error: null });
+      const { data } = await api.post('/bookings', bookingData);
+      set({ currentBooking: data, error: null });
+      return data;
     } catch (err) {
       console.error("Error creating booking:", err);
       set({ error: 'Failed to create booking' });
@@ -1048,6 +1067,26 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
   },
 
   initialize: async () => {
+    const currentApiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const storedApiUrl = get().apiUrl;
+
+    if (storedApiUrl && currentApiUrl && storedApiUrl !== currentApiUrl) {
+      // Environment changed, reset store
+      useBookingStore.persist.clearStorage();
+      // Force reload the page to ensure a clean state if needed, 
+      // or just clear the state using set()
+      set({
+        sportCenters: [],
+        courts: [],
+        selectedCenterId: null,
+        apiUrl: currentApiUrl,
+        schedules: [],
+        weeklySchedules: {},
+      });
+    } else {
+      set({ apiUrl: currentApiUrl });
+    }
+
     const currentSportCenters = get().sportCenters;
     const currentCourts = get().courts;
     const promises: Promise<void>[] = [];
@@ -1136,6 +1175,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       sportCenters: state.sportCenters,
       courts: state.courts,
       selectedCenterId: state.selectedCenterId,
+      apiUrl: state.apiUrl,
     }),
   }
   )

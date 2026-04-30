@@ -10,24 +10,50 @@ import SportCenterCard from '@/components/search/SportCenterCard';
 import SearchFeatures from '@/components/search/SearchFeatures';
 import EmptySearchResults from '@/components/search/EmptySearchResults';
 import { ContactForm } from '@/components/ContactForm';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 const SportCenterSearchPage: React.FC = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { sportCenters, isLoading, cities, fetchCities, fetchSportCenters } = useBookingStore();
 
-  // UI state
+  // Initialize state from URL params
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCity, setSelectedCity] = useState('Todas');
   const [selectedHour, setSelectedHour] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [hasInteracted, setHasInteracted] = useState(false);
 
+  // Sync state with URL on mount
+  useEffect(() => {
+    const city = searchParams.get('city');
+    const name = searchParams.get('name');
+    const hour = searchParams.get('hour');
+    const date = searchParams.get('date');
+
+    if (city) setSelectedCity(city);
+    if (name) {
+      setSearchTerm(name);
+      setDebouncedSearchTerm(name);
+    }
+    if (hour) setSelectedHour(hour);
+    if (date) setSelectedDate(date);
+  }, [searchParams]);
+
   const handleSearchChange = useCallback((value: string) => {
     setSearchTerm(value);
     setHasInteracted(true);
   }, []);
+
+  // Debounce para la búsqueda
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const handleCityChange = useCallback((value: string) => {
     setSelectedCity(value);
@@ -60,17 +86,19 @@ const SportCenterSearchPage: React.FC = () => {
     return (
       (selectedCity && selectedCity !== 'Todas') ||
       !!selectedHour ||
-      !!searchTerm
+      !!debouncedSearchTerm
     );
-  }, [selectedCity, selectedHour, searchTerm]);
+  }, [selectedCity, selectedHour, debouncedSearchTerm]);
 
   const clearFilters = useCallback(() => {
     setSelectedCity('Todas');
     setSelectedHour('');
     setSearchTerm('');
+    setDebouncedSearchTerm('');
     setSelectedDate(todayISO);
     setShowFilters(false);
-  }, [todayISO]);
+    router.replace('/', { scroll: false });
+  }, [todayISO, router]);
 
   // Initial fetch
   useEffect(() => {
@@ -85,21 +113,24 @@ const SportCenterSearchPage: React.FC = () => {
     const cityParam = selectedCity && selectedCity !== 'Todas' ? selectedCity : undefined;
 
     fetchSportCenters?.({
-      name: searchTerm || undefined,
+      name: debouncedSearchTerm || undefined,
       city: cityParam,
       date: selectedDate || undefined,
       hour: hourParam,
     });
-  }, [searchTerm, selectedCity, selectedHour, selectedDate, fetchSportCenters, hasInteracted]);
 
-  if (isLoading && sportCenters.length === 0) {
-    return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center gap-4">
-        <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
-        <p className="text-slate-500 font-medium animate-pulse">Cargando centros deportivos...</p>
-      </div>
-    );
-  }
+    // Update URL with current filters
+    const params = new URLSearchParams();
+    if (debouncedSearchTerm) params.set('name', debouncedSearchTerm);
+    if (selectedCity && selectedCity !== 'Todas') params.set('city', selectedCity);
+    if (selectedHour) params.set('hour', selectedHour);
+    if (selectedDate && selectedDate !== todayISO) params.set('date', selectedDate);
+    
+    const newUrl = params.toString() ? `?${params.toString()}` : '/';
+    router.replace(newUrl, { scroll: false });
+  }, [debouncedSearchTerm, selectedCity, selectedHour, selectedDate, fetchSportCenters, hasInteracted, router, todayISO]);
+
+  const showInitialLoading = isLoading && sportCenters.length === 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
@@ -148,7 +179,7 @@ const SportCenterSearchPage: React.FC = () => {
         </div>
       </SearchHero>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-10 relative">
         {sportCenters.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sportCenters.filter(center => !center.isPrivate).map((center, index) => (
@@ -157,6 +188,24 @@ const SportCenterSearchPage: React.FC = () => {
           </div>
         ) : (
           !isLoading && <EmptySearchResults />
+        )}
+        
+        {/* Loading overlay - only shown when searching with existing results */}
+        {isLoading && sportCenters.length > 0 && (
+          <div className="absolute inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center rounded-2xl z-20">
+            <div className="bg-white/90 backdrop-blur-md shadow-2xl rounded-2xl px-8 py-6 flex flex-col items-center gap-4">
+              <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
+              <p className="text-slate-600 font-medium">Buscando centros deportivos...</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Initial loading state */}
+        {showInitialLoading && (
+          <div className="min-h-[80vh] flex flex-col items-center justify-center gap-4">
+            <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
+            <p className="text-slate-500 font-medium animate-pulse">Cargando centros deportivos...</p>
+          </div>
         )}
       </div>
 

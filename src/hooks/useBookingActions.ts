@@ -19,7 +19,7 @@ export const useBookingActions = (user: UserProfile | null) => {
     setSelectedSlot,
   } = useBooking(user);
 
-  const handleConfirmBooking = async (method: 'mercadopago' | 'fintoc' | 'venue' | 'cash', guestDetails?: any, partial: boolean = false) => {
+  const handleConfirmBooking = async (method: 'mercadopago' | 'fintoc' | 'venue' | 'presential' | 'cash', guestDetails?: any, partial: boolean = false) => {
     if (method === 'mercadopago' && selectedSlot) {
       try {
         const init_point = await createMercadoPagoPayment({
@@ -67,19 +67,20 @@ export const useBookingActions = (user: UserProfile | null) => {
       }
     }
 
-    if (method === 'venue' && selectedSlot) {
+    if ((method === 'venue' || method === 'presential') && selectedSlot) {
       try {
-        await createBooking({
+        const booking = await createBooking({
           court_id: selectedSlot.courtId,
           date: selectedSlot.date.toISOString(),
           hour: selectedSlot.date.getHours(),
           guest_details: guestDetails,
           user_id: user?.id,
+          partial: partial,
         });
 
         toast.success("¡Reserva confirmada exitosamente!");
         setSelectedSlot(null);
-        router.push('/');
+        router.push(`/booking/success?code=${booking?.booking_code ?? 'N/A'}`);
         return true;
       } catch (error) {
         if (axios.isAxiosError(error) && error.response?.status === 409) {

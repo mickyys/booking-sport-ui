@@ -24,6 +24,7 @@ export interface CourtWithSchedule {
   schedule: ScheduleSlot[];
 }
 
+
 export interface SportCenter {
   id: string;
   name: string;
@@ -159,7 +160,20 @@ export interface Booking {
   bookingCode: string
   booking_code?: string;
 
+  // del backend (snake_case)
+  court_name?: string;
+  sport_center_name?: string;
+
   series_id?: string;
+
+  // política de cancelación
+  cancellationPolicy?: {
+    limit_hours: number;
+    retention_percent: number;
+  };
+  canCancel?: boolean;
+  refundPercentage?: number;
+  maxRefundAmount?: number;
 
   // auditoría
   createdAt: string
