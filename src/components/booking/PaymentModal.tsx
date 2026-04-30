@@ -228,36 +228,34 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   </span>
                 </div>
               </div>
-            )}            
-
-            {isPaymentRequired && (
-              <button
-                disabled={processing !== null}
-                onClick={() => handlePayment('mercadopago')}
-                className={`w-full group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all ${processing === 'mercadopago'
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-slate-100 hover:border-blue-500 hover:bg-blue-50/30'
-                  }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                    <CreditCard className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <span className="block font-bold text-slate-800 group-hover:text-blue-700">Pagar con MercadoPago</span>
-                    <span className="text-xs text-slate-500">Crédito, Débito o Prepago</span>
-                  </div>
-                </div>
-                {processing === 'mercadopago' ? (
-                  <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <ChevronRight className="text-slate-300 group-hover:text-blue-500" />
-                )}
-              </button>
             )}
 
             {slot.paymentOptional && !slot.paymentRequired && (
               <div className="space-y-3">
+                <button
+                  disabled={processing !== null}
+                  onClick={() => handlePayment('mercadopago')}
+                  className={`w-full group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all ${processing === 'mercadopago'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-slate-100 hover:border-blue-500 hover:bg-blue-50/30'
+                    }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <span className="block font-bold text-slate-800 group-hover:text-blue-700">Pagar con MercadoPago (opcional)</span>
+                      <span className="text-xs text-slate-500">Crédito, Débito o dinero en cuenta</span>
+                    </div>
+                  </div>
+                  {processing === 'mercadopago' ? (
+                    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <ChevronRight className="text-slate-300 group-hover:text-blue-500" />
+                  )}
+                </button>
+
                 <button
                   disabled={processing !== null}
                   onClick={() => handlePayment('venue')}
@@ -304,6 +302,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
         {/* Botón fijo en móvil */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-safe">
+          <p className="text-sm font-medium text-slate-700 mb-2">
+            {isPaymentRequired ? 'Selecciona medio de pago:' : slot.paymentOptional ? 'Pago opcional — puedes pagar ahora o confirmar sin pagar' : 'Confirma tu reserva:'}
+          </p>
           {(isPaymentRequired || slot.paymentOptional) && (
             <button
               disabled={processing !== null}
@@ -318,8 +319,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   <CreditCard className="w-5 h-5" />
                 </div>
                 <div className="text-left">
-                  <span className="block font-bold text-slate-800 group-hover:text-blue-700">Pagar con MercadoPago (opcional)</span>
-                  <span className="text-xs text-slate-500">Crédito, Débito o dinero en cuenta</span>
+                  <span className="block font-bold text-slate-800 group-hover:text-blue-700">Pagar con MercadoPago</span>
+                  <span className="text-xs text-slate-500">Crédito, Débito o Prepago</span>
                 </div>
               </div>
               {processing === 'mercadopago' ? (
