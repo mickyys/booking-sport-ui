@@ -78,6 +78,7 @@ export const useBookingActions = (user: UserProfile | null) => {
           partial: partial,
         });
 
+        console.log('Reserva creada:', booking);  
         toast.success("¡Reserva confirmada exitosamente!");
         setSelectedSlot(null);
         router.push(`/booking/success?code=${booking?.booking_code ?? 'N/A'}`);
