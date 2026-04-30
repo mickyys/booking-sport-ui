@@ -334,17 +334,20 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
         {/* Botón fijo en móvil */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-safe">
-          {isPaymentRequired && (
+          {(isPaymentRequired || slot.paymentOptional) && (
             <button
               disabled={processing !== null}
               onClick={() => handlePayment('mercadopago')}
               className="w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all bg-blue-600 hover:bg-blue-700 border-blue-600 text-white"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <CreditCard className="w-5 h-5" />
-                <span className="font-bold">
-                  {payPartial ? `Pagar $${partialAmount.toLocaleString('es-CL')}` : `Pagar $${slot.price.toLocaleString('es-CL')}`}
-                </span>
+                <div className="text-left">
+                  <span className="block font-bold">Pagar con MercadoPago</span>
+                  <span className="text-xs text-blue-200">
+                    {payPartial ? `$${partialAmount.toLocaleString('es-CL')} ahora` : `$${slot.price.toLocaleString('es-CL')}`}
+                  </span>
+                </div>
               </div>
               {processing === 'mercadopago' ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -362,26 +365,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               <span className="font-bold">Confirmar Reserva</span>
             </button>
           )}
-          {slot.paymentOptional && !slot.paymentRequired && (
-            <div className="flex gap-3">
-              <button
-                disabled={processing !== null}
-                onClick={() => handlePayment('mercadopago')}
-                className="flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-blue-500 bg-blue-50 hover:bg-blue-100 text-blue-700 transition-all"
-              >
-                <CreditCard className="w-5 h-5" />
-                <span className="font-bold">Pagar</span>
-              </button>
-              <button
-                disabled={processing !== null}
-                onClick={() => handlePayment('venue')}
-                className="flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-emerald-500 bg-emerald-500 hover:bg-emerald-600 text-white transition-all"
-              >
-                <span className="font-bold">Confirmar</span>
-              </button>
-            </div>
-          )}
-          
         </div>
       </motion.div>
 
