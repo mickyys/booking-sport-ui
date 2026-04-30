@@ -101,14 +101,7 @@ const SportCenterSearchPage: React.FC = () => {
     });
   }, [searchTerm, selectedCity, selectedHour, selectedDate, fetchSportCenters, hasInteracted]);
 
-  if (isLoading && sportCenters.length === 0) {
-    return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center gap-4">
-        <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
-        <p className="text-slate-500 font-medium animate-pulse">Cargando centros deportivos...</p>
-      </div>
-    );
-  }
+  const showInitialLoading = isLoading && sportCenters.length === 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
@@ -157,7 +150,7 @@ const SportCenterSearchPage: React.FC = () => {
         </div>
       </SearchHero>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-10 relative">
         {sportCenters.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sportCenters.filter(center => !center.isPrivate).map((center, index) => (
@@ -166,6 +159,24 @@ const SportCenterSearchPage: React.FC = () => {
           </div>
         ) : (
           !isLoading && <EmptySearchResults />
+        )}
+        
+        {/* Loading overlay - only shown when searching with existing results */}
+        {isLoading && sportCenters.length > 0 && (
+          <div className="absolute inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center rounded-2xl z-20">
+            <div className="bg-white/90 backdrop-blur-md shadow-2xl rounded-2xl px-8 py-6 flex flex-col items-center gap-4">
+              <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
+              <p className="text-slate-600 font-medium">Buscando centros deportivos...</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Initial loading state */}
+        {showInitialLoading && (
+          <div className="min-h-[80vh] flex flex-col items-center justify-center gap-4">
+            <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
+            <p className="text-slate-500 font-medium animate-pulse">Cargando centros deportivos...</p>
+          </div>
         )}
       </div>
 
