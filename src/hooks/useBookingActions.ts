@@ -20,6 +20,13 @@ export const useBookingActions = (user: UserProfile | null) => {
   } = useBooking(user);
 
   const handleConfirmBooking = async (method: 'mercadopago' | 'fintoc' | 'venue' | 'presential' | 'cash', guestDetails?: any, partial: boolean = false) => {
+    const getErrorMessage = (error: unknown, fallback: string): string => {
+      if (axios.isAxiosError(error) && error.response?.data?.error) {
+        return error.response.data.error;
+      }
+      return fallback;
+    };
+
     if (method === 'mercadopago' && selectedSlot) {
       try {
         const init_point = await createMercadoPagoPayment({
@@ -35,11 +42,7 @@ export const useBookingActions = (user: UserProfile | null) => {
         window.location.href = init_point;
         return true;
       } catch (error) {
-        if (axios.isAxiosError(error) && error.response?.status === 409) {
-          toast.error("Este horario ya ha sido reservado por otra persona. Por favor elige otro.");
-        } else {
-          toast.error("Error al iniciar el pago con MercadoPago.");
-        }
+        toast.error(getErrorMessage(error, "Error al iniciar el pago con MercadoPago."));
         throw error;
       }
     }
@@ -58,11 +61,7 @@ export const useBookingActions = (user: UserProfile | null) => {
         window.location.href = redirect_url;
         return true;
       } catch (error) {
-        if (axios.isAxiosError(error) && error.response?.status === 409) {
-          toast.error("Este horario ya ha sido reservado por otra persona. Por favor elige otro.");
-        } else {
-          toast.error("Error al iniciar el pago con Fintoc.");
-        }
+        toast.error(getErrorMessage(error, "Error al iniciar el pago con Fintoc."));
         throw error;
       }
     }
@@ -83,11 +82,7 @@ export const useBookingActions = (user: UserProfile | null) => {
         router.push(`/booking/success?code=${booking?.booking_code ?? 'N/A'}`);
         return true;
       } catch (error) {
-        if (axios.isAxiosError(error) && error.response?.status === 409) {
-          toast.error("Este horario ya ha sido reservado por otra persona. Por favor elige otro.");
-        } else {
-          toast.error("Error al confirmar la reserva.");
-        }
+        toast.error(getErrorMessage(error, "Error al confirmar la reserva."));
         throw error;
       }
     }
