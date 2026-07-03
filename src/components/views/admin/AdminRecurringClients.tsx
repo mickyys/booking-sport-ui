@@ -78,6 +78,7 @@ export const AdminRecurringClients: React.FC = () => {
         fetchRecurringReservationsByCenter,
         fetchRecurringSeries,
         cancelRecurringReservation,
+        cancelRecurringDate,
         deleteSeries
     } = useBookingStore();
 
@@ -88,6 +89,8 @@ export const AdminRecurringClients: React.FC = () => {
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [showCancelDialog, setShowCancelDialog] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
+    const [cancelMode, setCancelMode] = useState<'all' | 'single'>('all');
+    const [cancelDate, setCancelDate] = useState('');
     const [activeTab, setActiveTab] = useState<'all' | 'weekly' | 'series'>('all');
 
     useEffect(() => {
@@ -157,6 +160,8 @@ export const AdminRecurringClients: React.FC = () => {
     const handleCancelClick = (item: CombinedItem) => {
         setSelectedItem(item);
         setCancelReason('');
+        setCancelMode('all');
+        setCancelDate('');
         setShowCancelDialog(true);
     };
 
@@ -165,8 +170,13 @@ export const AdminRecurringClients: React.FC = () => {
 
         try {
             if (selectedItem.type === 'weekly') {
-                await cancelRecurringReservation(selectedItem.id, getAccessTokenSilently);
-                toast.success('Reserva semanal cancelada');
+                if (cancelMode === 'single' && cancelDate) {
+                    await cancelRecurringDate(selectedItem.id, cancelDate, getAccessTokenSilently);
+                    toast.success('Fecha cancelada de la reserva semanal');
+                } else {
+                    await cancelRecurringReservation(selectedItem.id, getAccessTokenSilently);
+                    toast.success('Reserva semanal cancelada');
+                }
             } else {
                 await (deleteSeries as any)(selectedItem.id, getAccessTokenSilently);
                 toast.success('Serie cancelada');
@@ -582,7 +592,42 @@ export const AdminRecurringClients: React.FC = () => {
                             {selectedItem?.type === 'series' && ' Se eliminarán todas las reservas de la serie.'}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <div className="py-4">
+                    <div className="py-4 space-y-4">
+                        {selectedItem?.type === 'weekly' && (
+                            <div className="space-y-3">
+                                <label className="text-sm font-bold text-slate-700 block">Tipo de cancelación</label>
+                                <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${cancelMode === 'all' ? 'border-red-200 bg-red-50' : 'border-slate-200 bg-white'}`}>
+                                    <input
+                                        type="radio"
+                                        name="cancelMode"
+                                        value="all"
+                                        checked={cancelMode === 'all'}
+                                        onChange={() => setCancelMode('all')}
+                                        className="w-4 h-4 text-red-500 accent-red-500"
+                                    />
+                                    <span className="text-sm text-slate-700">Cancelar toda la reserva semanal</span>
+                                </label>
+                                <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${cancelMode === 'single' ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white'}`}>
+                                    <input
+                                        type="radio"
+                                        name="cancelMode"
+                                        value="single"
+                                        checked={cancelMode === 'single'}
+                                        onChange={() => setCancelMode('single')}
+                                        className="w-4 h-4 text-amber-500 accent-amber-500"
+                                    />
+                                    <span className="text-sm text-slate-700">Cancelar solo una fecha</span>
+                                </label>
+                                {cancelMode === 'single' && (
+                                    <input
+                                        type="date"
+                                        value={cancelDate}
+                                        onChange={(e) => setCancelDate(e.target.value)}
+                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-200 transition-all"
+                                    />
+                                )}
+                            </div>
+                        )}
                         <label className="text-sm font-bold text-slate-700 mb-2 block">Motivo de cancelación (opcional)</label>
                         <textarea
                             value={cancelReason}
