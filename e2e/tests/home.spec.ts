@@ -1,6 +1,10 @@
 import { test, expect, Page } from '@playwright/test';
 
-const getTodayISO = () => new Date().toISOString().split('T')[0];
+const getTomorrowISO = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().split('T')[0];
+};
 
 test.describe('Home - Hero Section', () => {
   test('debe mostrar el titulo principal y subtitulo correctos', async ({ page }) => {
@@ -22,7 +26,7 @@ test.describe('Home - Filters Default Values', () => {
   test('debe tener valores por defecto correctos en los filtros', async ({ page }) => {
     await page.goto('/');
     
-    const todayISO = getTodayISO();
+    const tomorrowISO = getTomorrowISO();
     
     const citySelect = page.locator('select').first();
     await expect(citySelect).toHaveValue('Todas');
@@ -31,7 +35,7 @@ test.describe('Home - Filters Default Values', () => {
     await expect(hourSelect).toHaveValue('');
     
     const dateInput = page.locator('input[type="date"]');
-    await expect(dateInput).toHaveValue(todayISO);
+    await expect(dateInput).toHaveValue(tomorrowISO);
   });
 });
 
