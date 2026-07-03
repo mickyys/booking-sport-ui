@@ -75,7 +75,7 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
         const store = useBookingStore.getState();
         const { init_point, booking_code } = await store.createMercadoPagoPayment({
           court_id: slot.courtId,
-          date: format(slot.date, "yyyy-MM-dd"),
+          date: slot.date.toISOString(),
           hour: slot.date.getHours(),
           guest_details: guestDetails,
           user_id: user?.id,
