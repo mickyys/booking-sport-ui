@@ -29,7 +29,7 @@ export const useBookingActions = (user: UserProfile | null) => {
 
     if (method === 'mercadopago' && selectedSlot) {
       try {
-        const init_point = await createMercadoPagoPayment({
+        const { init_point } = await createMercadoPagoPayment({
           court_id: selectedSlot.courtId,
           date: selectedSlot.date.toISOString(),
           hour: selectedSlot.date.getHours(),
