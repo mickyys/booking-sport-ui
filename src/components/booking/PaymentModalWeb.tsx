@@ -7,6 +7,7 @@ import { es } from 'date-fns/locale';
 import { TimeSlot, Court, UserProfile, GuestDetails } from '../../types';
 import { useBookingStore } from '../../store/useBookingStore';
 import CancellationPolicyModal from '../search/CancellationPolicyModal';
+import MockMPModal from './MockMPModal';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -38,6 +39,8 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
   });
   const [errors, setErrors] = useState<Partial<GuestDetails>>({});
   const [payPartial, setPayPartial] = useState(false);
+  const [showMockModal, setShowMockModal] = useState(false);
+  const [mockData, setMockData] = useState<{ initPoint: string; bookingCode: string } | null>(null);
 
   const isPartialAvailable = (() => {
     if (!center) return false;
@@ -66,6 +69,29 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
     if (!validate()) return;
 
     setProcessing(method);
+
+    if (method === 'mercadopago' && process.env.NEXT_PUBLIC_APP_ENV === 'development') {
+      try {
+        const store = useBookingStore.getState();
+        const { init_point, booking_code } = await store.createMercadoPagoPayment({
+          court_id: slot.courtId,
+          date: slot.date.toISOString(),
+          hour: slot.date.getHours(),
+          guest_details: guestDetails,
+          user_id: user?.id,
+          partial: payPartial,
+        });
+        setMockData({ initPoint: init_point, bookingCode: booking_code });
+        setShowMockModal(true);
+      } catch (error) {
+        console.error("Mock payment init failed:", error);
+        toast.error("Error al iniciar el pago");
+      } finally {
+        setProcessing(null);
+      }
+      return;
+    }
+
     try {
       await onConfirm(method, guestDetails, payPartial);
     } catch (error) {
@@ -301,6 +327,15 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
           center={center}
           isOpen={showPolicies}
           onClose={() => setShowPolicies(false)}
+        />
+      )}
+
+      {showMockModal && mockData && (
+        <MockMPModal
+          amount={payPartial ? partialAmount : slot.price}
+          bookingCode={mockData.bookingCode}
+          initPoint={mockData.initPoint}
+          onClose={() => setShowMockModal(false)}
         />
       )}
     </>

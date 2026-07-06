@@ -78,3 +78,10 @@ export const cancelRecurringReservation = async (id: string, token: string, canc
   });
   return response.data;
 };
+
+export const cancelRecurringDate = async (id: string, date: string, token: string) => {
+  const response = await api.post(`/admin/recurring/${id}/cancel-date`, { date }, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};

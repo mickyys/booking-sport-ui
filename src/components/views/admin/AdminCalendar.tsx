@@ -37,6 +37,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
         selectedCenterId,
         createRecurringReservation,
         cancelRecurringReservation,
+        cancelRecurringDate,
         fetchRecurringReservationsByCenter
     } = useBookingStore();
 
@@ -235,6 +236,21 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
             await fetchAdminSchedules(selectedCenterId!, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
         } catch (error) {
             toast.error("Error al cancelar reserva semanal");
+        } finally {
+            setUnlockConfirmOpen(false);
+            setSlotToUnlock(null);
+        }
+    };
+
+    const confirmUnlockRecurringDate = async () => {
+        if (!slotToUnlock?.recurringId) return;
+        try {
+            const dateStr = format(selectedDate, 'yyyy-MM-dd');
+            await cancelRecurringDate(slotToUnlock.recurringId, dateStr, getAccessTokenSilently);
+            toast.success("Fecha cancelada de la reserva semanal");
+            await fetchAdminSchedules(selectedCenterId!, format(selectedDate, 'yyyy-MM-dd'), getAccessTokenSilently);
+        } catch (error) {
+            toast.error("Error al cancelar la fecha");
         } finally {
             setUnlockConfirmOpen(false);
             setSlotToUnlock(null);
@@ -798,12 +814,20 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                         </AlertDialogCancel>
 
                         {slotToUnlock?.recurringId ? (
-                            <button
-                                onClick={confirmUnlockRecurring}
-                                className="rounded-2xl font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-200 py-3 px-6 transition-all"
-                            >
-                                Cancelar Reserva Semanal
-                            </button>
+                            <div className="flex flex-col sm:flex-row gap-2 w-full">
+                                <button
+                                    onClick={confirmUnlockRecurringDate}
+                                    className="flex-1 rounded-2xl font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-200 py-2 px-4 transition-all"
+                                >
+                                    Solo esta fecha
+                                </button>
+                                <button
+                                    onClick={confirmUnlockRecurring}
+                                    className="flex-1 rounded-2xl font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-200 py-2 px-4 transition-all"
+                                >
+                                    Toda la reserva
+                                </button>
+                            </div>
                         ) : slotToUnlock?.seriesId ? (
                             <div className="flex flex-col sm:flex-row gap-2 w-full">
                                 <button
