@@ -20,9 +20,11 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
     fintoc: 'Fintoc',
     cash: 'Efectivo en recinto',
     venue: 'Efectivo en recinto',
+    presential: 'Efectivo en recinto',
     internal: 'Interno',
-    presential: 'Presencial',
 };
+
+const FREE_BOOKING_METHODS = ['venue', 'cash', 'presential', 'internal'];
 
 export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfile }) => {
     const router = useRouter(); 
@@ -60,7 +62,8 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
     const centerName = booking?.sport_center_name ?? booking?.sportCenterName ?? 'Cancha';
     const courtName = booking?.court_name ?? booking?.courtName ?? 'Cancha';
     const bookingCode = booking?.booking_code ?? booking?.bookingCode ?? code;
-    const isFreeBooking = booking?.payment_method === 'venue' || booking?.payment_method === 'cash';
+    const isFreeBooking = FREE_BOOKING_METHODS.includes(booking?.payment_method ?? '');
+    const priceAtVenue = booking?.finalPrice ?? booking?.price ?? 0;
 
     if (isLoading) {
         return (
@@ -173,14 +176,16 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
                                     <div className="flex items-start gap-3">
                                         <CreditCard className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
                                         <div className="flex-1">
-                                            <p className="text-xs text-slate-500 uppercase tracking-wide">Monto abonado</p>
+                                            <p className="text-xs text-slate-500 uppercase tracking-wide">
+                                                {isFreeBooking ? 'Monto a pagar en el centro' : 'Monto abonado'}
+                                            </p>
                                             <p className="text-lg font-bold text-emerald-600">
-                                                ${displayPrice?.toLocaleString('es-CL') ?? '0'}
+                                                ${(isFreeBooking ? priceAtVenue : displayPrice)?.toLocaleString('es-CL') ?? '0'}
                                             </p>
                                         </div>
                                     </div>
 
-                                    {!isTotalPaid && (
+                                    {!isTotalPaid && !isFreeBooking && (
                                         <div className="flex items-start gap-3">
                                             <CreditCard className="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5" />
                                             <div className="flex-1">
@@ -204,6 +209,23 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
                                             <p className="text-sm text-blue-900 font-medium mb-1">Confirmación enviada</p>
                                             <p className="text-sm text-blue-800">
                                                 Hemos enviado los detalles de tu reserva a tu correo electrónico.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Pago en el recinto */}
+                            {isFreeBooking && (
+                                <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
+                                    <div className="flex items-start gap-3">
+                                        <Info className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-sm text-emerald-900 font-medium mb-1">Recuerda pagar en el centro deportivo</p>
+                                            <p className="text-sm text-emerald-800">
+                                                Tu reserva quedó confirmada sin pago en línea. El pago de{' '}
+                                                <strong>${(priceAtVenue || 0).toLocaleString('es-CL')}</strong> se realiza
+                                                directamente en el recinto.
                                             </p>
                                         </div>
                                     </div>
