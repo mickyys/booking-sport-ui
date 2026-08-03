@@ -309,9 +309,17 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
             <button
               disabled={processing !== null}
               onClick={() => handlePayment('venue')}
-              className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-emerald-500 bg-emerald-500 hover:bg-emerald-600 text-white transition-all"
+              className={`w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-emerald-500 text-white transition-all ${processing !== null ? 'bg-emerald-600 opacity-80' : 'bg-emerald-500 hover:bg-emerald-600'
+                }`}
             >
-              <span className="font-bold">Confirmar Reserva</span>
+              {processing !== null ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span className="font-bold">Confirmando...</span>
+                </>
+              ) : (
+                <span className="font-bold">Confirmar Reserva</span>
+              )}
             </button>
           )}
         </div>
