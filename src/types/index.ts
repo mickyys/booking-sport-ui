@@ -133,9 +133,8 @@ export interface Booking {
   status: 'confirmed' | 'cancelled' | 'pending'
 
   // pago
-  paymentMethod: 'mercadopago' | 'fintoc' | 'cash'
+  paymentMethod: 'mercadopago' | 'internal' | 'cash'
   payment_method?: string;
-  fintocPaymentIntentId?: string
   paidAmount?: number;
   pendingAmount?: number;
   isPartialPayment?: boolean;
@@ -246,7 +245,7 @@ export interface BookingDTO {
   price: number
   status: 'confirmed' | 'cancelled' | 'pending'
   booking_code: string
-  payment_method: 'venue' | 'mercadopago' | 'fintoc'
+  payment_method: 'venue' | 'mercadopago' | 'internal'
   customer_name: string
   customer_phone: string
   created_at: string

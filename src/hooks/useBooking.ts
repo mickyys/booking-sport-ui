@@ -27,7 +27,7 @@ export const useBooking = (user: UserProfile | null) => {
         setSelectedSlot(slot);
     };
 
-    const confirmBooking = (method: 'mercadopago' | 'fintoc' | 'cash', guestDetails?: GuestDetails) => {
+    const confirmBooking = (method: 'mercadopago' | 'cash', guestDetails?: GuestDetails) => {
         if (!selectedSlot) return;
 
         const newBooking: Booking = {

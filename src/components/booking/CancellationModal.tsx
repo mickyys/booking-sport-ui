@@ -234,7 +234,6 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                                         </div>
                                         <span className="font-medium text-slate-900">
                                             { booking.payment_method === 'mercadopago' ? 'MercadoPago'
-                                            : booking.payment_method === 'fintoc' ? 'Fintoc'
                                             : 'Presencial' }
                                         </span>
                                     </div>

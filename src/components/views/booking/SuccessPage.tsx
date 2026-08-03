@@ -17,7 +17,6 @@ interface CancellationPolicy {
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
     mercadopago: 'MercadoPago',
-    fintoc: 'Fintoc',
     cash: 'Efectivo en recinto',
     venue: 'Efectivo en recinto',
     presential: 'Efectivo en recinto',
