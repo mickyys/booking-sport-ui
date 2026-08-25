@@ -24,12 +24,56 @@ export interface CourtWithSchedule {
   schedule: ScheduleSlot[];
 }
 
+// ===== Modelo de horarios por reglas (schedule_rules / exceptions / blocks) =====
+
+export interface ScheduleRuleSlot {
+  start_time: string; // "HH:MM"
+  end_time: string;   // "HH:MM"
+  price: number;
+  payment_required: boolean;
+  payment_optional: boolean;
+  partial_payment_enabled?: boolean | null;
+}
+
+export interface ScheduleRule {
+  id?: string;
+  space_id?: string;
+  sport_center_id?: string;
+  days_of_week: number[]; // 0=domingo..6=sábado
+  slots: ScheduleRuleSlot[];
+  active?: boolean;
+}
+
+export type ScheduleExceptionType = 'closed' | 'special';
+
+export interface ScheduleException {
+  id?: string;
+  space_id?: string;
+  sport_center_id?: string;
+  date: string; // "YYYY-MM-DD" (envío) / ISO (respuesta)
+  type: ScheduleExceptionType;
+  slots?: ScheduleRuleSlot[];
+  note?: string;
+}
+
+export interface Block {
+  id?: string;
+  space_id?: string;
+  sport_center_id?: string;
+  date: string; // "YYYY-MM-DD" (envío) / ISO (respuesta)
+  start_time: string;
+  end_time: string;
+  reason?: string;
+}
+
+
 
 export interface SportCenter {
   id: string;
   name: string;
   slug: string;
   location: string;
+  city?: string;
   address: string;
   phone?: string;
   email?: string;
@@ -49,6 +93,9 @@ export interface SportCenter {
   partialPaymentEnabled?: boolean;
   partialPaymentPercent?: number;
   isPrivate?: boolean;
+  subdomain?: string;
+  isFeatured?: boolean;
+  distanceKm?: number;
 }
 
 export interface Court {
@@ -62,10 +109,70 @@ export interface Court {
   centerId: string;
 }
 
+export type FacilityType = 'quincho' | 'sede' | 'piscina';
+
+export interface Facility {
+  id: string;
+  sport_center_id?: string;
+  type: FacilityType;
+  name: string;
+  description: string;
+  image_url?: string;
+  image?: string;
+  capacity: number;
+  area: string;
+  features: string[];
+  enabled?: boolean;
+  // quincho
+  price_all_day?: number;
+  price_half_day?: number;
+  open_hour?: number;
+  close_hour?: number;
+  // sede / piscina
+  price_per_day?: number;
+  price_per_month?: number;
+  min_months?: number;
+  max_months?: number;
+  available_months?: number[];
+  deposit_months?: number;
+}
+
+export type SpaceCategory = 'cancha' | 'quincho' | 'sede' | 'piscina';
+
+export interface Space {
+  id: string;
+  sport_center_id?: string;
+  category: SpaceCategory;
+  name: string;
+  description: string;
+  image_url?: string;
+  image?: string;
+  enabled?: boolean;
+  // cancha
+  y_position?: number;
+  schedule?: any[];
+  // facilities (quincho/sede/piscina)
+  type?: string;
+  capacity?: number;
+  area?: string;
+  features?: string[];
+  // quincho
+  price_all_day?: number;
+  price_half_day?: number;
+  open_hour?: number;
+  close_hour?: number;
+  // sede / piscina
+  price_per_day?: number;
+  price_per_month?: number;
+  min_months?: number;
+  max_months?: number;
+  available_months?: number[];
+  deposit_months?: number;
+}
+
 export interface TimeSlot {
   id: string;
-  courtId: string;
-  centerId: string;
+  courtId: string;  centerId: string;
   date: Date;
   status: SlotStatus;
   price: number;
@@ -77,6 +184,17 @@ export interface TimeSlot {
 export interface CenterTimeSlot {
   start_time: string;
   end_time: string;
+}
+
+export interface MPConnectStatus {
+  connected: boolean;
+  mp_user_id?: string;
+  public_key?: string;
+  platform_public_key?: string;
+  live_mode?: boolean;
+  scope?: string;
+  connected_at?: string;
+  expires_at?: string;
 }
 
 export interface SportCenter {
@@ -103,9 +221,11 @@ export interface SportCenter {
   partialPaymentEnabled?: boolean;
   partialPaymentPercent?: number;
   isPrivate?: boolean;
+  subdomain?: string;
   default_schedule?: CenterTimeSlot;
   schedule_overrides?: Record<number, CenterTimeSlot>;
   active_days?: number[];
+  branding?: TenantBranding;
 }
 
 export interface Booking {
@@ -285,4 +405,23 @@ export interface CreateRecurringReservationDTO {
   price?: number;
   notes?: string;
   date: string; // YYYY-MM-DD
+}
+
+export interface TenantBranding {
+  name?: string;
+  logo_url?: string;
+  primary_color?: string;
+  primary_dark?: string;
+  accent?: string;
+  nav_bg?: string;
+  hero_gradient?: string;
+}
+
+export interface Tenant {
+  subdomain: string;
+  slug: string;
+  center_id: string;
+  name: string;
+  branding?: TenantBranding;
+  canonical_host: string;
 }

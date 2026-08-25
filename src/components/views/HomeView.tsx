@@ -1,26 +1,25 @@
 "use client";
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { AnimatePresence } from 'framer-motion';
+import { Loader2, Search, MapPin, Calendar, X, Zap, Trophy, ArrowRight } from 'lucide-react';
 import { useBookingStore } from '@/store/useBookingStore';
-import SearchHero from '@/components/search/SearchHero';
-import SearchBar from '@/components/search/SearchBar';
-import SearchFilters from '@/components/search/SearchFilters';
-import SportCenterCard from '@/components/search/SportCenterCard';
+import MarketplaceHero from '@/components/search/MarketplaceHero';
+import TenantCard from '@/components/search/TenantCard';
 import SearchFeatures from '@/components/search/SearchFeatures';
 import EmptySearchResults from '@/components/search/EmptySearchResults';
-import { ContactForm } from '@/components/ContactForm';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useUserLocation } from '@/hooks/useUserLocation';
 
-const SportCenterSearchPage: React.FC = () => {
+const MarketplacePage: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { sportCenters, isLoading, cities, fetchCities, fetchSportCenters } = useBookingStore();
+  const searchRef = useRef<HTMLDivElement>(null);
+  const geoFetchedRef = useRef(false);
+  const { coords } = useUserLocation();
 
-  // Initialize state from URL params
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
   const [selectedCity, setSelectedCity] = useState('Todas');
   const [selectedHour, setSelectedHour] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -47,14 +46,6 @@ const SportCenterSearchPage: React.FC = () => {
     setHasInteracted(true);
   }, []);
 
-  // Debounce para la búsqueda
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
   const handleCityChange = useCallback((value: string) => {
     setSelectedCity(value);
     setHasInteracted(true);
@@ -70,6 +61,14 @@ const SportCenterSearchPage: React.FC = () => {
     setHasInteracted(true);
   }, []);
 
+  // Debounce para la búsqueda
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const todayISO = useMemo(() => new Date().toISOString().split('T')[0], []);
   const maxDateISO = useMemo(() => {
     const max = new Date();
@@ -77,18 +76,18 @@ const SportCenterSearchPage: React.FC = () => {
     return max.toISOString().split('T')[0];
   }, []);
 
-  const availableHours = useMemo(() => {
-    // Fixed hours from 6 (6AM) to 23 (11PM) in HH:MM format
-    return Array.from({ length: 18 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`);
-  }, []);
+  const availableHours = useMemo(
+    () => Array.from({ length: 18 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`),
+    []
+  );
 
-  const hasActiveFilters = useMemo(() => {
-    return (
+  const hasActiveFilters = useMemo(
+    () =>
       (selectedCity && selectedCity !== 'Todas') ||
       !!selectedHour ||
-      !!debouncedSearchTerm
-    );
-  }, [selectedCity, selectedHour, debouncedSearchTerm]);
+      !!debouncedSearchTerm,
+    [selectedCity, selectedHour, debouncedSearchTerm]
+  );
 
   const clearFilters = useCallback(() => {
     setSelectedCity('Todas');
@@ -96,7 +95,6 @@ const SportCenterSearchPage: React.FC = () => {
     setSearchTerm('');
     setDebouncedSearchTerm('');
     setSelectedDate(todayISO);
-    setShowFilters(false);
     router.replace('/', { scroll: false });
   }, [todayISO, router]);
 
@@ -105,10 +103,10 @@ const SportCenterSearchPage: React.FC = () => {
     fetchCities?.();
   }, [fetchCities]);
 
-  // Fetch sport centers when filters change (server-side filtering)
+  // Fetch when filters change
   useEffect(() => {
     if (!hasInteracted) return;
-    
+
     const hourParam = selectedHour ? Number(selectedHour.split(':')[0]) : undefined;
     const cityParam = selectedCity && selectedCity !== 'Todas' ? selectedCity : undefined;
 
@@ -117,92 +115,157 @@ const SportCenterSearchPage: React.FC = () => {
       city: cityParam,
       date: selectedDate || undefined,
       hour: hourParam,
+      lat: coords?.lat,
+      lng: coords?.lng,
     });
 
-    // Update URL with current filters
     const params = new URLSearchParams();
     if (debouncedSearchTerm) params.set('name', debouncedSearchTerm);
     if (selectedCity && selectedCity !== 'Todas') params.set('city', selectedCity);
     if (selectedHour) params.set('hour', selectedHour);
     if (selectedDate && selectedDate !== todayISO) params.set('date', selectedDate);
-    
+
     const newUrl = params.toString() ? `?${params.toString()}` : '/';
     router.replace(newUrl, { scroll: false });
-  }, [debouncedSearchTerm, selectedCity, selectedHour, selectedDate, fetchSportCenters, hasInteracted, router, todayISO]);
+  }, [debouncedSearchTerm, selectedCity, selectedHour, selectedDate, fetchSportCenters, hasInteracted, router, todayISO, coords]);
+
+  // Cuando se obtiene la geolocalización y no hay filtros activos, reordenar
+  // los resultados por cercanía (el backend prioriza destacados de la ciudad).
+  useEffect(() => {
+    if (!coords || hasInteracted || geoFetchedRef.current) return;
+    geoFetchedRef.current = true;
+    fetchSportCenters?.({ lat: coords.lat, lng: coords.lng });
+  }, [coords, hasInteracted, fetchSportCenters]);
+
+  const totalCourts = useMemo(
+    () => sportCenters.reduce((acc, c) => acc + (c.courts ?? 0), 0),
+    [sportCenters]
+  );
+
+  const scrollToSearch = () => {
+    searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const showInitialLoading = isLoading && sportCenters.length === 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
-      <SearchHero>
-        <SearchBar
-          searchTerm={searchTerm}
-          onSearchChange={handleSearchChange}
-          onToggleFilters={() => setShowFilters(!showFilters)}
-          showFilters={showFilters}
-          hasActiveFilters={hasActiveFilters}
-        >
-          <SearchFilters
-            cities={cities}
-            selectedCity={selectedCity}
-            onCityChange={handleCityChange}
-            hours={availableHours}
-            selectedHour={selectedHour}
-            onHourChange={handleHourChange}
-            selectedDate={selectedDate}
-            onDateChange={handleDateChange}
-            minDate={todayISO}
-            maxDate={maxDateISO}
-            showMobileFilters={showFilters}
-            hasActiveFilters={hasActiveFilters}
-            onClearFilters={clearFilters}
-          />
-        </SearchBar>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          {/* Results counter */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-center py-6"
-          >
-            <p className="text-slate-300 font-medium">
-              {sportCenters.length === 0 ? (
-                'No se encontraron centros deportivos'
-              ) : sportCenters.length === 1 ? (
-                '1 centro deportivo disponible'
-              ) : (
-                `${sportCenters.length} centros deportivos disponibles`
-              )}
-            </p>
-          </motion.div>
-        </div>
-      </SearchHero>
+    <div className="min-h-screen bg-slate-50">
+      <MarketplaceHero
+        centers={sportCenters}
+        centersCount={sportCenters.length}
+        totalCourts={totalCourts}
+        onCtaClick={scrollToSearch}
+      />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-10 relative">
+      {/* Sticky search & filters */}
+      <div ref={searchRef} className="sticky top-16 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col lg:flex-row gap-3">
+            {/* Search */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar centro, ciudad o dirección..."
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 outline-none transition-all"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => { setSearchTerm(''); setDebouncedSearchTerm(''); setHasInteracted(true); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* City filter */}
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <select
+                value={selectedCity}
+                onChange={(e) => handleCityChange(e.target.value)}
+                className="pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-300 outline-none appearance-none cursor-pointer min-w-[150px] w-full"
+              >
+                <option value="Todas">Todas las ciudades</option>
+                {cities.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Hour filter */}
+            <div className="relative">
+              <select
+                value={selectedHour}
+                onChange={(e) => handleHourChange(e.target.value)}
+                className="pl-4 pr-8 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-300 outline-none appearance-none cursor-pointer min-w-[150px] w-full"
+              >
+                <option value="">Todos los horarios</option>
+                {availableHours.map((h) => (
+                  <option key={h} value={h}>{h} hrs</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Date filter */}
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => handleDateChange(e.target.value)}
+                min={todayISO}
+                max={maxDateISO}
+                className="pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-300 outline-none cursor-pointer w-full"
+              />
+            </div>
+          </div>
+
+          {hasActiveFilters && (
+            <div className="mt-3 flex items-center justify-end">
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors"
+              >
+                <X className="w-4 h-4" />
+                Limpiar filtros
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Results */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">
+              {sportCenters.length === 0 && !isLoading
+                ? 'Sin resultados'
+                : `${sportCenters.length} centro${sportCenters.length !== 1 ? 's' : ''} deportivo${sportCenters.length !== 1 ? 's' : ''}`}
+            </h2>
+            <p className="text-sm text-slate-500 mt-1">
+              Reserva y paga en minutos
+            </p>
+          </div>
+        </div>
+
         {sportCenters.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sportCenters.filter(center => !center.isPrivate).map((center, index) => (
-              <SportCenterCard key={center.id} center={center} index={index} date={selectedDate} today={todayISO} />
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {sportCenters.filter((center) => !center.isPrivate).map((center, index) => (
+              <TenantCard key={center.id} center={center} index={index} />
             ))}
           </div>
         ) : (
           <AnimatePresence mode="wait">
-            {!isLoading && (
-              <motion.div
-                key="empty-results"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                <EmptySearchResults />
-              </motion.div>
-            )}
+            {!isLoading && <EmptySearchResults />}
           </AnimatePresence>
         )}
-        
-        {/* Loading overlay - only shown when searching with existing results */}
+
+        {/* Loading overlay - only when searching with existing results */}
         {isLoading && sportCenters.length > 0 && (
           <div className="absolute inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center rounded-2xl z-20">
             <div className="bg-white/90 backdrop-blur-md shadow-2xl rounded-2xl px-8 py-6 flex flex-col items-center gap-4">
@@ -211,10 +274,10 @@ const SportCenterSearchPage: React.FC = () => {
             </div>
           </div>
         )}
-        
+
         {/* Initial loading state */}
         {showInitialLoading && (
-          <div className="min-h-[80vh] flex flex-col items-center justify-center gap-4">
+          <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
             <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
             <p className="text-slate-500 font-medium animate-pulse">Cargando centros deportivos...</p>
           </div>
@@ -223,29 +286,38 @@ const SportCenterSearchPage: React.FC = () => {
 
       <SearchFeatures />
 
-                {/* Sección de Contacto para Centros Deportivos */}
-                <section className="py-20 bg-slate-50 border-t border-slate-200" id="contacto">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex flex-col items-center text-center max-w-3xl mx-auto space-y-6">
-                            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-                                ¿Eres dueño de un <span className="text-emerald-600">Centro Deportivo</span>?
-                            </h2>
-                            <p className="text-xl text-slate-600 leading-relaxed">
-                                Únete a la red de complejos deportivos y simplifica tus reservas. Digitaliza tu agenda, recibe pagos online y llega a más jugadores.
-                            </p>
-                            <div className="pt-4">
-                                <button
-                                    onClick={() => router.push('/contacto')}
-                                    className="inline-flex items-center justify-center px-8 py-4 border border-transparent text-lg font-bold rounded-full text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-lg hover:shadow-emerald-500/25 transform hover:-translate-y-1"
-                                >
-                                    Contáctanos para unirte
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+      {/* Footer CTA — Register your center */}
+      <div className="bg-slate-900 text-white py-16 mt-8">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-full text-emerald-400 text-sm font-semibold mb-6">
+            <Zap className="w-4 h-4" />
+            Para centros deportivos
+          </div>
+          <h2 className="text-4xl font-extrabold mb-4">¿Tienes un centro deportivo?</h2>
+          <p className="text-slate-400 text-lg mb-8 max-w-2xl mx-auto">
+            Únete a ReservaloYA y consigue tu propia página personalizada, sistema de reservas y pagos integrado. Configura tu identidad de marca y empieza a recibir reservas hoy.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => router.push('/contacto')}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 px-8 rounded-full text-lg transition-all"
+            >
+              Registrar mi Centro
+            </button>
+            {sportCenters.length > 0 && (
+              <button
+                onClick={() => router.push(`/${sportCenters[0].slug}`)}
+                className="border border-slate-600 hover:border-slate-400 text-slate-300 font-bold py-4 px-8 rounded-full text-lg transition-all flex items-center gap-2"
+              >
+                Ver demo
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default SportCenterSearchPage;
+export default MarketplacePage;

@@ -3,11 +3,13 @@ import React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth0 } from "@auth0/auth0-react";
 import { Trophy, LayoutDashboard, LogOut, User as UserIcon } from 'lucide-react';
+import { useTenant } from '../../context/TenantContext';
 
 export const Navbar: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
   const { loginWithRedirect, logout, user: auth0User, isAuthenticated } = useAuth0();
+  const { tenant, isTenantSite } = useTenant();
 
   const roleClaim = process.env.NEXT_PUBLIC_AUTHO_ROL_CLAIM || 'https://golazohub.cl/roles';
   const userRole = auth0User?.[roleClaim];
@@ -15,14 +17,27 @@ export const Navbar: React.FC = () => {
 
   const isActive = (path: string) => pathname === path;
 
+  const brandName = isTenantSite && tenant ? (tenant.branding?.name || tenant.name) : 'ReservaloYA';
+  const brandLogo = isTenantSite && tenant?.branding?.logo_url;
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-700 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-2">
           {/* Logo */}
           <div className="flex items-center gap-2 cursor-pointer shrink-0" onClick={() => router.push('/')}>
-            <Trophy className="text-emerald-400 w-6 h-6" />
-            <span className="font-bold text-lg sm:text-xl tracking-tight">Reservalo<span className="text-emerald-400">YA</span></span>
+            {brandLogo ? (
+              <img src={brandLogo} alt={brandName} className="w-7 h-7 rounded-full object-cover" />
+            ) : (
+              <Trophy className="text-[var(--brand-primary,#10b981)] w-6 h-6" />
+            )}
+            <span className="font-bold text-lg sm:text-xl tracking-tight">
+              {isTenantSite ? (
+                <span className="text-white">{brandName}</span>
+              ) : (
+                <>Reservalo<span className="text-[var(--brand-primary,#10b981)]">YA</span></>
+              )}
+            </span>
           </div>
 
           {/* Right side items */}
@@ -44,7 +59,7 @@ export const Navbar: React.FC = () => {
               <div className="flex items-center gap-1 sm:gap-2 pl-2 border-l border-slate-700">
                 <button
                   onClick={() => router.push('/mis-reservas')}
-                  className={`hidden sm:flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/mis-reservas') ? 'bg-emerald-500 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}`}
+                  className={`hidden sm:flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/mis-reservas') ? 'bg-[var(--brand-primary,#10b981)] text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}`}
                 >
                   Mi Perfil
                 </button>

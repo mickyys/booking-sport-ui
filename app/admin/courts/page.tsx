@@ -1,8 +1,12 @@
 "use client";
-'use client';
 
-import { AdminCourtsSubPage } from '@/components/views/AdminPanel';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function CourtsPage() {
-  return <AdminCourtsSubPage />;
+  const router = useRouter();
+  useEffect(() => {
+    router.replace('/admin/spaces');
+  }, [router]);
+  return null;
 }

@@ -1,11 +1,13 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Save, Globe, Clock, Percent, AlertTriangle, CheckCircle, Info, CreditCard, Image as ImageIcon, X } from 'lucide-react';
+import { Settings, Save, Globe, Clock, Percent, AlertTriangle, CheckCircle, Info, CreditCard, Image as ImageIcon, X, Palette, Star, MapPin, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
 import { uploadImageToCloudinary } from '@/components/booking/CourtImageUpload';
+import { LocationMapPicker } from '@/components/admin/LocationMapPicker';
 import { CenterTimeSlot } from '@/types';
+import { platformDomain } from '@/utils/host';
 
 interface AdminSettingsProps {
     sportCenter: any;
@@ -18,6 +20,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
     const [retentionPercent, setRetentionPercent] = useState<number>(10);
     const [partialPaymentEnabled, setPartialPaymentEnabled] = useState<boolean>(false);
     const [partialPaymentPercent, setPartialPaymentPercent] = useState<number>(50);
+    const [marketplaceFeePercent, setMarketplaceFeePercent] = useState<number>(7);
+    const [isFeatured, setIsFeatured] = useState<boolean>(false);
     const [imageUrl, setImageUrl] = useState<string>('');
     const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
     const [localImageFile, setLocalImageFile] = useState<File | null>(null);
@@ -26,6 +30,24 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
     const [defaultSchedule, setDefaultSchedule] = useState<CenterTimeSlot | null>(null);
     const [scheduleOverrides, setScheduleOverrides] = useState<Record<number, CenterTimeSlot>>({});
     const [activeDays, setActiveDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+
+    // Branding
+    const [brandingName, setBrandingName] = useState('');
+    const [brandingLogoUrl, setBrandingLogoUrl] = useState('');
+    const [primaryColor, setPrimaryColor] = useState('#10b981');
+    const [primaryDark, setPrimaryDark] = useState('#059669');
+    const [accentColor, setAccentColor] = useState('#6366f1');
+    const [navBg, setNavBg] = useState('#0f172a');
+    const [heroGradient, setHeroGradient] = useState('');
+
+    // Ubicación
+    const [address, setAddress] = useState('');
+    const [city, setCity] = useState('');
+    const [coordinates, setCoordinates] = useState<{ lat: number; lng: number }>({ lat: 0, lng: 0 });
+    const [isGeocoding, setIsGeocoding] = useState(false);
+    const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+    const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+    const suggestionsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const { updateSportCenterSettings, fetchSportCenterByID, isLoading } = useBookingStore();
     const { getAccessTokenSilently } = useAuth0();
@@ -51,6 +73,85 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
         setLocalImagePreview(null);
     };
 
+    const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+
+    const handleGeocode = async () => {
+        if (!address.trim()) {
+            toast.error('Ingresa una dirección primero');
+            return;
+        }
+        if (!MAPBOX_TOKEN) {
+            toast.error('NEXT_PUBLIC_MAPBOX_TOKEN no está configurado');
+            return;
+        }
+        setIsGeocoding(true);
+        try {
+            const query = encodeURIComponent([address, city].filter(Boolean).join(', '));
+            const res = await fetch(
+                `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?limit=1&country=cl&access_token=${MAPBOX_TOKEN}`
+            );
+            const data = await res.json();
+            const feature = data?.features?.[0];
+            if (!feature) {
+                toast.error('No se encontraron coordenadas para esa dirección');
+                return;
+            }
+            const [lng, lat] = feature.center;
+            setCoordinates({ lat, lng });
+            toast.success('Coordenadas actualizadas');
+        } catch (err) {
+            console.error('Error geocoding address:', err);
+            toast.error('Error al buscar coordenadas');
+        } finally {
+            setIsGeocoding(false);
+        }
+    };
+
+    const fetchAddressSuggestions = async (query: string) => {
+        try {
+            const res = await fetch(
+                `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?autocomplete=true&limit=5&country=cl&language=es&access_token=${MAPBOX_TOKEN}`
+            );
+            const data = await res.json();
+            const features = data?.features || [];
+            setAddressSuggestions(features);
+            setShowAddressSuggestions(features.length > 0);
+        } catch (err) {
+            console.error('Error fetching address suggestions:', err);
+        }
+    };
+
+    const handleAddressChange = (value: string) => {
+        setAddress(value);
+        if (suggestionsDebounceRef.current) clearTimeout(suggestionsDebounceRef.current);
+        if (!MAPBOX_TOKEN || value.trim().length < 4) {
+            setAddressSuggestions([]);
+            setShowAddressSuggestions(false);
+            return;
+        }
+        suggestionsDebounceRef.current = setTimeout(() => fetchAddressSuggestions(value.trim()), 300);
+    };
+
+    const handleSelectSuggestion = (feature: any) => {
+        if (feature.place_name) setAddress(feature.place_name);
+        const center = feature.center;
+        if (Array.isArray(center) && center.length === 2) {
+            setCoordinates({ lng: Number(center[0]) || 0, lat: Number(center[1]) || 0 });
+        }
+        const cityCtx = (feature.context || []).find((c: any) => String(c.id).startsWith('place.'));
+        if (cityCtx?.text) setCity(cityCtx.text);
+        setAddressSuggestions([]);
+        setShowAddressSuggestions(false);
+        toast.success('Dirección seleccionada: coordenadas y ciudad actualizadas');
+    };
+
+    // Limpia el debounce de sugerencias al desmontar
+    useEffect(() => {
+        return () => {
+            if (suggestionsDebounceRef.current) clearTimeout(suggestionsDebounceRef.current);
+        };
+    }, []);
+
     useEffect(() => {
         const loadSportCenter = async () => {
             const id = sportCenter?.id || sportCenter?._id;
@@ -64,10 +165,32 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                     setRetentionPercent(center.retention_percent ?? 10);
                     setPartialPaymentEnabled(center.partialPaymentEnabled ?? false);
                     setPartialPaymentPercent(center.partialPaymentPercent ?? 50);
+                    setMarketplaceFeePercent(center.marketplace_fee_percent ?? 7);
+                    setIsFeatured(center.is_featured ?? false);
                     setImageUrl(center.image_url || '');
                     if (center.default_schedule) setDefaultSchedule(center.default_schedule);
                     if (center.schedule_overrides) setScheduleOverrides(center.schedule_overrides);
                     if (center.active_days) setActiveDays(center.active_days);
+
+                    // Ubicación
+                    setAddress(center.address || '');
+                    setCity(center.city || '');
+                    const c = center.coordinates;
+                    if (Array.isArray(c)) {
+                        setCoordinates({ lng: Number(c[0]) || 0, lat: Number(c[1]) || 0 });
+                    } else if (c && typeof c === 'object') {
+                        setCoordinates({ lat: Number(c.lat) || 0, lng: Number(c.lng) || 0 });
+                    }
+
+                    if (center.branding) {
+                        setBrandingName(center.branding.name || '');
+                        setBrandingLogoUrl(center.branding.logo_url || '');
+                        setPrimaryColor(center.branding.primary_color || '#10b981');
+                        setPrimaryDark(center.branding.primary_dark || '#059669');
+                        setAccentColor(center.branding.accent || '#6366f1');
+                        setNavBg(center.branding.nav_bg || '#0f172a');
+                        setHeroGradient(center.branding.hero_gradient || '');
+                    }
                 }
             } finally {
                 setLoadingData(false);
@@ -97,6 +220,20 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                 retention_percent: retentionPercent,
                 partialPaymentEnabled: partialPaymentEnabled,
                 partialPaymentPercent: partialPaymentPercent,
+                marketplace_fee_percent: marketplaceFeePercent,
+                is_featured: isFeatured,
+                address,
+                city,
+                coordinates,
+                branding: {
+                    name: brandingName,
+                    logo_url: brandingLogoUrl,
+                    primary_color: primaryColor,
+                    primary_dark: primaryDark,
+                    accent: accentColor,
+                    nav_bg: navBg,
+                    hero_gradient: heroGradient,
+                },
             }, getAccessTokenSilently);
 
             setLocalImageFile(null);
@@ -187,8 +324,221 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                             />
                         </div>
                         <p className="text-xs text-slate-500">
-                            Esto se usará para acceder directamente via <span className="font-bold">{slug || 'tu-club'}.reservaloya.cl</span>
+                            Esto se usará para acceder directamente via <span className="font-bold">{slug || 'tu-club'}.{platformDomain()}</span>
                         </p>
+                    </div>
+
+                    {/* Ubicación */}
+                    <div className="border-t border-slate-200 pt-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <MapPin className="w-5 h-5 text-emerald-500" />
+                            <h4 className="text-base font-bold text-slate-900">Ubicación</h4>
+                        </div>
+                        <div className="space-y-5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="relative">
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Dirección</label>
+                                    <input
+                                        type="text"
+                                        value={address}
+                                        onChange={(e) => handleAddressChange(e.target.value)}
+                                        onFocus={() => { if (addressSuggestions.length > 0) setShowAddressSuggestions(true); }}
+                                        onBlur={() => setTimeout(() => setShowAddressSuggestions(false), 150)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && showAddressSuggestions && addressSuggestions.length > 0) {
+                                                e.preventDefault();
+                                                handleSelectSuggestion(addressSuggestions[0]);
+                                            } else if (e.key === 'Escape') {
+                                                setShowAddressSuggestions(false);
+                                            }
+                                        }}
+                                        autoComplete="off"
+                                        placeholder="Av. Providencia 1234"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm"
+                                    />
+                                    {showAddressSuggestions && addressSuggestions.length > 0 && (
+                                        <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                                            {addressSuggestions.map((f, i) => (
+                                                <button
+                                                    key={f.id || i}
+                                                    type="button"
+                                                    onMouseDown={(e) => { e.preventDefault(); handleSelectSuggestion(f); }}
+                                                    className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition-colors"
+                                                >
+                                                    <span className="block text-sm font-medium text-slate-800 truncate">{f.text}</span>
+                                                    <span className="block text-xs text-slate-500 truncate">{f.place_name}</span>
+                                                </button>
+                                            ))}
+                                            <p className="px-4 py-1.5 text-[10px] text-slate-400 bg-slate-50 border-t border-slate-100">
+                                                Sugerencias de Mapbox · Enter selecciona la primera
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Ciudad</label>
+                                    <input
+                                        type="text"
+                                        value={city}
+                                        onChange={(e) => setCity(e.target.value)}
+                                        placeholder="Santiago"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <button
+                                    type="button"
+                                    onClick={handleGeocode}
+                                    disabled={isGeocoding || !address.trim()}
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isGeocoding ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <MapPin className="w-4 h-4" />
+                                    )}
+                                    {isGeocoding ? 'Buscando...' : 'Buscar coordenadas'}
+                                </button>
+                                <p className="mt-1.5 text-xs text-slate-500">
+                                    Autocompleta latitud y longitud a partir de la dirección usando Mapbox.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Latitud</label>
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        value={coordinates.lat || ''}
+                                        onChange={(e) => setCoordinates((prev) => ({ ...prev, lat: Number(e.target.value) || 0 }))}
+                                        placeholder="-33.5922"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm font-mono"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Longitud</label>
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        value={coordinates.lng || ''}
+                                        onChange={(e) => setCoordinates((prev) => ({ ...prev, lng: Number(e.target.value) || 0 }))}
+                                        placeholder="-71.6127"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm font-mono"
+                                    />
+                                </div>
+                            </div>
+
+                            <LocationMapPicker
+                                value={coordinates}
+                                onChange={(coords) => setCoordinates(coords)}
+                            />
+
+                            <p className="text-xs text-slate-500">
+                                Las coordenadas se usan para mostrar el centro en el mapa y ordenar los resultados por cercanía.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Identidad de Marca */}
+                    <div className="border-t border-slate-200 pt-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Palette className="w-5 h-5 text-indigo-500" />
+                            <h4 className="text-base font-bold text-slate-900">Identidad de Marca</h4>
+                        </div>
+                        <div className="space-y-5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Nombre de marca</label>
+                                    <input
+                                        type="text"
+                                        value={brandingName}
+                                        onChange={(e) => setBrandingName(e.target.value)}
+                                        placeholder="Mi Centro Deportivo"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">URL del logo</label>
+                                    <input
+                                        type="url"
+                                        value={brandingLogoUrl}
+                                        onChange={(e) => setBrandingLogoUrl(e.target.value)}
+                                        placeholder="https://..."
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {[
+                                    { label: 'Color primario', value: primaryColor, set: setPrimaryColor },
+                                    { label: 'Primario oscuro', value: primaryDark, set: setPrimaryDark },
+                                    { label: 'Acento', value: accentColor, set: setAccentColor },
+                                    { label: 'Navbar / Fondo', value: navBg, set: setNavBg },
+                                ].map(({ label, value, set }) => (
+                                    <div key={label}>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="color"
+                                                value={value}
+                                                onChange={(e) => set(e.target.value)}
+                                                className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer bg-white"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={value}
+                                                onChange={(e) => set(e.target.value)}
+                                                className="w-full px-2 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-xs font-mono"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">
+                                    Gradiente del hero (opcional)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={heroGradient}
+                                    onChange={(e) => setHeroGradient(e.target.value)}
+                                    placeholder="linear-gradient(to bottom, rgba(15,23,42,0.5), rgba(15,23,42,0.85))"
+                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-xs font-mono"
+                                />
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Se usa sobre la imagen del hero. Si se deja vacío se usa el gradiente por defecto.
+                                </p>
+                            </div>
+
+                            {/* Preview */}
+                            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                                <p className="text-xs font-bold text-slate-500 uppercase mb-3">Vista previa</p>
+                                <div className="flex items-center gap-3">
+                                    {[
+                                        { label: 'Primario', color: primaryColor },
+                                        { label: 'Oscuro', color: primaryDark },
+                                        { label: 'Acento', color: accentColor },
+                                        { label: 'Navbar', color: navBg },
+                                    ].map(({ label, color }) => (
+                                        <div key={label} className="flex flex-col items-center gap-1">
+                                            <div className="w-12 h-12 rounded-xl shadow-sm border border-slate-200" style={{ backgroundColor: color }} />
+                                            <span className="text-[10px] text-slate-500">{label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div
+                                    className="mt-3 rounded-xl px-4 py-3 text-white text-xs font-bold"
+                                    style={{ backgroundColor: primaryColor }}
+                                >
+                                    {brandingName || 'Mi Centro Deportivo'} — botón principal
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Cancellation Policy */}
@@ -282,6 +632,65 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                                         El usuario pagará el {partialPaymentPercent}% al momento de reservar y el {100 - partialPaymentPercent}% restante en el club.
                                     </p>
                                 </div>
+                        </div>
+                    </div>
+
+                    {/* Mercado Pago Marketplace Fee */}
+                    <div className="border-t border-slate-200 pt-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Percent className="w-5 h-5 text-emerald-500" />
+                            <h4 className="text-base font-bold text-slate-900">Comisión de Mercado Pago</h4>
+                        </div>
+                        <div className="space-y-5">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    <Percent className="w-4 h-4 inline mr-1.5 text-slate-400" />
+                                    Porcentaje de comisión por reserva
+                                </label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        max={100}
+                                        value={marketplaceFeePercent}
+                                        onChange={(e) => setMarketplaceFeePercent(Math.max(0, Math.min(100, Number(e.target.value))))}
+                                        className="w-28 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-center text-lg font-bold"
+                                    />
+                                    <span className="text-sm text-slate-600">% del pago</span>
+                                </div>
+                                <p className="mt-1.5 text-xs text-slate-500">
+                                    Comisión que recibe la plataforma por cada pago procesado. Si no se configura, se usa el <strong>7%</strong> por defecto.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Centro destacado */}
+                    <div className="border-t border-slate-200 pt-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Star className="w-5 h-5 text-amber-500" />
+                            <h4 className="text-base font-bold text-slate-900">Centro destacado</h4>
+                        </div>
+                        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={isFeatured}
+                                onClick={() => setIsFeatured(!isFeatured)}
+                                className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${isFeatured ? 'bg-amber-500' : 'bg-slate-300'}`}
+                            >
+                                <span
+                                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isFeatured ? 'translate-x-5' : 'translate-x-0.5'}`}
+                                />
+                            </button>
+                            <div>
+                                <p className="text-sm font-semibold text-slate-800">
+                                    {isFeatured ? 'Este centro aparece destacado' : 'Activar destacado'}
+                                </p>
+                                <p className="text-xs text-slate-600 mt-1">
+                                    Los centros destacados aparecen primero en las búsquedas de su ciudad, por encima del orden por distancia.
+                                </p>
+                            </div>
                         </div>
                     </div>
 

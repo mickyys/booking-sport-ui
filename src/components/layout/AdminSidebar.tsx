@@ -2,18 +2,19 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  Trophy, 
-  Clock, 
-  CalendarRange, 
+import {
+  LayoutDashboard,
+  Trophy,
+  Clock,
+  CalendarRange,
   CalendarDays,
   Settings,
   Menu,
   X,
   Users,
   QrCode,
-  Repeat
+  Repeat,
+  Plug,
 } from 'lucide-react';
 
 const navItems = [
@@ -21,11 +22,12 @@ const navItems = [
   { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/admin/calendar', icon: CalendarRange, label: 'Bloqueos y Reservas' },
   { to: '/admin/recurring', icon: Repeat, label: 'Reservas' },
-  { to: '/admin/courts', icon: Trophy, label: 'Canchas' },
+  { to: '/admin/spaces', icon: Trophy, label: 'Espacios' },
   { to: '/admin/schedules', icon: Clock, label: 'Horarios y Tarifas' },
   { to: '/admin/users', icon: Users, label: 'Usuarios' },
   { to: '/admin/qr', icon: QrCode, label: 'QR' },
   { to: '/admin/settings', icon: Settings, label: 'Configuración' },
+  { to: '/admin/onboarding', icon: Plug, label: 'Integración' },
 ];
 
 interface AdminSidebarProps {

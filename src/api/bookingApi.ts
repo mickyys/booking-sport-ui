@@ -1,5 +1,10 @@
 import api from './axiosInstance';
-import { SportCenter, CenterTimeSlot } from '../types';
+import { SportCenter, CenterTimeSlot, Tenant, ScheduleRule, ScheduleException, Block } from '../types';
+
+export const getTenantByHost = async (host: string) => {
+  const response = await api.get(`/tenants/host/${encodeURIComponent(host)}`);
+  return response.data.data as Tenant;
+};
 
 export const getUserCancelledBookings = async (token: string, page = 1, limit = 5) => {
   const response = await api.get('/bookings/my-cancelled', {
@@ -24,6 +29,28 @@ export const getSportCenterSchedules = async (centerId: string) => {
   return response.data;
 };
 
+// Facilities (quinchos, sedes, piscinas)
+export const getFacilitiesBySlug = async (slug: string) => {
+  const response = await api.get(`/sport-centers/slug/${encodeURIComponent(slug)}/facilities`);
+  return response.data;
+};
+
+export const createFacilityInquiry = async (data: {
+  facility_id: string;
+  contact_name: string;
+  contact_email: string;
+  contact_phone: string;
+  message?: string;
+  month?: number;
+  days?: number[];
+  date?: string;
+  slot_kind?: string;
+  total_price?: number;
+}) => {
+  const response = await api.post('/facilities/inquiries', data);
+  return response.data;
+};
+
 export const updateSportCenterSchedules = async (centerId: string, data: {
   default_schedule: CenterTimeSlot;
   schedule_overrides: Record<number, CenterTimeSlot>;
@@ -40,6 +67,84 @@ export const getMySportCenter = async (token: string) => {
     headers: { Authorization: `Bearer ${token}` }
   });
   return response.data;
+};
+
+// ===== Configuración de horarios por espacio (reglas / excepciones / bloqueos) =====
+
+export const getSpaceSchedule = async (spaceId: string, token: string): Promise<ScheduleRule[]> => {
+  const response = await api.get(`/admin/spaces/${spaceId}/schedule`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data.rules || [];
+};
+
+export const saveSpaceSchedule = async (spaceId: string, rules: ScheduleRule[], token: string): Promise<ScheduleRule[]> => {
+  const response = await api.put(`/admin/spaces/${spaceId}/schedule`, { rules }, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data.rules || [];
+};
+
+export const getSpaceExceptions = async (spaceId: string, token: string): Promise<ScheduleException[]> => {
+  const response = await api.get(`/admin/spaces/${spaceId}/schedule/exceptions`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data.exceptions || [];
+};
+
+export const createSpaceException = async (spaceId: string, exception: ScheduleException, token: string): Promise<ScheduleException> => {
+  const response = await api.post(`/admin/spaces/${spaceId}/schedule/exceptions`, exception, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data.exception;
+};
+
+export const updateSpaceException = async (spaceId: string, id: string, exception: ScheduleException, token: string): Promise<ScheduleException> => {
+  const response = await api.put(`/admin/spaces/${spaceId}/schedule/exceptions/${id}`, exception, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data.exception;
+};
+
+export const deleteSpaceException = async (spaceId: string, id: string, token: string): Promise<void> => {
+  await api.delete(`/admin/spaces/${spaceId}/schedule/exceptions/${id}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+};
+
+export const getSpaceBlocks = async (spaceId: string, token: string): Promise<Block[]> => {
+  const response = await api.get(`/admin/spaces/${spaceId}/blocks`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data.blocks || [];
+};
+
+export const createSpaceBlock = async (spaceId: string, block: Block, token: string): Promise<Block> => {
+  const response = await api.post(`/admin/spaces/${spaceId}/blocks`, block, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data.block;
+};
+
+export const deleteSpaceBlock = async (spaceId: string, id: string, token: string): Promise<void> => {
+  await api.delete(`/admin/spaces/${spaceId}/blocks/${id}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+};
+
+// Disponibilidad pública de un espacio (facilities: quincho/sede/piscina)
+export const getSpaceAvailability = async (spaceId: string, date: string) => {
+  const response = await api.get(`/spaces/${spaceId}/availability`, {
+    params: { date },
+  });
+  return response.data?.data;
+};
+
+export const getSpaceAvailabilityRange = async (spaceId: string, from: string, to: string) => {
+  const response = await api.get(`/spaces/${spaceId}/availability`, {
+    params: { from, to },
+  });
+  return response.data?.data as Record<string, { closed: boolean; blocked: boolean; has_rules: boolean }>;
 };
 
 // Recurring Reservation API

@@ -5,6 +5,8 @@ import { SportCenter, Court, CourtWithSchedule, Booking, BookingDTO, RecurringRe
 import api from '../api/axiosInstance';
 import { getUserCancelledBookings, createRecurringReservation as createRecurringApi, cancelRecurringReservation as cancelRecurringApi, cancelRecurringDate as cancelRecurringDateApi, getRecurringReservationsByCenter } from '../api/bookingApi';
 import { mapBooking } from '../mapper/mapBooking';
+import { format, addDays } from 'date-fns';
+import { normalizeCoordinates } from '../utils/geo';
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1759210720456-c9814f721479?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvdXRkb29yJTIwc29jY2VyJTIwZmllbGQlMjBuaWdodCUyMGxpZ2h0c3xlbnwxfHx8fDE3NzQ4OTgwODd8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
 
@@ -22,6 +24,8 @@ interface BookingState {
   isLoading: boolean;
   error: string | null;
   adminCourts: any[];
+  adminFacilities: any[];
+  adminSpaces: any[];
   adminDashboardData: any | null;
   recurringSeries: any[];
   sportCenterBySlug: SportCenter | null;
@@ -30,11 +34,12 @@ interface BookingState {
 
 
   // Actions
-  fetchSportCenters: (filters?: { page?: number; limit?: number; name?: string; city?: string; date?: string; hour?: number }) => Promise<void>;
+  fetchSportCenters: (filters?: { page?: number; limit?: number; name?: string; city?: string; date?: string; hour?: number; lat?: number; lng?: number }) => Promise<void>;
   fetchCities: () => Promise<string[]>;
   fetchCourts: () => Promise<void>;
   fetchSchedules: (centerId: string, date?: string) => Promise<void>;
   fetchAdminSchedules: (centerId: string, date: string | undefined, getToken: (options?: any) => Promise<string>) => Promise<any[]>;
+  fetchAdminSchedulesRange: (centerId: string, from: string, to: string, getToken: (options?: any) => Promise<string>) => Promise<Record<string, any[]> | null>;
   fetchMyBookings: (getToken: (options?: any) => Promise<string>, isOld?: boolean) => Promise<void>;
   fetchCancelledBookings: (getToken: (options?: any) => Promise<string>, page?: number, limit?: number) => Promise<any[]>;
   fetchConfirmedCount: (getToken: (options?: any) => Promise<string>) => Promise<number>;
@@ -47,6 +52,14 @@ interface BookingState {
   setSelectedCenterId: (id: string | null) => void;
   initialize: () => Promise<void>;
   fetchAdminCourts: (getToken: (options?: any) => Promise<string>) => Promise<void>;
+  fetchAdminFacilities: (getToken: (options?: any) => Promise<string>) => Promise<void>;
+  fetchAdminSpaces: (getToken: (options?: any) => Promise<string>) => Promise<void>;
+  createAdminSpace: (spaceData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
+  updateAdminSpace: (spaceId: string, spaceData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
+  deleteAdminSpace: (spaceId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  createAdminFacility: (facilityData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
+  updateAdminFacility: (facilityId: string, facilityData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
+  deleteAdminFacility: (facilityId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchAdminDashboard: (getToken: (options?: any) => Promise<string>, page?: number, limit?: number, date?: string, name?: string, code?: string, status?: string) => Promise<void>;
   fetchRecurringSeries: (getToken: (options?: any) => Promise<string>) => Promise<void>;
   createAdminCourt: (courtData: any, getToken: (options?: any) => Promise<string>) => Promise<any>;
@@ -63,7 +76,7 @@ interface BookingState {
   deleteSeries: (seriesId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchSportCenterBySlug: (slug: string) => Promise<SportCenter | null>;
   updateSportCenter: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
-  updateSportCenterSettings: (id: string, settingsData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; image_url?: string }, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  updateSportCenterSettings: (id: string, centerData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; image_url?: string; marketplace_fee_percent?: number; is_featured?: boolean; address?: string; city?: string; coordinates?: { lat: number; lng: number }; branding?: { name?: string; logo_url?: string; primary_color?: string; primary_dark?: string; accent?: string; nav_bg?: string; hero_gradient?: string } }, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchSportCenterByID: (id: string, getToken: (options?: any) => Promise<string>) => Promise<any>;
   createRecurringReservation: (data: CreateRecurringReservationDTO, getToken: (options?: any) => Promise<string>) => Promise<void>;
   cancelRecurringReservation: (id: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
@@ -120,6 +133,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
   isLoading: false,
   error: null,
   adminCourts: [],
+  adminFacilities: [],
+  adminSpaces: [],
   adminDashboardData: null,
   recurringSeries: [],
   sportCenterBySlug: null,
@@ -352,7 +367,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
-  fetchSportCenters: async (filters?: { page?: number; limit?: number; name?: string; city?: string; date?: string; hour?: number }) => {
+  fetchSportCenters: async (filters?: { page?: number; limit?: number; name?: string; city?: string; date?: string; hour?: number; lat?: number; lng?: number }) => {
     set({ isLoading: true });
     try {
       const params: any = {};
@@ -363,6 +378,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         if (filters.city) params.city = filters.city;
         if (filters.date) params.date = filters.date;
         if (typeof filters.hour === 'number') params.hour = String(filters.hour);
+        if (typeof filters.lat === 'number') params.lat = String(filters.lat);
+        if (typeof filters.lng === 'number') params.lng = String(filters.lng);
       }
 
       let data;
@@ -376,16 +393,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
 
       const centersData = data.data || data;
       const centers: SportCenter[] = centersData.map((c: any) => {
-        // Normalize coordinates: backend might send { lat, lng } or [lng, lat]
-        let coordinates = { lat: -33.5922, lng: -71.6127 };
-        if (c.coordinates) {
-          if (Array.isArray(c.coordinates)) {
-            coordinates = { lat: c.coordinates[1] || -33.5922, lng: c.coordinates[0] || -71.6127 };
-          } else if (typeof c.coordinates === 'object') {
-            coordinates = { lat: c.coordinates.lat ?? c.coordinates[1] ?? -33.5922, lng: c.coordinates.lng ?? c.coordinates[0] ?? -71.6127 };
-          }
-        }
-
         // Preserve original backend fields (availableHours, available_dates, city, etc.)
         // while normalizing a few known fields used across the UI.
         return {
@@ -403,7 +410,9 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         partialPaymentEnabled: c.partial_payment_enabled,
         partialPaymentPercent: c.partial_payment_percent,
           services: c.services || [],
-          coordinates
+          isFeatured: c.is_featured,
+          distanceKm: c.distance_km ?? (c.distance != null ? c.distance / 1000 : undefined),
+          coordinates: normalizeCoordinates(c.coordinates)
         } as SportCenter;
       });
 
@@ -442,22 +451,23 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     set({ isLoading: true });
     try {
       const { data } = await api.get(`/sport-centers/slug/${slug}`);
-      const c = data;
+      const c = data.center || data;
       const center: SportCenter = {
         id: c.id || c._id,
         name: c.name,
         slug: c.slug,
+        city: c.city,
         location: c.address,
         address: c.address,
         courts: c.courts ?? c.courts_count ?? (Array.isArray(c.courts) ? c.courts.length : undefined),
         contact: c.contact || { phone: '', email: '' }, 
-        image: c.image || FALLBACK_IMAGE,
+        image: c.image_url || c.image || FALLBACK_IMAGE,
         cancellationHours: c.cancellation_hours,
         retentionPercent: c.retention_percent,
         partialPaymentEnabled: c.partial_payment_enabled,
         partialPaymentPercent: c.partial_payment_percent,
         services: c.services || [],
-        coordinates: c.coordinates || { lat: 0, lng: 0 }
+        coordinates: normalizeCoordinates(c.coordinates)
       };
       set({ sportCenterBySlug: center, selectedCenterId: center.id, error: null });
       return center;
@@ -494,7 +504,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
-  updateSportCenterSettings: async (id: string, settingsData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; image_url?: string }, getToken: (options?: any) => Promise<string>) => {
+  updateSportCenterSettings: async (id: string, settingsData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; image_url?: string; marketplace_fee_percent?: number; is_featured?: boolean; address?: string; city?: string; coordinates?: { lat: number; lng: number }; branding?: { name?: string; logo_url?: string; primary_color?: string; primary_dark?: string; accent?: string; nav_bg?: string; hero_gradient?: string } }, getToken: (options?: any) => Promise<string>) => {
     set({ isLoading: true });
     try {
       const token = await getToken({
@@ -509,7 +519,13 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       if (settingsData.retention_percent !== undefined) filteredData.retention_percent = settingsData.retention_percent;
       if (settingsData.partialPaymentEnabled !== undefined) filteredData.partial_payment_enabled = settingsData.partialPaymentEnabled;
       if (settingsData.partialPaymentPercent !== undefined) filteredData.partial_payment_percent = settingsData.partialPaymentPercent;
+      if (settingsData.marketplace_fee_percent !== undefined) filteredData.marketplace_fee_percent = settingsData.marketplace_fee_percent;
+      if (settingsData.is_featured !== undefined) filteredData.is_featured = settingsData.is_featured;
       if (settingsData.slug) filteredData.slug = settingsData.slug;
+      if (settingsData.address !== undefined) filteredData.address = settingsData.address;
+      if (settingsData.city !== undefined) filteredData.city = settingsData.city;
+      if (settingsData.coordinates !== undefined && settingsData.coordinates.lat !== 0 && settingsData.coordinates.lng !== 0) filteredData.coordinates = settingsData.coordinates;
+      if (settingsData.branding) filteredData.branding = settingsData.branding;
       await api.patch(`/admin/sport-centers/${id}/settings`, filteredData, {
         headers: {
           Authorization: `Bearer ${token}`
@@ -680,6 +696,82 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
+  // Trae los schedules de un rango de fechas en una sola llamada al backend.
+  // Si falla, hace fallback por día usando el endpoint público.
+  fetchAdminSchedulesRange: async (centerId: string, from: string, to: string, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: 'openid profile email'
+        },
+        cacheMode: 'off'
+      });
+
+      const params = new URLSearchParams({ all: 'true', centerId, from, to });
+
+      const { data } = await api.get(`/admin/sport-centers/schedules/bookings?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const entries: Record<string, any[]> = {};
+      (Array.isArray(data) ? data : []).forEach((entry: any) => {
+        entries[entry.date] = (entry.courts || []).map((court: any) => ({
+          ...court,
+          schedule: (court.schedule || []).map((slot: any) => ({
+            ...slot,
+            paymentRequired: slot.payment_required,
+            paymentOptional: slot.payment_optional,
+            partialPaymentEnabled: slot.partial_payment_enabled !== undefined ? slot.partial_payment_enabled : (get().sportCenterBySlug?.partialPaymentEnabled ?? false),
+            customer_name: slot.customer_name,
+            customer_email: slot.customer_email,
+            customer_phone: slot.customer_phone,
+            booking_code: slot.booking_code,
+            isPartialPayment: slot.is_partial_payment,
+            paidAmount: slot.paid_amount,
+            pendingAmount: slot.pending_amount,
+            partialPaymentPaid: slot.partial_payment_paid
+          }))
+        }));
+      });
+
+      set(state => ({
+        weeklySchedules: { ...(state.weeklySchedules || {}), ...entries },
+        error: null
+      }));
+
+      return entries;
+    } catch (err) {
+      console.error('Error fetching admin schedules range:', err);
+      try {
+        const entries: Record<string, any[]> = {};
+        const dates: string[] = [];
+        let d = new Date(from + 'T00:00:00');
+        const end = new Date(to + 'T00:00:00');
+        while (d <= end) {
+          dates.push(format(d, 'yyyy-MM-dd'));
+          d = addDays(d, 1);
+        }
+        for (const dateStr of dates) {
+          await get().fetchSchedules(centerId, dateStr);
+          entries[dateStr] = get().schedules;
+        }
+        set(state => ({
+          weeklySchedules: { ...(state.weeklySchedules || {}), ...entries },
+          error: null
+        }));
+        return entries;
+      } catch (fallbackErr) {
+        console.error('Fallback error fetching schedules range:', fallbackErr);
+        set({ error: 'Failed to fetch admin schedules range' });
+        return null;
+      }
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
   fetchAdminCourts: async (getToken: (options?: any) => Promise<string>) => {
     set({ isLoading: true });
     try {
@@ -699,6 +791,208 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     } catch (err) {
       console.error("Error fetching admin courts:", err);
       set({ error: 'Failed to fetch admin courts' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  fetchAdminFacilities: async (getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        },
+        cacheMode: 'off'
+      });
+      const { data } = await api.get('/admin/facilities', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ adminFacilities: data.facilities || data.data || [], error: null });
+    } catch (err) {
+      console.error("Error fetching admin facilities:", err);
+      set({ error: 'Failed to fetch admin facilities' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  createAdminFacility: async (facilityData: any, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        },
+        cacheMode: 'off'
+      });
+      const res = await api.post('/admin/facilities', facilityData, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+      return res.data;
+    } catch (err) {
+      console.error("Error creating admin facility:", err);
+      set({ error: 'Failed to create facility' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  updateAdminFacility: async (facilityId: string, facilityData: any, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        },
+        cacheMode: 'off'
+      });
+      const res = await api.put(`/admin/facilities/${facilityId}`, facilityData, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+      return res.data;
+    } catch (err) {
+      console.error("Error updating admin facility:", err);
+      set({ error: 'Failed to update facility' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  deleteAdminFacility: async (facilityId: string, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        },
+        cacheMode: 'off'
+      });
+      await api.delete(`/admin/facilities/${facilityId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+    } catch (err) {
+      console.error("Error deleting admin facility:", err);
+      set({ error: 'Failed to delete facility' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  fetchAdminSpaces: async (getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        },
+        cacheMode: 'off'
+      });
+      const { data } = await api.get('/admin/spaces', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ adminSpaces: data.spaces || data.data || [], error: null });
+    } catch (err) {
+      console.error("Error fetching admin spaces:", err);
+      set({ error: 'Failed to fetch admin spaces' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  createAdminSpace: async (spaceData: any, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        },
+        cacheMode: 'off'
+      });
+      const res = await api.post('/admin/spaces', spaceData, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+      return res.data;
+    } catch (err) {
+      console.error("Error creating admin space:", err);
+      set({ error: 'Failed to create space' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  updateAdminSpace: async (spaceId: string, spaceData: any, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        },
+        cacheMode: 'off'
+      });
+      const res = await api.put(`/admin/spaces/${spaceId}`, spaceData, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+      return res.data;
+    } catch (err) {
+      console.error("Error updating admin space:", err);
+      set({ error: 'Failed to update space' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  deleteAdminSpace: async (spaceId: string, getToken: (options?: any) => Promise<string>) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        },
+        cacheMode: 'off'
+      });
+      await api.delete(`/admin/spaces/${spaceId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+    } catch (err) {
+      console.error("Error deleting admin space:", err);
+      set({ error: 'Failed to delete space' });
+      throw err;
     } finally {
       set({ isLoading: false });
     }

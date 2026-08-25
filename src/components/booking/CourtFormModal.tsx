@@ -199,6 +199,7 @@ const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave,
             onFileSelect={handleFileSelect}
             onRemove={handleRemoveImage}
             hasLocalFile={!!localImageFile}
+            defaultQuery={formData.name ? `cancha ${formData.name}` : 'cancha'}
           />
           <div className="flex gap-3 pt-4">
             <button

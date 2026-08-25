@@ -1,10 +1,11 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { MapPin, Trophy, Car, ShowerHead, ChevronRight, Info, Map, ShieldAlert } from 'lucide-react';
 import { SportCenter } from '../../types';
+import { buildTenantSiteUrl, platformDomain } from '@/utils/host';
 import SportCenterInfoModal from './SportCenterInfoModal';
 import CancellationPolicyModal from './CancellationPolicyModal';
 
@@ -33,6 +34,18 @@ const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index, date, 
   const baseQuery = date && today && date !== today ? `?date=${encodeURIComponent(date)}` : '';
   const dateQuery = baseQuery ? `${baseQuery}&` : '?';
   const fullQuery = additionalParams.toString() ? `${dateQuery}${additionalParams.toString()}` : baseQuery || '';
+
+  // En local el link debe apuntar a {subdomain}.localhost:{puerto}. Como la home es
+  // estática (SSR sin window), el valor inicial coincide con el render del servidor
+  // (dominio público) y tras montar se ajusta al entorno local si corresponde.
+  const [tenantSiteUrl, setTenantSiteUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (center.subdomain) setTenantSiteUrl(buildTenantSiteUrl(center.subdomain));
+  }, [center.subdomain]);
+
+  const bookingUrl = tenantSiteUrl ?? (center.subdomain
+    ? `https://${center.subdomain}.${platformDomain()}`
+    : `/${center.slug}${fullQuery}`);
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -40,7 +53,7 @@ const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index, date, 
       transition={{ delay: index * 0.1 }}
       className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 border border-slate-200 flex flex-col"
     >
-      <Link href={`/${center.slug}/reservar${fullQuery}`} className="no-underline">
+      <Link href={bookingUrl} className="no-underline">
         {/* Image */}
         <div className="relative h-56 overflow-hidden">
           <img
@@ -119,7 +132,7 @@ const SportCenterCard: React.FC<SportCenterCardProps> = ({ center, index, date, 
 
         {/* Price and CTA */}
         <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-auto">
-          <Link href={`/${center.slug}/reservar${fullQuery}`} className="no-underline ml-auto">
+          <Link href={bookingUrl} className="no-underline ml-auto">
             <button className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-all group-hover:gap-3 cursor-pointer">
               Ver más
               <ChevronRight className="w-4 h-4" />

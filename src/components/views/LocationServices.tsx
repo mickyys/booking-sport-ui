@@ -2,9 +2,12 @@
 "use client";
 import React, { useEffect, useState, useRef } from 'react';
 import { MapPin, Info, Car, ShowerHead, Clock, Phone, Mail, Maximize2, Minimize2 } from 'lucide-react';
-// Usamos solo Google Maps ahora (SDK cargado dinámicamente)
+import 'mapbox-gl/dist/mapbox-gl.css';
 import { useBookingStore } from '@/store/useBookingStore';
 import { SportCenter } from '@/types';
+import { useUserLocation } from '@/hooks/useUserLocation';
+
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
 interface LocationServicesProps {
     selectedCenter?: string | null;
@@ -17,54 +20,53 @@ export const LocationServices: React.FC<LocationServicesProps> = ({ selectedCent
 
     const mapContainerRef = useRef<HTMLDivElement | null>(null);
     const [isFullScreen, setIsFullScreen] = useState(false);
-    const googleMapRef = useRef<any | null>(null);
-    const googleMarkerRef = useRef<any | null>(null);
+    const mapboxglRef = useRef<any | null>(null);
+    const mapRef = useRef<any | null>(null);
+    const centerMarkerRef = useRef<any | null>(null);
+    const userMarkerRef = useRef<any | null>(null);
+    const geoFetchedRef = useRef(false);
+    const mapInitStartedRef = useRef(false);
+    const sportCenterRef = useRef<SportCenter | undefined>(undefined);
+    const { coords, status } = useUserLocation();
 
-    // Load Google Maps SDK dynamically
-    const loadGoogleMaps = (apiKey: string) => {
-        return new Promise<void>((resolve, reject) => {
-            if ((window as any).google && (window as any).google.maps) return resolve();
-            const existing = document.querySelector(`script[data-google-maps]`);
-            if (existing) {
-                existing.addEventListener('load', () => resolve());
-                existing.addEventListener('error', () => reject(new Error('Failed to load Google Maps')));
-                return;
-            }
-            const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
-            script.async = true;
-            script.defer = true;
-            script.setAttribute('data-google-maps', 'true');
-            script.onload = () => resolve();
-            script.onerror = () => reject(new Error('Failed to load Google Maps'));
-            document.head.appendChild(script);
-        });
+    useEffect(() => {
+        sportCenterRef.current = sportCenter;
+    }, [sportCenter]);
+
+    const getDefaultCenter = (): [number, number] => {
+        const sc = sportCenterRef.current;
+        if (sc?.coordinates) return [sc.coordinates.lng, sc.coordinates.lat];
+        return [-71.6127, -33.5922]; // Santiago
     };
 
-    const initGoogleMap = async () => {
-        const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-        if (!key) {
-            console.warn('VITE_GOOGLE_MAPS_API_KEY not set');
+    // Inicializa el mapa de Mapbox una sola vez.
+    const initMapbox = async () => {
+        if (mapInitStartedRef.current) return;
+        mapInitStartedRef.current = true;
+        if (!MAPBOX_TOKEN) {
+            console.warn('NEXT_PUBLIC_MAPBOX_TOKEN not set');
             return;
         }
         try {
-            await loadGoogleMaps(key);
-            if (!mapContainerRef.current) return;
-            const center = sportCenter?.coordinates ? { lat: sportCenter.coordinates.lat, lng: sportCenter.coordinates.lng } : { lat: -33.5922, lng: -71.6127 };
-            const google = (window as any).google;
-            googleMapRef.current = new google.maps.Map(mapContainerRef.current, {
+            const mod = await import('mapbox-gl');
+            const mapboxgl = mod.default || mod;
+            mapboxgl.accessToken = MAPBOX_TOKEN;
+            if (!mapContainerRef.current || mapRef.current) return;
+            mapboxglRef.current = mapboxgl;
+            const center = getDefaultCenter();
+            mapRef.current = new mapboxgl.Map({
+                container: mapContainerRef.current,
+                style: 'mapbox://styles/mapbox/streets-v12',
                 center,
                 zoom: 15,
-                disableDefaultUI: false
             });
-            if (googleMarkerRef.current) googleMarkerRef.current.setMap(null);
-            googleMarkerRef.current = new google.maps.Marker({ position: center, map: googleMapRef.current });
+            centerMarkerRef.current = new mapboxgl.Marker({ color: '#10b981' })
+                .setLngLat(center)
+                .addTo(mapRef.current);
         } catch (err) {
-            console.error('Google Maps init error', err);
+            console.error('Mapbox init error', err);
         }
     };
-
-    // initMapLibre removed — ahora usamos exclusivamente Google Maps
 
     useEffect(() => {
         const onFsChange = () => setIsFullScreen(Boolean(document.fullscreenElement));
@@ -87,19 +89,47 @@ export const LocationServices: React.FC<LocationServicesProps> = ({ selectedCent
             setSelectedCenterId(sportCenters[0].id);
         }
 
-        // init Google Maps once when container is available
-        if (mapContainerRef.current && !googleMapRef.current) {
-            initGoogleMap();
+        // init Mapbox once when container is available
+        if (mapContainerRef.current && !mapRef.current) {
+            initMapbox();
         }
 
         return () => {
-            // cleanup google maps
-            try { if (googleMarkerRef.current) googleMarkerRef.current.setMap(null); } catch (e) {}
-            googleMarkerRef.current = null;
-            try { if (googleMapRef.current) googleMapRef.current = null; } catch (e) {}
+            // cleanup mapbox on unmount
+            try { if (centerMarkerRef.current) centerMarkerRef.current.remove(); } catch (e) {}
+            centerMarkerRef.current = null;
+            try { if (userMarkerRef.current) userMarkerRef.current.remove(); } catch (e) {}
+            userMarkerRef.current = null;
+            try { if (mapRef.current) mapRef.current.remove(); } catch (e) {}
+            mapRef.current = null;
+            mapInitStartedRef.current = false;
+            mapboxglRef.current = null;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sportCenters]);
+
+    // Cuando se obtiene la geolocalización, reordenar los centros por cercanía
+    // (el backend prioriza destacados de la ciudad y luego distancia).
+    useEffect(() => {
+        if (!coords || geoFetchedRef.current) return;
+        geoFetchedRef.current = true;
+        fetchSportCenters({ lat: coords.lat, lng: coords.lng });
+    }, [coords, fetchSportCenters]);
+
+    // Marcar la ubicación del usuario en el mapa.
+    useEffect(() => {
+        const mapboxgl = mapboxglRef.current;
+        const map = mapRef.current;
+        if (!mapboxgl || !map || !coords) return;
+        if (userMarkerRef.current) userMarkerRef.current.remove();
+        userMarkerRef.current = new mapboxgl.Marker({ color: '#2563eb' })
+            .setLngLat([coords.lng, coords.lat])
+            .addTo(map);
+        return () => {
+            try { if (userMarkerRef.current) userMarkerRef.current.remove(); } catch (e) {}
+            userMarkerRef.current = null;
+        };
+    }, [coords, sportCenter]);
 
     // sincronizar sportCenter local con selectedCenterId del store
     useEffect(() => {
@@ -114,28 +144,29 @@ export const LocationServices: React.FC<LocationServicesProps> = ({ selectedCent
         }
     }, [selectedCenterId, sportCenters, setSelectedCenterId]);
 
-    // update center when sportCenter changes
+    // Mover el mapa y el marcador al centro seleccionado
     useEffect(() => {
-        const defaultCenter: [number, number] = [-71.6127, -33.5922];
-        const centerArr: [number, number] = sportCenter?.coordinates
-            ? [sportCenter.coordinates.lng, sportCenter.coordinates.lat]
-            : defaultCenter;
-
-        const google = (window as any).google;
-        if (google && googleMapRef.current) {
-            const center = { lat: centerArr[1], lng: centerArr[0] };
-            try { googleMapRef.current.panTo(center); googleMapRef.current.setZoom(15); } catch (e) {}
-            if (googleMarkerRef.current) googleMarkerRef.current.setPosition(center);
-            else googleMarkerRef.current = new google.maps.Marker({ position: center, map: googleMapRef.current });
-        } else {
-            // si no está inicializado, inicializa Google Maps automáticamente
-            initGoogleMap();
-        }
+        const map = mapRef.current;
+        const sc = sportCenterRef.current;
+        if (!map || !sc?.coordinates) return;
+        const center: [number, number] = [sc.coordinates.lng, sc.coordinates.lat];
+        map.flyTo({ center, zoom: 15, essential: true });
+        if (centerMarkerRef.current) centerMarkerRef.current.setLngLat(center);
     }, [sportCenter]);
 
     return (
         <div className="max-w-6xl mx-auto px-4 py-12">
             <h2 className="text-3xl font-bold text-slate-900 mb-4 text-center">Ubicación y Servicios</h2>
+
+            {status === 'loading' && (
+                <p className="text-center text-sm text-slate-500 mb-4">Detectando tu ubicación para ordenar por cercanía...</p>
+            )}
+            {status === 'granted' && coords && (
+                <p className="text-center text-sm text-emerald-600 mb-4">Mostrando centros ordenados por cercanía a tu ubicación</p>
+            )}
+            {(status === 'denied' || status === 'unsupported' || status === 'error') && (
+                <p className="text-center text-sm text-slate-400 mb-4">Mostrando todos los centros</p>
+            )}
 
             {/* Center Selector */}
             <div className="flex flex-wrap justify-center gap-3 mb-8">
@@ -188,6 +219,7 @@ export const LocationServices: React.FC<LocationServicesProps> = ({ selectedCent
                                 }}
                                 className="bg-white text-slate-700 p-2 rounded-full shadow-sm hover:bg-slate-50"
                             >
+                                {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                             </button>
                         </div>
                     </div>

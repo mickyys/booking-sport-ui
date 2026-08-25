@@ -77,6 +77,7 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
           court_id: slot.courtId,
           date: slot.date.toISOString(),
           hour: slot.date.getHours(),
+          minutes: slot.date.getMinutes(),
           guest_details: guestDetails,
           user_id: user?.id,
           partial: payPartial,

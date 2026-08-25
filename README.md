@@ -64,6 +64,9 @@ NEXT_PUBLIC_AUTH0_CLIENT_ID=your-client-id
 NEXT_PUBLIC_APP_AUTH0_AUDIENCE=your-api-audience
 NEXT_PUBLIC_AUTHO_ROL_CLAIM=https://yourdomain.cl/roles
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=your-turnstile-site-key
+
+# Unsplash (server-side, para el buscador de imágenes de espacios)
+UNSPLASH_ACCESS_KEY=your-unsplash-access-key
 ```
 
 ### 3. Ejecutar en Desarrollo
