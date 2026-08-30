@@ -58,7 +58,7 @@ interface RecurringSeries {
     court_name?: string;
     hour: number;
     start_date: string;
-    end_date: string;
+    end_date?: string | null;
     total_bookings: number;
     confirmed_bookings: number;
     price: number;
@@ -186,6 +186,27 @@ export const AdminRecurringClients: React.FC = () => {
         } catch (error) {
             toast.error('Error al cancelar');
         }
+    };
+
+    const formatDate = (dateStr?: string | null) => {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return '-';
+        return format(date, 'dd/MM/yyyy', { locale: es });
+    };
+
+    const getItemStartDate = (item: CombinedItem): string => {
+        if (item.type === 'series') {
+            return formatDate((item as RecurringSeries).start_date);
+        }
+        return formatDate((item as RecurringReservation).created_at);
+    };
+
+    const getItemEndDate = (item: CombinedItem): string => {
+        if (item.type === 'series') {
+            return formatDate((item as RecurringSeries).end_date);
+        }
+        return 'Indefinido';
     };
 
     const formatHour = (hour: number, minutes?: number) => `${String(hour).padStart(2, '0')}:${String(minutes ?? 0).padStart(2, '0')}`;
@@ -386,6 +407,8 @@ export const AdminRecurringClients: React.FC = () => {
                                     <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Cancha</th>
                                     <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Día</th>
                                     <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Hora</th>
+                                    <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Inicio</th>
+                                    <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Fin</th>
                                     <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Precio</th>
                                     <th className="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Acciones</th>
                                 </tr>
@@ -421,6 +444,23 @@ export const AdminRecurringClients: React.FC = () => {
                                                 <Clock size={14} />
                                                 {formatHour(item.hour, (item as any).minutes)}
                                             </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="text-slate-900 font-medium">
+                                                {getItemStartDate(item)}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {item.type === 'series' ? (
+                                                <span className="text-slate-900 font-medium">
+                                                    {getItemEndDate(item)}
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">
+                                                    <Repeat size={10} />
+                                                    Indefinido
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <p className="font-bold text-emerald-600">
