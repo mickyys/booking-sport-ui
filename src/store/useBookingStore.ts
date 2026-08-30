@@ -41,7 +41,6 @@ interface BookingState {
   fetchBookingDetail: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<any>;
   fetchBookingByCode: (code: string) => Promise<any>;
   resetCurrentBooking: () => void;
-  createFintocPayment: (bookingData: any) => Promise<string>;
   createMercadoPagoPayment: (bookingData: any) => Promise<{ init_point: string; booking_code: string }>;
   mockConfirmPayment: (code: string, status: string) => Promise<any>;
   cancelBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
@@ -177,8 +176,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         courtName: b.court_name,
         courtId: b.court_id,
         centerId: b.sport_center_id,
-        paymentMethod: b.payment_method || 'fintoc', // Fintoc as default if not coming from backend
-        fintocPaymentIntentId: b.fintoc_payment_intent_id, paidAmount: b.paid_amount,
+        paymentMethod: b.payment_method || 'internal',
+        paidAmount: b.paid_amount,
           pendingAmount: b.pending_amount,
           isPartialPayment: b.is_partial_payment,
           partialPaymentPaid: b.partial_payment_paid,
@@ -268,20 +267,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
 
   resetCurrentBooking: () => {
     set({ currentBooking: null, error: null });
-  },
-
-  createFintocPayment: async (bookingData: any) => {
-    set({ isLoading: true });
-    try {
-      const { data } = await api.post('/bookings/fintoc', bookingData);
-      return data.redirect_url;
-    } catch (err) {
-      console.error("Error creating Fintoc payment:", err);
-      set({ error: 'Failed to initiate payment' });
-      throw err;
-    } finally {
-      set({ isLoading: false });
-    }
   },
 
   createMercadoPagoPayment: async (bookingData: any) => {

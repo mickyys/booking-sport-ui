@@ -11,7 +11,7 @@ Este proyecto utiliza **Next.js**, **React 19**, **Tailwind CSS 4** y **Zustand*
 - **UI:** Radix UI / Shadcn UI.
 - **Estado Global:** Zustand (con persistencia).
 - **Autenticación:** Auth0.
-- **Pagos:** Integración con MercadoPago y Fintoc.
+- **Pagos:** Integración con MercadoPago.
 - **Formularios:** React Hook Form + Zod.
 - **Networking:** Axios.
 
@@ -20,7 +20,7 @@ Este proyecto utiliza **Next.js**, **React 19**, **Tailwind CSS 4** y **Zustand*
 ### Para Usuarios (Deportistas)
 - **Búsqueda Avanzada:** Encuentra centros deportivos por nombre, ciudad, fecha y hora.
 - **Reserva en Tiempo Real:** Visualización de disponibilidad de canchas por horas y slots.
-- **Múltiples Métodos de Pago:** Paga tus reservas de forma segura con MercadoPago o Fintoc.
+- **Múltiples Métodos de Pago:** Paga tus reservas de forma segura con MercadoPago.
 - **Mis Reservas:** Panel personal para gestionar reservas actuales, ver historial y cancelar según políticas.
 - **Soporte de Invitados:** Permite realizar reservas rápidas sin cuenta completa (opcional).
 

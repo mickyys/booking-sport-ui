@@ -283,12 +283,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     <td className="px-6 py-4">
                                         <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
                                             booking.payment_method === 'mercadopago' ? 'bg-blue-100 text-blue-700' : 
-                                            booking.payment_method === 'fintoc' ? 'bg-indigo-100 text-indigo-700' : 
                                             booking.payment_method === 'presential' ? 'bg-emerald-100 text-emerald-700' :
                                             'bg-slate-100 text-slate-700'
                                         }`}>
                                             {booking.payment_method === 'mercadopago' ? 'MercadoPago' : 
-                                             booking.payment_method === 'fintoc' ? 'Fintoc' : 
                                              booking.payment_method === 'presential' ? 'Presencial' : 'Interno'}
                                         </span>
                                     </td>
@@ -403,12 +401,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <div className="flex items-center justify-between pt-2">
                                 <span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase ${
                                     booking.payment_method === 'mercadopago' ? 'bg-blue-100 text-blue-700' :
-                                    booking.payment_method === 'fintoc' ? 'bg-indigo-100 text-indigo-700' :
                                     booking.payment_method === 'presential' ? 'bg-emerald-100 text-emerald-700' :
                                     'bg-slate-100 text-slate-700'
                                 }`}>
                                     {booking.payment_method === 'mercadopago' ? 'MercadoPago' :
-                                     booking.payment_method === 'fintoc' ? 'Fintoc' :
                                      booking.payment_method === 'presential' ? 'Presencial' : 'Interno'}
                                 </span>
 

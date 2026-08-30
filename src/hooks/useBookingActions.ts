@@ -7,7 +7,7 @@ import axios from 'axios';
 
 export const useBookingActions = (user: UserProfile | null) => {
   const router = useRouter();
-  const { createMercadoPagoPayment, createFintocPayment, createBooking } = useBookingStore();
+  const { createMercadoPagoPayment, createBooking } = useBookingStore();
   const {
     slots,
     bookings,
@@ -19,7 +19,7 @@ export const useBookingActions = (user: UserProfile | null) => {
     setSelectedSlot,
   } = useBooking(user);
 
-  const handleConfirmBooking = async (method: 'mercadopago' | 'fintoc' | 'venue' | 'presential' | 'cash', guestDetails?: any, partial: boolean = false) => {
+  const handleConfirmBooking = async (method: 'mercadopago' | 'venue' | 'presential' | 'cash', guestDetails?: any, partial: boolean = false) => {
     const getErrorMessage = (error: unknown, fallback: string): string => {
       if (axios.isAxiosError(error) && error.response?.data?.error) {
         return error.response.data.error;
@@ -43,25 +43,6 @@ export const useBookingActions = (user: UserProfile | null) => {
         return true;
       } catch (error) {
         toast.error(getErrorMessage(error, "Error al iniciar el pago con MercadoPago."));
-        throw error;
-      }
-    }
-
-    if (method === 'fintoc' && selectedSlot) {
-      try {
-        const redirect_url = await createFintocPayment({
-          court_id: selectedSlot.courtId,
-          date: selectedSlot.date.toISOString(),
-          hour: selectedSlot.date.getHours(),
-          guest_details: guestDetails,
-          user_id: user?.id,
-        });
-
-        // Redirigir a Fintoc Checkout
-        window.location.href = redirect_url;
-        return true;
-      } catch (error) {
-        toast.error(getErrorMessage(error, "Error al iniciar el pago con Fintoc."));
         throw error;
       }
     }

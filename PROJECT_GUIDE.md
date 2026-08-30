@@ -335,7 +335,7 @@ export interface Booking {
   price: number;
   finalPrice: number;
   status: 'confirmed' | 'cancelled' | 'pending';
-  paymentMethod: 'mercadopago' | 'fintoc' | 'cash';
+  paymentMethod: 'mercadopago' | 'internal' | 'cash';
 }
 
 export interface UserProfile {
