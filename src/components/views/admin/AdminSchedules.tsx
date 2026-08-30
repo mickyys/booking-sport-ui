@@ -1,7 +1,7 @@
 "use client";
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Plus, Trash2, Clock, AlertCircle, X, DollarSign, ChevronDown, ChevronUp, Layers, Calendar } from 'lucide-react';
+import { Save, Plus, Trash2, Clock, AlertCircle, X, DollarSign, ChevronDown, ChevronUp, Layers, Calendar, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import {
     AlertDialog,
@@ -100,6 +100,7 @@ interface AdminSchedulesProps {
     centerDefaultSchedule?: { start_time: string; end_time: string };
     centerScheduleOverrides?: Record<number, { start_time: string; end_time: string }>;
     centerActiveDays?: number[];
+    paymentMode?: string;
 }
 
 export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
@@ -109,7 +110,8 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
     onUpdateScheduleSlot,
     centerDefaultSchedule = { start_time: '19:00', end_time: '20:00' },
     centerScheduleOverrides = {},
-    centerActiveDays = [1, 2, 3, 4, 5, 6]
+    centerActiveDays = [1, 2, 3, 4, 5, 6],
+    paymentMode
 }) => {
     const daysOfWeek = [
         { label: 'Domingo', value: 0 },
@@ -120,6 +122,10 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
         { label: 'Viernes', value: 5 },
         { label: 'Sábado', value: 6 },
     ];
+
+    // El esquema de pago de los horarios está definido por la modalidad
+    // comercial del centro (tipo de suscripción), por lo que no es editable.
+    const paymentsLocked = paymentMode === 'pay_online' || paymentMode === 'pay_at_center';
 
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [slotToDelete, setSlotToDelete] = useState<{ courtId: string, hour: number, minutes: number } | null>(null);
@@ -306,7 +312,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                         minutes: startM,
                         price: courtSettings?.price || 0,
                         enabled: true,
-                        paymentRequired: true,
+                        paymentRequired: paymentMode === 'pay_online',
                         paymentOptional: false,
                         dayOfWeek: courtSettings?.dayOfWeek ?? null
                     });
@@ -323,7 +329,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                             minutes,
                             price: courtSettings?.price || 0,
                             enabled: true,
-                            paymentRequired: true,
+                            paymentRequired: paymentMode === 'pay_online',
                             paymentOptional: false,
                             dayOfWeek: courtSettings?.dayOfWeek ?? null
                         });
@@ -338,7 +344,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                         minutes: endM,
                         price: courtSettings?.price || 0,
                         enabled: true,
-                        paymentRequired: true,
+                        paymentRequired: paymentMode === 'pay_online',
                         paymentOptional: false,
                         dayOfWeek: courtSettings?.dayOfWeek ?? null
                     });
@@ -580,6 +586,14 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                                         />
                                                     </div>
 
+                                                    {/* Payment locked note */}
+                                                    {paymentsLocked && (
+                                                        <div className="flex items-center gap-1.5 px-1 text-[10px] font-medium text-slate-400">
+                                                            <Lock size={11} aria-hidden="true" />
+                                                            El pago lo define la modalidad de tu centro
+                                                        </div>
+                                                    )}
+
                                                     {/* Payment Required Toggle */}
                                                     <div className="flex items-center justify-between px-1">
                                                         <label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Pago Requerido</label>
@@ -589,7 +603,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                                                 checked={slot.paymentRequired}
                                                                 onChange={() => handleTogglePaymentRequired(court.id, slot.hour, slot.minutes || 0)}
                                                                 className="sr-only peer"
-                                                                disabled={!slot.enabled}
+                                                                disabled={!slot.enabled || paymentsLocked}
                                                             />
                                                             <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
                                                         </label>
@@ -606,10 +620,10 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                                         <button
                                                             type="button"
                                                             onClick={() => handleTogglePartialPayment(court.id, slot.hour, slot.minutes || 0)}
-                                                            disabled={!slot.enabled}
+                                                            disabled={!slot.enabled || paymentsLocked}
                                                             className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors focus:outline-none scale-90 ${
                                                                 slot.partialPaymentEnabled === true ? 'bg-blue-500' : 'bg-slate-300'
-                                                            }`}
+                                                            } ${paymentsLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                         >
                                                             <span
                                                                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -628,7 +642,7 @@ export const AdminSchedules: React.FC<AdminSchedulesProps> = ({
                                                                 checked={slot.paymentOptional}
                                                                 onChange={() => handleTogglePaymentOptional(court.id, slot.hour, slot.minutes || 0)}
                                                                 className="sr-only peer"
-                                                                disabled={!slot.enabled || isLoading}
+                                                                disabled={!slot.enabled || isLoading || paymentsLocked}
                                                             />
                                                             <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
                                                         </label>

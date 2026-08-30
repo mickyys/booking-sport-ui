@@ -5,12 +5,14 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useBookingStore } from '@/store/useBookingStore';
+import { useAdminPanel } from '@/context/AdminPanelContext';
 import { AdminSpaceSchedule } from '@/components/views/admin/AdminSpaceSchedule';
 
 export default function SpaceSchedulePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { getAccessTokenSilently } = useAuth0();
+  const { currentSportCenter } = useAdminPanel();
   const adminSpaces = useBookingStore(s => s.adminSpaces);
   const fetchAdminSpaces = useBookingStore(s => s.fetchAdminSpaces);
 
@@ -39,7 +41,12 @@ export default function SpaceSchedulePage() {
       >
         <ArrowLeft size={16} /> Volver a Espacios
       </button>
-      <AdminSpaceSchedule spaceId={space.id} spaceName={space.name} category={space.category} />
+      <AdminSpaceSchedule
+        spaceId={space.id}
+        spaceName={space.name}
+        category={space.category}
+        paymentMode={(currentSportCenter as any)?.payment_mode}
+      />
     </div>
   );
 }

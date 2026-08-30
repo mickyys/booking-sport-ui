@@ -27,7 +27,7 @@ const navItems = [
   { to: '/admin/users', icon: Users, label: 'Usuarios' },
   { to: '/admin/qr', icon: QrCode, label: 'QR' },
   { to: '/admin/settings', icon: Settings, label: 'Configuración' },
-  { to: '/admin/onboarding', icon: Plug, label: 'Integración' },
+  { to: '/admin/onboarding', icon: Plug, label: 'Onboarding' },
 ];
 
 interface AdminSidebarProps {

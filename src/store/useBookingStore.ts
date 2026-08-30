@@ -77,6 +77,7 @@ interface BookingState {
   fetchSportCenterBySlug: (slug: string) => Promise<SportCenter | null>;
   updateSportCenter: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   updateSportCenterSettings: (id: string, centerData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; image_url?: string; marketplace_fee_percent?: number; is_featured?: boolean; address?: string; city?: string; coordinates?: { lat: number; lng: number }; branding?: { name?: string; logo_url?: string; primary_color?: string; primary_dark?: string; accent?: string; nav_bg?: string; hero_gradient?: string } }, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  updateSportCenterOnboarding: (data: { step?: number; nombre?: string; rut?: string; email?: string; direccion?: string; telefono?: string; templates?: { tipo: string; cantidad: number; cancha?: boolean; rules?: any[]; price_all_day?: number; price_half_day?: number; price_per_day?: number; price_per_month?: number }[]; payment_mode?: string; image_url?: string; first_month_free?: boolean; finalize?: boolean }, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchSportCenterByID: (id: string, getToken: (options?: any) => Promise<string>) => Promise<any>;
   createRecurringReservation: (data: CreateRecurringReservationDTO, getToken: (options?: any) => Promise<string>) => Promise<void>;
   cancelRecurringReservation: (id: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
@@ -392,7 +393,9 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       }
 
       const centersData = data.data || data;
-      const centers: SportCenter[] = centersData.map((c: any) => {
+      const centers: SportCenter[] = centersData
+        .filter((c: any) => c.onboarding_status !== 'pending')
+        .map((c: any) => {
         // Preserve original backend fields (availableHours, available_dates, city, etc.)
         // while normalizing a few known fields used across the UI.
         return {
@@ -541,6 +544,29 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
+  updateSportCenterOnboarding: async (data, getToken) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        }
+      });
+      await api.put('/admin/my-sport-center/onboarding', data, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+    } catch (err) {
+      console.error("Error updating onboarding:", err);
+      set({ error: 'Failed to update onboarding' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
   fetchSportCenterByID: async (id: string, getToken: (options?: any) => Promise<string>) => {
     try {
       const token = await getToken({
@@ -549,10 +575,10 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           scope: "openid profile email"
         }
       });
-      
+
       // Si el ID es especial o estamos en admin, podemos usar el nuevo endpoint
       const url = id === 'my' || !id ? `/admin/my-sport-center` : `/admin/sport-centers/${id}`;
-      
+
       const response = await api.get(url, {
         headers: {
           Authorization: `Bearer ${token}`
@@ -1401,10 +1427,11 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       }));
       set({ error: null });
       toast.success('Reserva semanal creada con éxito');
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error creating recurring reservation:", err);
       set({ error: 'Failed to create recurring reservation' });
-      toast.error('Error al crear reserva semanal');
+      const serverMessage = err?.response?.data?.error;
+      toast.error(serverMessage || 'Error al crear reserva semanal');
       throw err;
     } finally {
       set({ isLoading: false });
@@ -1479,9 +1506,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
   }),
   {
     name: 'booking-store',
+    version: 2,
     partialize: (state: BookingState) => ({
-      sportCenters: state.sportCenters,
-      courts: state.courts,
       selectedCenterId: state.selectedCenterId,
       apiUrl: state.apiUrl,
     }),

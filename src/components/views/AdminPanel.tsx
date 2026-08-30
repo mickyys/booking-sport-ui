@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useBookingStore } from '@/store/useBookingStore';
 
 import { AdminDashboard } from './admin/AdminDashboard';
@@ -32,6 +32,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ children }) => {
 
 const AdminPanelContent: React.FC<AdminPanelProps> = ({ children }) => {
     const { currentSportCenter } = useAdminPanel();
+    const router = useRouter();
+    const pathname = usePathname();
+
+    // Wizard post-login: mientras el centro esté en "pending", el admin debe
+    // completar la configuración antes de usar el resto del panel.
+    React.useEffect(() => {
+        const status = (currentSportCenter as any)?.onboarding_status;
+        if (!currentSportCenter) return;
+        if (status === 'pending' && pathname !== '/admin/onboarding') {
+            router.replace('/admin/onboarding');
+        }
+    }, [currentSportCenter, pathname, router]);
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
@@ -155,7 +167,7 @@ export const AdminCourtsSubPage: React.FC = () => {
 };
 
 export const AdminSchedulesSubPage: React.FC = () => {
-    const { courts, schedules, onUpdateSchedule, onUpdateScheduleSlot, centerDefaultSchedule, centerScheduleOverrides, centerActiveDays } = useAdminPanel();
+    const { courts, schedules, onUpdateSchedule, onUpdateScheduleSlot, centerDefaultSchedule, centerScheduleOverrides, centerActiveDays, currentSportCenter } = useAdminPanel();
     return (
         <AdminSchedules 
             courts={courts} 
@@ -165,6 +177,7 @@ export const AdminSchedulesSubPage: React.FC = () => {
             centerDefaultSchedule={centerDefaultSchedule}
             centerScheduleOverrides={centerScheduleOverrides}
             centerActiveDays={centerActiveDays}
+            paymentMode={(currentSportCenter as any)?.payment_mode}
         />
     );
 };

@@ -20,18 +20,44 @@ const DAY_SHORT = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'];
 
 type Tab = 'horarios' | 'excepciones' | 'bloqueos';
 
-const emptySlot = (): ScheduleRuleSlot => ({
+const emptySlot = (paymentMode?: string): ScheduleRuleSlot => ({
   start_time: '09:00',
   end_time: '10:00',
   price: 0,
-  payment_required: true,
+  payment_required: paymentMode === 'pay_online',
   payment_optional: false,
   partial_payment_enabled: false,
 });
 
 const toDateInput = (iso: string) => (iso || '').slice(0, 10);
 
-function SlotsEditor({ slots, onChange, hidePrice }: { slots: ScheduleRuleSlot[]; onChange: (s: ScheduleRuleSlot[]) => void; hidePrice?: boolean }) {
+// Asegura que cada día pertenezca a una sola regla: si un día está en varias,
+// se conserva en la regla más específica (menos días; empate → la primera),
+// replicando la prioridad "más específica gana" del backend.
+function normalizeRules(rules: ScheduleRule[]): ScheduleRule[] {
+  const working = rules.map(r => ({ ...r, days_of_week: [...r.days_of_week] }));
+  const spec = rules.map(r => r.days_of_week.length);
+  for (let d = 0; d < 7; d++) {
+    const owners: number[] = [];
+    working.forEach((r, i) => {
+      if (r.days_of_week.includes(d)) owners.push(i);
+    });
+    if (owners.length <= 1) continue;
+    owners.sort((a, b) => (spec[a] - spec[b]) || (a - b));
+    for (const i of owners.slice(1)) {
+      working[i].days_of_week = working[i].days_of_week.filter(x => x !== d);
+    }
+  }
+  return working;
+}
+
+function SlotsEditor({ slots, onChange, hidePrice, lockPayment = false, paymentMode }: {
+  slots: ScheduleRuleSlot[];
+  onChange: (s: ScheduleRuleSlot[]) => void;
+  hidePrice?: boolean;
+  lockPayment?: boolean;
+  paymentMode?: string;
+}) {
   const update = (i: number, patch: Partial<ScheduleRuleSlot>) => {
     onChange(slots.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
   };
@@ -51,6 +77,11 @@ function SlotsEditor({ slots, onChange, hidePrice }: { slots: ScheduleRuleSlot[]
       </div>
       {slots.length === 0 && (
         <p className="text-sm text-slate-400 italic">Sin franjas configuradas</p>
+      )}
+      {lockPayment && (
+        <p className="text-[11px] font-medium text-slate-400 italic flex items-center gap-1 px-3">
+          🔒 El pago lo define la modalidad de tu centro (tipo de suscripción) y no es editable por franja.
+        </p>
       )}
       {slots.map((s, i) => (
         <div key={i} className="grid grid-cols-12 gap-2 items-center bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
@@ -82,17 +113,17 @@ function SlotsEditor({ slots, onChange, hidePrice }: { slots: ScheduleRuleSlot[]
           )}
           <div className={`${paySpan} flex items-center gap-2 text-[10px] font-bold text-slate-500`}>
             <label className="flex items-center gap-1 cursor-pointer">
-              <input type="checkbox" checked={!!s.payment_required}
+              <input type="checkbox" checked={!!s.payment_required} disabled={lockPayment}
                 onChange={e => update(i, { payment_required: e.target.checked, payment_optional: e.target.checked ? false : s.payment_optional })} />
               Requerido
             </label>
             <label className="flex items-center gap-1 cursor-pointer">
-              <input type="checkbox" checked={!!s.payment_optional}
+              <input type="checkbox" checked={!!s.payment_optional} disabled={lockPayment}
                 onChange={e => update(i, { payment_optional: e.target.checked, payment_required: e.target.checked ? false : s.payment_required })} />
               Opcional
             </label>
             <label className="flex items-center gap-1 cursor-pointer">
-              <input type="checkbox" checked={!!s.partial_payment_enabled}
+              <input type="checkbox" checked={!!s.partial_payment_enabled} disabled={lockPayment}
                 onChange={e => update(i, { partial_payment_enabled: e.target.checked })} />
               Abono
             </label>
@@ -106,7 +137,7 @@ function SlotsEditor({ slots, onChange, hidePrice }: { slots: ScheduleRuleSlot[]
         </div>
       ))}
       <button
-        onClick={() => onChange([...slots, emptySlot()])}
+        onClick={() => onChange([...slots, emptySlot(paymentMode)])}
         className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700"
       >
         <Plus size={14} /> Agregar franja
@@ -119,14 +150,18 @@ interface AdminSpaceScheduleProps {
   spaceId: string;
   spaceName?: string;
   category?: string;
+  paymentMode?: string;
 }
 
-export const AdminSpaceSchedule: React.FC<AdminSpaceScheduleProps> = ({ spaceId, spaceName, category }) => {
+export const AdminSpaceSchedule: React.FC<AdminSpaceScheduleProps> = ({ spaceId, spaceName, category, paymentMode }) => {
   const { getAccessTokenSilently } = useAuth0();
 
   const isCancha = !category || category === 'cancha';
   const isQuincho = category === 'quincho';
   const isFullDay = category === 'sede' || category === 'piscina';
+
+  // El esquema de pago está determinado por la modalidad comercial del centro.
+  const paymentsLocked = paymentMode === 'pay_online' || paymentMode === 'pay_at_center';
 
   const [tab, setTab] = useState<Tab>('horarios');
   const [loading, setLoading] = useState(true);
@@ -184,7 +219,11 @@ export const AdminSpaceSchedule: React.FC<AdminSpaceScheduleProps> = ({ spaceId,
     setSaving(true);
     try {
       const token = await getToken();
-      const saved = await saveSpaceSchedule(spaceId, rules, token);
+      const normalized = normalizeRules(rules);
+      if (JSON.stringify(normalized.map(r => r.days_of_week)) !== JSON.stringify(rules.map(r => r.days_of_week))) {
+        toast.info('Días compartidos entre reglas se asignaron a la regla más específica para evitar solapes');
+      }
+      const saved = await saveSpaceSchedule(spaceId, normalized, token);
       setRules(saved);
       toast.success('Horarios guardados correctamente');
     } catch (err: any) {
@@ -196,16 +235,23 @@ export const AdminSpaceSchedule: React.FC<AdminSpaceScheduleProps> = ({ spaceId,
   };
 
   const toggleRuleDay = (ruleIdx: number, day: number) => {
-    setRules(prev => prev.map((r, idx) => {
-      if (idx !== ruleIdx) return r;
-      const has = r.days_of_week.includes(day);
-      const days = has ? r.days_of_week.filter(d => d !== day) : [...r.days_of_week, day];
-      return { ...r, days_of_week: days };
-    }));
+    setRules(prev => {
+      const target = prev[ruleIdx];
+      const has = target.days_of_week.includes(day);
+      if (has) {
+        return prev.map((r, idx) =>
+          idx === ruleIdx ? { ...r, days_of_week: r.days_of_week.filter(d => d !== day) } : r,
+        );
+      }
+      return prev.map((r, idx) => {
+        if (idx === ruleIdx) return { ...r, days_of_week: [...r.days_of_week, day] };
+        return { ...r, days_of_week: r.days_of_week.filter(d => d !== day) };
+      });
+    });
   };
 
   const addRule = () => {
-    setRules(prev => [...prev, { days_of_week: [1], slots: [emptySlot()], active: true }]);
+    setRules(prev => [...prev, { days_of_week: [1], slots: [emptySlot(paymentMode)], active: true }]);
   };
 
   const removeRule = (idx: number) => {
@@ -460,7 +506,7 @@ export const AdminSpaceSchedule: React.FC<AdminSpaceScheduleProps> = ({ spaceId,
                   </div>
                 )}
 
-                <SlotsEditor hidePrice={!isCancha} slots={rule.slots} onChange={slots => updateRuleSlots(idx, slots)} />
+                <SlotsEditor hidePrice={!isCancha} lockPayment={paymentsLocked} paymentMode={paymentMode} slots={rule.slots} onChange={slots => updateRuleSlots(idx, slots)} />
               </div>
             ))}
 
@@ -518,6 +564,8 @@ export const AdminSpaceSchedule: React.FC<AdminSpaceScheduleProps> = ({ spaceId,
                 <div>
                   <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Franjas del horario especial</label>
                   <SlotsEditor
+                    lockPayment={paymentsLocked}
+                    paymentMode={paymentMode}
                     slots={exDraft.slots || []}
                     onChange={slots => setExDraft({ ...exDraft, slots })}
                   />

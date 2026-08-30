@@ -28,6 +28,7 @@ interface AdminPanelContextType {
     onUpdateSchedule: (schedule: any) => Promise<void>;
     onUpdateScheduleSlot: (courtId: string, slot: any) => Promise<void>;
     currentSportCenter: any;
+    refreshSportCenter: () => Promise<void>;
     isRefreshing: boolean;
     setIsRefreshing: (val: boolean) => void;
     fetchAdminDashboard: any;
@@ -81,6 +82,11 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
             fetchAdminSpaces(getAccessTokenSilently);
         }
     }, []);
+
+    const refreshSportCenter = React.useCallback(async () => {
+        const center = await fetchSportCenterByID('my', getAccessTokenSilently);
+        if (center) setLoadedSportCenter(center);
+    }, [fetchSportCenterByID, getAccessTokenSilently]);
 
     const backendCourts = React.useMemo(() => adminCourts ? adminCourts.flatMap((ac: any) => ac.courts?.map((c: any) => ({
         ...c,
@@ -204,6 +210,7 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
         onUpdateSchedule,
         onUpdateScheduleSlot,
         currentSportCenter,
+        refreshSportCenter,
         isRefreshing,
         setIsRefreshing,
         fetchAdminDashboard,
@@ -228,6 +235,7 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
         onUpdateSchedule,
         onUpdateScheduleSlot,
         currentSportCenter,
+        refreshSportCenter,
         isRefreshing,
         fetchAdminDashboard,
         centerDefaultSchedule,

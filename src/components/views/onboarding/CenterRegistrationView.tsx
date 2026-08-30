@@ -37,16 +37,6 @@ import { cleanRUT, formatRUT, validateRUT } from '@/utils/rut';
 import { generateSlug } from '@/utils/slug';
 import { buildTenantSiteUrl, platformDomain } from '@/utils/host';
 
-const TIPO_ESPACIO = ['cancha', 'quincho', 'sede', 'piscina'] as const;
-type TipoEspacio = (typeof TIPO_ESPACIO)[number];
-
-const TIPO_ESPACIO_LABELS: Record<TipoEspacio, string> = {
-    cancha: 'Cancha',
-    quincho: 'Quincho',
-    sede: 'Sede',
-    piscina: 'Piscina',
-};
-
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 const ADDRESS_MIN_QUERY_LENGTH = 4;
 const SUGGESTIONS_DEBOUNCE_MS = 300;
@@ -87,7 +77,6 @@ interface OnboardRequest {
     nombre: string;
     rut: string;
     direccion: string;
-    tipo_espacios: TipoEspacio[];
     email: string;
     slug?: string;
     ciudad?: string;
@@ -129,9 +118,6 @@ const centerRegistrationSchema = z.object({
             },
             'Ingresa un RUT válido (ej: 12.345.678-5)',
         ),
-    tipo_espacios: z
-        .array(z.enum(TIPO_ESPACIO))
-        .min(1, 'Selecciona al menos un tipo de espacio'),
     direccion: z.string().min(1, 'La dirección es requerida'),
     slug: z.string().optional(),
     clave: z.string().optional(),
@@ -208,7 +194,6 @@ export const CenterRegistrationView: React.FC = () => {
         defaultValues: {
             nombre: '',
             rut: '',
-            tipo_espacios: [],
             direccion: '',
             slug: '',
             clave: '',
@@ -456,7 +441,6 @@ export const CenterRegistrationView: React.FC = () => {
                 nombre: values.nombre.trim(),
                 rut: cleanRUT(values.rut),
                 direccion: direccionTrim,
-                tipo_espacios: values.tipo_espacios,
                 email: normalizeEmail(email),
                 ciudad: city,
                 latitud: selection.lat,
@@ -556,7 +540,6 @@ export const CenterRegistrationView: React.FC = () => {
         form.reset({
             nombre: '',
             rut: '',
-            tipo_espacios: [],
             direccion: '',
             slug: '',
             clave: '',
@@ -927,67 +910,6 @@ export const CenterRegistrationView: React.FC = () => {
                                         )}
                                     />
                                 )}
-
-                                <FormField
-                                    control={form.control}
-                                    name="tipo_espacios"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="font-semibold text-slate-700">
-                                                Tipo(s) de espacio
-                                                <span
-                                                    aria-hidden="true"
-                                                    className="text-red-500"
-                                                >
-                                                    *
-                                                </span>
-                                            </FormLabel>
-                                            <FormControl>
-                                                <div
-                                                    role="group"
-                                                    aria-label="Tipo(s) de espacio"
-                                                    className="flex flex-wrap gap-2"
-                                                >
-                                                    {TIPO_ESPACIO.map((tipo) => {
-                                                        const selected =
-                                                            field.value.includes(tipo);
-                                                        return (
-                                                            <button
-                                                                key={tipo}
-                                                                type="button"
-                                                                aria-pressed={selected}
-                                                                onClick={() => {
-                                                                    const next = selected
-                                                                        ? field.value.filter(
-                                                                              (t) => t !== tipo,
-                                                                          )
-                                                                        : [
-                                                                              ...field.value,
-                                                                              tipo,
-                                                                          ];
-                                                                    field.onChange(next);
-                                                                }}
-                                                                className={cn(
-                                                                    'h-11 rounded-full border px-5 text-sm font-semibold transition-colors active:scale-[0.98]',
-                                                                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2',
-                                                                    selected
-                                                                        ? 'border-emerald-600 bg-emerald-600 text-white'
-                                                                        : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400',
-                                                                )}
-                                                            >
-                                                                {TIPO_ESPACIO_LABELS[tipo]}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </FormControl>
-                                            <FormDescription>
-                                                Puedes seleccionar varios
-                                            </FormDescription>
-                                            <FieldError />
-                                        </FormItem>
-                                    )}
-                                />
 
                                 <FormField
                                     control={form.control}

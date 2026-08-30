@@ -1,6 +1,6 @@
 "use client";
-import { OnboardingView } from '@/components/views/admin/OnboardingView';
+import { CenterOnboardingWizard } from '@/components/views/admin/CenterOnboardingWizard';
 
 export default function OnboardingPage() {
-  return <OnboardingView />;
+  return <CenterOnboardingWizard />;
 }
