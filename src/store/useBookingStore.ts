@@ -60,13 +60,13 @@ interface BookingState {
   deleteBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   payBalance: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   undoPayBalance: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
-  deleteSeries: (seriesId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  deleteSeries: (seriesId: string, getToken: (options?: any) => Promise<string>, reason?: string) => Promise<void>;
   fetchSportCenterBySlug: (slug: string) => Promise<SportCenter | null>;
   updateSportCenter: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   updateSportCenterSettings: (id: string, settingsData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; image_url?: string }, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchSportCenterByID: (id: string, getToken: (options?: any) => Promise<string>) => Promise<any>;
   createRecurringReservation: (data: CreateRecurringReservationDTO, getToken: (options?: any) => Promise<string>) => Promise<void>;
-  cancelRecurringReservation: (id: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  cancelRecurringReservation: (id: string, getToken: (options?: any) => Promise<string>, reason?: string) => Promise<void>;
   cancelRecurringDate: (id: string, date: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchRecurringReservationsByCenter: (getToken: (options?: any) => Promise<string>) => Promise<void>;
 }
@@ -328,7 +328,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
-  deleteSeries: async (seriesId: string, getToken: (options?: any) => Promise<string>) => {
+  deleteSeries: async (seriesId: string, getToken: (options?: any) => Promise<string>, reason = '') => {
     set({ isLoading: true });
     try {
       const token = await getToken({
@@ -340,7 +340,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       await api.delete(`/admin/bookings/series/${seriesId}`, {
         headers: {
           Authorization: `Bearer ${token}`
-        }
+        },
+        data: { reason }
       });
       set({ error: null });
     } catch (err) {
@@ -1117,7 +1118,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
-  cancelRecurringReservation: async (id: string, getToken: (options?: any) => Promise<string>) => {
+  cancelRecurringReservation: async (id: string, getToken: (options?: any) => Promise<string>, reason = '') => {
     set({ isLoading: true });
     try {
       await cancelRecurringApi(id, await getToken({
@@ -1126,13 +1127,9 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           scope: "openid profile email"
         },
         cacheMode: 'off'
-      }));
+      }), 'admin', reason);
       set({ error: null });
-      toast.success('Reserva semanal cancelada');
-      // Remove from local state
-      set(state => ({
-        recurringReservations: state.recurringReservations.filter(r => r.id !== id)
-      }));
+      toast.success('Reserva indefinida finalizada');
     } catch (err) {
       console.error("Error cancelling recurring reservation:", err);
       set({ error: 'Failed to cancel recurring reservation' });
