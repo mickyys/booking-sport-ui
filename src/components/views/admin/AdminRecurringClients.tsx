@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Repeat, Phone, Clock, Calendar, X, Trash2, AlertTriangle, CalendarRange, RefreshCw, ChevronRight } from 'lucide-react';
+import { Repeat, Phone, Clock, Calendar, X, Trash2, AlertTriangle, CalendarRange, RefreshCw, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
 import { toast } from 'sonner';
@@ -41,11 +41,12 @@ interface RecurringReservation {
     day_of_week_name?: string;
     price: number;
     notes?: string;
-    status: 'active' | 'cancelled';
+    status: 'active' | 'finished' | 'cancelled';
     cancelled_by?: string;
     cancel_reason?: string;
     created_at: string;
     updated_at: string;
+    finished_at?: string;
     type: 'weekly'; // Indeterminado
 }
 
@@ -64,10 +65,23 @@ interface RecurringSeries {
     price: number;
     created_at: string;
     type: 'series'; // Con semanas definidas
-    status?: 'active' | 'cancelled';
+    status?: 'active' | 'finished' | 'cancelled';
 }
 
 type CombinedItem = RecurringReservation | RecurringSeries;
+
+const isItemFinished = (item: CombinedItem): boolean => {
+    if (item.status === 'finished') return true;
+    if (item.type !== 'series') return false;
+    const endDate = (item as RecurringSeries).end_date;
+    if (!endDate) return false;
+    const end = new Date(endDate);
+    if (isNaN(end.getTime())) return false;
+    const today = new Date();
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    return endOnly <= todayOnly;
+};
 
 export const AdminRecurringClients: React.FC = () => {
     const { getAccessTokenSilently } = useAuth0();
@@ -78,7 +92,6 @@ export const AdminRecurringClients: React.FC = () => {
         fetchRecurringReservationsByCenter,
         fetchRecurringSeries,
         cancelRecurringReservation,
-        cancelRecurringDate,
         deleteSeries
     } = useBookingStore();
 
@@ -89,9 +102,7 @@ export const AdminRecurringClients: React.FC = () => {
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [showCancelDialog, setShowCancelDialog] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
-    const [cancelMode, setCancelMode] = useState<'all' | 'single'>('all');
-    const [cancelDate, setCancelDate] = useState('');
-    const [activeTab, setActiveTab] = useState<'all' | 'weekly' | 'series'>('all');
+    const [activeTab, setActiveTab] = useState<'all' | 'weekly' | 'series' | 'finished'>('all');
 
     useEffect(() => {
         setLoading(true);
@@ -120,13 +131,16 @@ export const AdminRecurringClients: React.FC = () => {
     ];
 
     const activeWeekly = recurringReservations.filter(r => r.status === 'active');
-    const activeSeries = recurringSeries;
+    const nonCancelled = allItems.filter(item => (item as any).status !== 'cancelled');
+    const activeSeries = nonCancelled.filter(item => item.type === 'series' && !isItemFinished(item));
+    const finishedItems = nonCancelled.filter(isItemFinished);
 
     const filteredItems = allItems
         .filter(item => {
             if ((item as any).status === 'cancelled') return false;
-            if (activeTab === 'weekly') return item.type === 'weekly';
-            if (activeTab === 'series') return item.type === 'series';
+            if (activeTab === 'weekly') return item.type === 'weekly' && !isItemFinished(item);
+            if (activeTab === 'series') return item.type === 'series' && !isItemFinished(item);
+            if (activeTab === 'finished') return isItemFinished(item);
             return true;
         })
         .sort((a, b) => {
@@ -160,8 +174,6 @@ export const AdminRecurringClients: React.FC = () => {
     const handleCancelClick = (item: CombinedItem) => {
         setSelectedItem(item);
         setCancelReason('');
-        setCancelMode('all');
-        setCancelDate('');
         setShowCancelDialog(true);
     };
 
@@ -170,21 +182,20 @@ export const AdminRecurringClients: React.FC = () => {
 
         try {
             if (selectedItem.type === 'weekly') {
-                if (cancelMode === 'single' && cancelDate) {
-                    await cancelRecurringDate(selectedItem.id, cancelDate, getAccessTokenSilently);
-                    toast.success('Fecha cancelada de la reserva semanal');
-                } else {
-                    await cancelRecurringReservation(selectedItem.id, getAccessTokenSilently);
-                    toast.success('Reserva semanal cancelada');
-                }
+                await cancelRecurringReservation(selectedItem.id, getAccessTokenSilently, cancelReason);
+                toast.success('Reserva indefinida finalizada');
             } else {
-                await (deleteSeries as any)(selectedItem.id, getAccessTokenSilently);
-                toast.success('Serie cancelada');
+                await deleteSeries(selectedItem.id, getAccessTokenSilently, cancelReason);
+                toast.success('Serie finalizada');
             }
+            await Promise.all([
+                fetchRecurringReservationsByCenter(getAccessTokenSilently),
+                fetchRecurringSeries(getAccessTokenSilently),
+            ]);
             setShowCancelDialog(false);
             setSelectedItem(null);
         } catch (error) {
-            toast.error('Error al cancelar');
+            toast.error('Error al finalizar');
         }
     };
 
@@ -203,6 +214,9 @@ export const AdminRecurringClients: React.FC = () => {
     };
 
     const getItemEndDate = (item: CombinedItem): string => {
+        if (item.type === 'weekly' && isItemFinished(item)) {
+            return formatDate((item as RecurringReservation).finished_at);
+        }
         if (item.type === 'series') {
             return formatDate((item as RecurringSeries).end_date);
         }
@@ -225,6 +239,14 @@ export const AdminRecurringClients: React.FC = () => {
     };
 
     const getItemTypeBadge = (item: CombinedItem) => {
+        if (isItemFinished(item)) {
+            return (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-xs font-bold">
+                    <CheckCircle2 size={10} />
+                    {item.type === 'weekly' ? 'Indefinida finalizada' : 'Serie finalizada'}
+                </span>
+            );
+        }
         if (item.type === 'weekly') {
             return (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">
@@ -256,7 +278,7 @@ export const AdminRecurringClients: React.FC = () => {
                             <Calendar className="w-6 h-6 text-slate-600" />
                         </div>
                         <div>
-                            <p className="text-3xl font-black text-slate-900">{allItems.length}</p>
+                            <p className="text-3xl font-black text-slate-900">{nonCancelled.length}</p>
                             <p className="text-sm text-slate-500">Total</p>
                         </div>
                     </div>
@@ -294,7 +316,7 @@ export const AdminRecurringClients: React.FC = () => {
                         activeTab === 'all' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50'
                     }`}
                 >
-                    Todos ({allItems.length})
+                    Todos ({nonCancelled.length})
                 </button>
                 <button
                     onClick={() => setActiveTab('weekly')}
@@ -313,6 +335,15 @@ export const AdminRecurringClients: React.FC = () => {
                 >
                     <CalendarRange size={14} />
                     Series ({activeSeries.length})
+                </button>
+                <button
+                    onClick={() => setActiveTab('finished')}
+                    className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                        activeTab === 'finished' ? 'bg-slate-500 text-white' : 'text-slate-500 hover:bg-slate-50'
+                    }`}
+                >
+                    <CheckCircle2 size={14} />
+                    Finalizadas ({finishedItems.length})
                 </button>
                 </div>
                 <button
@@ -378,21 +409,23 @@ export const AdminRecurringClients: React.FC = () => {
                                 </div>
 
                                 <div className="flex items-center justify-between pt-2">
-                                    <div className="space-y-0.5">
+                                    <>
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Precio p/h</p>
                                         <p className="text-xl font-black text-emerald-600">
                                             {formatPrice((item as any).price)}
                                         </p>
-                                    </div>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleCancelClick(item);
-                                        }}
-                                        className="p-3 text-red-600 bg-red-50 rounded-2xl hover:bg-red-100 transition-colors border border-red-100 active:scale-95"
-                                    >
-                                        <Trash2 size={20} />
-                                    </button>
+                                    </>
+                                    {!isItemFinished(item) && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleCancelClick(item);
+                                            }}
+                                            className="p-3 text-red-600 bg-red-50 rounded-2xl hover:bg-red-100 transition-colors border border-red-100 active:scale-95"
+                                        >
+                                            <Trash2 size={20} />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -455,6 +488,11 @@ export const AdminRecurringClients: React.FC = () => {
                                                 <span className="text-slate-900 font-medium">
                                                     {getItemEndDate(item)}
                                                 </span>
+                                            ) : isItemFinished(item) ? (
+                                                <span className="inline-flex items-center gap-1 text-slate-700 font-medium">
+                                                    <CheckCircle2 size={12} />
+                                                    {getItemEndDate(item)}
+                                                </span>
                                             ) : (
                                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">
                                                     <Repeat size={10} />
@@ -475,12 +513,14 @@ export const AdminRecurringClients: React.FC = () => {
                                                 >
                                                     Ver Detalle
                                                 </button>
-                                                <button
-                                                    onClick={() => handleCancelClick(item)}
-                                                    className="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors"
-                                                >
-                                                    Cancelar
-                                                </button>
+                                                {!isItemFinished(item) && (
+                                                    <button
+                                                        onClick={() => handleCancelClick(item)}
+                                                        className="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors"
+                                                    >
+                                                        Finalizar
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -511,6 +551,12 @@ export const AdminRecurringClients: React.FC = () => {
                                         {selectedItem.type === 'weekly' ? 'Reserva Semanal' : 'Serie Recurrente'}
                                     </h3>
                                     <p className="text-sm text-slate-500">Detalle del cliente</p>
+                                    {isItemFinished(selectedItem) && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 rounded-full bg-slate-200 text-slate-600 text-xs font-bold">
+                                            <CheckCircle2 size={10} />
+                                            Finalizada
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                             <button
@@ -605,15 +651,17 @@ export const AdminRecurringClients: React.FC = () => {
                             >
                                 Cerrar
                             </button>
-                            <button
-                                onClick={() => {
-                                    setShowDetailModal(false);
-                                    handleCancelClick(selectedItem);
-                                }}
-                                className="flex-1 py-4 px-6 rounded-2xl font-bold bg-red-500 text-white hover:bg-red-600 transition-all"
-                            >
-                                Cancelar
-                            </button>
+                            {!isItemFinished(selectedItem) && (
+                                <button
+                                    onClick={() => {
+                                        setShowDetailModal(false);
+                                        handleCancelClick(selectedItem);
+                                    }}
+                                    className="flex-1 py-4 px-6 rounded-2xl font-bold bg-red-500 text-white hover:bg-red-600 transition-all"
+                                >
+                                    Finalizar
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -625,50 +673,14 @@ export const AdminRecurringClients: React.FC = () => {
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-2xl font-black text-slate-900 flex items-center gap-2">
                             <AlertTriangle className="w-6 h-6 text-amber-500" />
-                            ¿Cancelar {selectedItem?.type === 'weekly' ? 'reserva semanal' : 'serie'}?
+                            ¿Finalizar {selectedItem?.type === 'weekly' ? 'reserva indefinida' : 'serie'}?
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-500 text-base">
-                            Esta acción cancelará la {selectedItem?.type === 'weekly' ? 'reserva semanal' : 'serie'} de <strong>{selectedItem?.customer_name}</strong>.
-                            {selectedItem?.type === 'series' && ' Se eliminarán todas las reservas de la serie.'}
+                            Se finalizará la recurrencia de <strong>{selectedItem?.customer_name}</strong>. El historial se conservará.{selectedItem?.type === 'series' && ' Solo se cancelarán las reservas futuras confirmadas o pendientes.'}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <div className="py-4 space-y-4">
-                        {selectedItem?.type === 'weekly' && (
-                            <div className="space-y-3">
-                                <label className="text-sm font-bold text-slate-700 block">Tipo de cancelación</label>
-                                <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${cancelMode === 'all' ? 'border-red-200 bg-red-50' : 'border-slate-200 bg-white'}`}>
-                                    <input
-                                        type="radio"
-                                        name="cancelMode"
-                                        value="all"
-                                        checked={cancelMode === 'all'}
-                                        onChange={() => setCancelMode('all')}
-                                        className="w-4 h-4 text-red-500 accent-red-500"
-                                    />
-                                    <span className="text-sm text-slate-700">Cancelar toda la reserva semanal</span>
-                                </label>
-                                <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${cancelMode === 'single' ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white'}`}>
-                                    <input
-                                        type="radio"
-                                        name="cancelMode"
-                                        value="single"
-                                        checked={cancelMode === 'single'}
-                                        onChange={() => setCancelMode('single')}
-                                        className="w-4 h-4 text-amber-500 accent-amber-500"
-                                    />
-                                    <span className="text-sm text-slate-700">Cancelar solo una fecha</span>
-                                </label>
-                                {cancelMode === 'single' && (
-                                    <input
-                                        type="date"
-                                        value={cancelDate}
-                                        onChange={(e) => setCancelDate(e.target.value)}
-                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-200 transition-all"
-                                    />
-                                )}
-                            </div>
-                        )}
-                        <label className="text-sm font-bold text-slate-700 mb-2 block">Motivo de cancelación (opcional)</label>
+                        <label className="text-sm font-bold text-slate-700 mb-2 block">Motivo (opcional)</label>
                         <textarea
                             value={cancelReason}
                             onChange={(e) => setCancelReason(e.target.value)}
@@ -685,7 +697,7 @@ export const AdminRecurringClients: React.FC = () => {
                             onClick={handleConfirmCancel}
                             className="rounded-2xl font-bold bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200"
                         >
-                            Cancelar
+                            Finalizar
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
