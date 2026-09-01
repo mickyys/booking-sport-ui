@@ -134,6 +134,7 @@ export const AdminRecurringClients: React.FC = () => {
     const nonCancelled = allItems.filter(item => (item as any).status !== 'cancelled');
     const activeSeries = nonCancelled.filter(item => item.type === 'series' && !isItemFinished(item));
     const finishedItems = nonCancelled.filter(isItemFinished);
+    const activeItems = nonCancelled.filter(item => !isItemFinished(item));
 
     const filteredItems = allItems
         .filter(item => {
@@ -141,7 +142,7 @@ export const AdminRecurringClients: React.FC = () => {
             if (activeTab === 'weekly') return item.type === 'weekly' && !isItemFinished(item);
             if (activeTab === 'series') return item.type === 'series' && !isItemFinished(item);
             if (activeTab === 'finished') return isItemFinished(item);
-            return true;
+            return !isItemFinished(item);
         })
         .sort((a, b) => {
             const getDayValue = (item: CombinedItem) => {
@@ -316,7 +317,7 @@ export const AdminRecurringClients: React.FC = () => {
                         activeTab === 'all' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50'
                     }`}
                 >
-                    Todos ({nonCancelled.length})
+                    Todos ({activeItems.length})
                 </button>
                 <button
                     onClick={() => setActiveTab('weekly')}
