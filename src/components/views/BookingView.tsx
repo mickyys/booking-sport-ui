@@ -131,6 +131,8 @@ export const BookingView: React.FC<BookingViewProps> = ({
           courtId: courtSchedule.id,
           centerId: selectedCenter || '',
           date,
+          hour: slot.hour,
+          minutes: slot.minutes || 0,
           status: status,
           price: slot.price,
           paymentRequired: slot.paymentRequired,
@@ -158,7 +160,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
         } else {
           // En modo 'all' buscamos la primera hora que tenga al menos una cancha disponible
           const firstAvailableHour = hours.find(h =>
-            apiSlots.some(s => s.date.getHours() === h && s.status === 'available')
+            apiSlots.some(s => s.hour === h && s.status === 'available')
           );
           if (firstAvailableHour !== undefined) elementId = `hour-${firstAvailableHour}`;
         }
@@ -373,7 +375,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
                         <div>{hour}:00</div>
                       </td>
                       {courtsForCenter.map(court => {
-                        const slot = apiSlots.find(s => s.courtId === court.id && s.date.getHours() === hour);
+                        const slot = apiSlots.find(s => s.courtId === court.id && s.hour === hour);
                         const isAvailable = slot?.status === 'available';
 
                         return (

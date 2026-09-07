@@ -67,6 +67,8 @@ export interface TimeSlot {
   courtId: string;
   centerId: string;
   date: Date;
+  hour: number;
+  minutes: number;
   status: SlotStatus;
   price: number;
   paymentRequired?: boolean;
@@ -124,6 +126,7 @@ export interface Booking {
   // fecha reserva
   date: string
   hour: number
+  minutes?: number
 
   // precios
   price: number
@@ -207,6 +210,7 @@ export interface BookingDetailResponse {
         created_at: string;
         date: string;
         hour: number;
+        minutes?: number;
         id: string;
         payment_method: string;
         price: number;
@@ -241,6 +245,7 @@ export interface BookingDTO {
   }
   date: string
   hour: number
+  minutes?: number
   final_price: number
   price: number
   status: 'confirmed' | 'cancelled' | 'pending'

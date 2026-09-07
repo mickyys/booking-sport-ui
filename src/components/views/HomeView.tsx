@@ -23,7 +23,11 @@ const SportCenterSearchPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCity, setSelectedCity] = useState('Todas');
   const [selectedHour, setSelectedHour] = useState('');
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().split('T')[0];
+  });
   const [hasInteracted, setHasInteracted] = useState(false);
 
   // Sync state with URL on mount

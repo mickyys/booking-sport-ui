@@ -45,7 +45,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({ booking, courts, isLoa
                     </p>
 
                     <p className="text-slate-600">
-                        {booking.hour !== undefined ? `${booking.hour}:00` : format(bookingDate, "HH:mm")} hrs •{" "}
+                        {booking.hour !== undefined ? `${String(booking.hour).padStart(2, '0')}:${String(booking.minutes ?? 0).padStart(2, '0')}` : format(bookingDate, "HH:mm")} hrs •{" "}
                         {booking.courtName || court.name}
                     </p>
 

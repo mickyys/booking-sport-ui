@@ -52,7 +52,7 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
         ? dateObj.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
         : '';
     const formattedTime = booking?.hour !== undefined
-        ? `${String(booking.hour).padStart(2, '0')}:00 hrs`
+        ? `${String(booking.hour).padStart(2, '0')}:${String(booking.minutes ?? 0).padStart(2, '0')} hrs`
         : '';
 
     const displayPrice = booking?.paidAmount ?? 0;
