@@ -3,8 +3,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Clock, Grid, List, CheckCircle, CreditCard, Loader2 } from 'lucide-react';
-import { format, startOfToday, addDays, setHours, setMinutes, parseISO, isAfter, isBefore, startOfDay } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { addDaysToSantiagoKey, santiagoDateInstant, santiagoWeek, todaySantiagoKey } from '@/lib/santiago';
 import { TimeSlot, UserProfile, SportCenter, Court, CourtWithSchedule } from '@/types';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useIsMobile } from '@/components/ui/use-mobile';
@@ -31,33 +32,26 @@ export const BookingView: React.FC<BookingViewProps> = ({
 }) => {
   const { schedules, isLoading, fetchSchedules, fetchSportCenterBySlug } = useBookingStore();
   const params = useParams(); const slug = params?.slug as string | undefined;
-  const [selectedDay, setSelectedDay] = useState<Date>(startOfToday());
+  const [selectedDay, setSelectedDay] = useState<string>(() => todaySantiagoKey());
   const isMobile = useIsMobile();
 
   const searchParams = useSearchParams();
 
-  // If the route includes a `date` query param (YYYY-MM-DD), set selectedDay accordingly
+  // If the route includes a `date` query param (YYYY-MM-DD, Santiago civil date), set selectedDay accordingly
   useEffect(() => {
 
     const qDate = searchParams.get('date');
     if (qDate && /^\d{4}-\d{2}-\d{2}$/.test(qDate)) {
-      try {
-        const parsed = startOfDay(parseISO(qDate));
-        const today = startOfToday();
-        const maxDate = addDays(today, 6);
+      const today = todaySantiagoKey();
+      const maxDate = addDaysToSantiagoKey(today, 6);
 
-        if (!isNaN(parsed.getTime())) {
-          // Clamp the date within the 7-day range
-          if (isBefore(parsed, today)) {
-            setSelectedDay(today);
-          } else if (isAfter(parsed, maxDate)) {
-            setSelectedDay(maxDate);
-          } else {
-            setSelectedDay(parsed);
-          }
-        }
-      } catch (e) {
-        // ignore invalid parse
+      // Clamp the date within the 7-day range (ISO keys compare lexicographically)
+      if (qDate < today) {
+        setSelectedDay(today);
+      } else if (qDate > maxDate) {
+        setSelectedDay(maxDate);
+      } else {
+        setSelectedDay(qDate);
       }
     }
   }, []);
@@ -67,12 +61,11 @@ export const BookingView: React.FC<BookingViewProps> = ({
   // Efecto para recargar horarios cuando cambia el día o el centro
   useEffect(() => {
     if (selectedCenter) {
-      const formattedDate = format(selectedDay, 'yyyy-MM-dd');
-      if (lastFetch.current?.center === selectedCenter && lastFetch.current?.date === formattedDate) {
+      if (lastFetch.current?.center === selectedCenter && lastFetch.current?.date === selectedDay) {
         return;
       }
-      lastFetch.current = { center: selectedCenter, date: formattedDate };
-      fetchSchedules(selectedCenter, formattedDate);
+      lastFetch.current = { center: selectedCenter, date: selectedDay };
+      fetchSchedules(selectedCenter, selectedDay);
     }
   }, [selectedDay, selectedCenter, fetchSchedules]);
 
@@ -118,16 +111,11 @@ export const BookingView: React.FC<BookingViewProps> = ({
     const slots: TimeSlot[] = [];
     schedules.forEach(courtSchedule => {
       courtSchedule.schedule.forEach(slot => {
-        const date = setMinutes(setHours(selectedDay, slot.hour), slot.minutes || 0);
-        let status = slot.status;
-
-        // Check if the slot has already passed
-        if (date < new Date() && status === 'available') {
-          status = 'passed';
-        }
+        const date = santiagoDateInstant(selectedDay);
+        const status = slot.status; // Backend ya marca passed/unavailable en hora de Santiago
 
         slots.push({
-          id: `${courtSchedule.id}-${format(date, 'yyyy-MM-dd')}-${slot.hour}-${slot.minutes || 0}`,
+          id: `${courtSchedule.id}-${selectedDay}-${slot.hour}-${slot.minutes || 0}`,
           courtId: courtSchedule.id,
           centerId: selectedCenter || '',
           date,
@@ -169,7 +157,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
     }
   }, [isLoading, selectedDay, selectedCenter, viewMode, selectedCourtId]); // Se activa al cargar o cambiar filtros
 
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(startOfToday(), i)), []);
+  const days = useMemo(() => santiagoWeek(todaySantiagoKey()), []);
 
   const hours = Array.from({ length: 18 }, (_, i) => 6 + i); // 6 to 23 (6AM - 11PM)
 
@@ -219,10 +207,10 @@ export const BookingView: React.FC<BookingViewProps> = ({
           className="flex overflow-x-auto pb-4 gap-3 no-scrollbar justify-start md:justify-center px-2"
         >
           {days.map((day) => {
-          const isSelected = format(day, 'yyyy-MM-dd') === format(selectedDay, 'yyyy-MM-dd');
+          const isSelected = day === selectedDay;
           return (
             <button
-              key={day.toISOString()}
+              key={day}
               onClick={() => {
                 console.log('Selected day:', day);
                 setSelectedDay(day)
@@ -233,10 +221,10 @@ export const BookingView: React.FC<BookingViewProps> = ({
                 }`}
             >
               <span className="text-xs uppercase font-bold tracking-wider mb-1">
-                {format(day, 'EEE', { locale: es })}
+                {format(santiagoDateInstant(day), 'EEE', { locale: es })}
               </span>
               <span className="text-xl font-bold">
-                {format(day, 'd')}
+                {format(santiagoDateInstant(day), 'd')}
               </span>
             </button>
           );
@@ -321,7 +309,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
                       </div>
 
                       <h3 className="text-2xl font-bold text-slate-900 mb-1">
-                        {format(slot.date, 'HH:mm')}
+                        {String(slot.hour).padStart(2, '0')}:{String(slot.minutes || 0).padStart(2, '0')}
                       </h3>
                       <p className="text-slate-500 text-sm mb-4">
                         {courts.find(c => c.id === slot.courtId)?.name}

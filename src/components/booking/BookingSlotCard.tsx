@@ -1,7 +1,6 @@
 "use client";
 import React from 'react';
 import { Clock, CreditCard, ChevronRight } from 'lucide-react';
-import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { TimeSlot, Court } from '@/types';
 
@@ -40,7 +39,7 @@ export const BookingSlotCard: React.FC<BookingSlotCardProps> = ({ slot, court, o
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
           <h3 className="text-xl font-bold text-slate-900 leading-none">
-            {format(slot.date, 'HH:mm')}
+            {String(slot.hour).padStart(2, '0')}:{String(slot.minutes || 0).padStart(2, '0')}
           </h3>
           {isAvailable && slot.paymentRequired && (
             <div className="flex items-center text-indigo-600" title="Pago requerido">
