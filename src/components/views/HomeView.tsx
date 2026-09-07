@@ -10,6 +10,7 @@ import SportCenterCard from '@/components/search/SportCenterCard';
 import SearchFeatures from '@/components/search/SearchFeatures';
 import EmptySearchResults from '@/components/search/EmptySearchResults';
 import { ContactForm } from '@/components/ContactForm';
+import { addDaysToSantiagoKey, todaySantiagoKey } from '@/lib/santiago';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 const SportCenterSearchPage: React.FC = () => {
@@ -23,7 +24,7 @@ const SportCenterSearchPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCity, setSelectedCity] = useState('Todas');
   const [selectedHour, setSelectedHour] = useState('');
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(() => todaySantiagoKey());
   const [hasInteracted, setHasInteracted] = useState(false);
 
   // Sync state with URL on mount
@@ -70,12 +71,8 @@ const SportCenterSearchPage: React.FC = () => {
     setHasInteracted(true);
   }, []);
 
-  const todayISO = useMemo(() => new Date().toISOString().split('T')[0], []);
-  const maxDateISO = useMemo(() => {
-    const max = new Date();
-    max.setDate(max.getDate() + 6);
-    return max.toISOString().split('T')[0];
-  }, []);
+  const todayISO = useMemo(() => todaySantiagoKey(), []);
+  const maxDateISO = useMemo(() => addDaysToSantiagoKey(todaySantiagoKey(), 6), []);
 
   const availableHours = useMemo(() => {
     // Fixed hours from 6 (6AM) to 23 (11PM) in HH:MM format

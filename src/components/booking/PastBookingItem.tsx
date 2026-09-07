@@ -11,7 +11,7 @@ export const PastBookingItem: React.FC<PastBookingItemProps> = ({ booking }) => 
         <div className="p-4 border-b border-slate-100 last:border-0 flex justify-between items-center hover:bg-slate-50 transition-colors">
             <div>
                 <p className="font-medium text-slate-900">
-                    {format(parseISO(booking.date), "d MMM yyyy")} {booking.hour ? `• ${booking.hour}:00 hrs` : ''}
+                    {format(parseISO(booking.date), "d MMM yyyy")} {booking.hour ? `• ${String(booking.hour).padStart(2, '0')}:${String(booking.minutes ?? 0).padStart(2, '0')} hrs` : ''}
                 </p>
                 <p className="text-xs text-slate-500">
                     {booking.sportCenterName}

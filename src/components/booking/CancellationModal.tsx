@@ -135,7 +135,7 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
                                 </p>
                                 <p className="text-emerald-600 font-bold flex items-center gap-1.5 text-sm">
                                     <Clock className="w-3.5 h-3.5" />
-                                    {booking.hour}:00 hrs
+                                    {booking.hour}:{booking.minutes !== undefined ? String(booking.minutes).padStart(2, '0') : '00'} hrs
                                 </p>
                             </div>
                             <p className="text-[9px] text-slate-300 mt-2 font-mono">Código: {booking.booking_code}</p>

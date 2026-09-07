@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, MapPin, CreditCard, ChevronRight, Info, ShieldAlert, AlertTriangle } from 'lucide-react';
-import { format, differenceInHours } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { differenceInHours } from 'date-fns';
+import { santiagoDateKey, santiagoLongDate } from '../../lib/santiago';
 import { TimeSlot, Court, UserProfile, GuestDetails } from '../../types';
 import { useBookingStore } from '../../store/useBookingStore';
 import CancellationPolicyModal from '../search/CancellationPolicyModal';
@@ -76,7 +76,8 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
         const { init_point, booking_code } = await store.createMercadoPagoPayment({
           court_id: slot.courtId,
           date: slot.date.toISOString(),
-          hour: slot.date.getHours(),
+          hour: slot.hour ?? slot.date.getHours(),
+          minutes: slot.minutes ?? 0,
           guest_details: guestDetails,
           user_id: user?.id,
           partial: payPartial,
@@ -100,7 +101,7 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
 
       if (axios.isAxiosError(error) && error.response?.status === 409) {
         if (slot.centerId) {
-          fetchSchedules(slot.centerId, format(slot.date, 'yyyy-MM-dd'));
+          fetchSchedules(slot.centerId, santiagoDateKey(slot.date));
         }
       }
     }
@@ -134,9 +135,9 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
                 {center?.name || 'Centro Deportivo'}
               </p>
               <p className="text-sm text-slate-500 uppercase font-semibold">{court.name}</p>
-              <p className="font-bold text-slate-800">{format(slot.date, "EEEE d 'de' MMMM", { locale: es })}</p>
+              <p className="font-bold text-slate-800">{santiagoLongDate(slot.date)}</p>
               <p className="text-emerald-600 font-medium">
-                {format(slot.date, 'HH:mm')} hrs
+                {String(slot.hour).padStart(2, '0')}:{String(slot.minutes || 0).padStart(2, '0')} hrs
               </p>
               <p className="text-slate-900 font-bold text-lg mt-1">${slot.price.toLocaleString('es-CL')}</p>
             </div>
