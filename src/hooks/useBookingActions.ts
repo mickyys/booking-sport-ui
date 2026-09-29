@@ -32,8 +32,8 @@ export const useBookingActions = (user: UserProfile | null) => {
         const { init_point } = await createMercadoPagoPayment({
           court_id: selectedSlot.courtId,
           date: selectedSlot.date.toISOString(),
-          hour: selectedSlot.date.getHours(),
-          minutes: selectedSlot.date.getMinutes(),
+          hour: selectedSlot.hour,
+          minutes: selectedSlot.minutes ?? 0,
           guest_details: guestDetails,
           user_id: user?.id,
           partial,
@@ -53,8 +53,8 @@ export const useBookingActions = (user: UserProfile | null) => {
         const booking = await createBooking({
           court_id: selectedSlot.courtId,
           date: selectedSlot.date.toISOString(),
-          hour: selectedSlot.date.getHours(),
-          minutes: selectedSlot.date.getMinutes(),
+          hour: selectedSlot.hour,
+          minutes: selectedSlot.minutes ?? 0,
           guest_details: guestDetails,
           user_id: user?.id,
           partial: partial,

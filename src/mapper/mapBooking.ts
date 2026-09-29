@@ -17,6 +17,7 @@ export function mapBooking(dto: BookingDTO): Booking {
     // fecha
     date: dto.date,
     hour: dto.hour,
+    minutes: dto.minutes,
 
     // precios
     price: dto.price,

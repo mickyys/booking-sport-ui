@@ -517,7 +517,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <AlertDialogHeader>
                         <AlertDialogTitle>¿Estás seguro de cancelar esta reserva?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Esta acción no se puede deshacer. La reserva de {bookingToCancel?.user_name} para el {bookingToCancel && format(parseISO(bookingToCancel.date), "d 'de' MMMM", { locale: es })} a las {bookingToCancel?.hour}:00 será cancelada.
+                            Esta acción no se puede deshacer. La reserva de {bookingToCancel?.user_name} para el {bookingToCancel && format(parseISO(bookingToCancel.date), "d 'de' MMMM", { locale: es })} a las {bookingToCancel?.hour}:{bookingToCancel?.minutes !== undefined ? String(bookingToCancel.minutes).padStart(2, '0') : '00'} será cancelada.
                             {bookingToCancel?.payment_method === 'flow' && (
                                 <div className="mt-2 p-2 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium border border-blue-100">
                                     Nota: Los pagos vía Flow tienen devolución del 100% garantizada.

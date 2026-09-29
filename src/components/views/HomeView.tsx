@@ -7,6 +7,7 @@ import MarketplaceHero from '@/components/search/MarketplaceHero';
 import TenantCard from '@/components/search/TenantCard';
 import SearchFeatures from '@/components/search/SearchFeatures';
 import EmptySearchResults from '@/components/search/EmptySearchResults';
+import { addDaysToSantiagoKey, todaySantiagoKey } from '@/lib/santiago';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUserLocation } from '@/hooks/useUserLocation';
 
@@ -22,7 +23,7 @@ const MarketplacePage: React.FC = () => {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedCity, setSelectedCity] = useState('Todas');
   const [selectedHour, setSelectedHour] = useState('');
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(() => todaySantiagoKey());
   const [hasInteracted, setHasInteracted] = useState(false);
 
   // Sync state with URL on mount
@@ -69,12 +70,8 @@ const MarketplacePage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const todayISO = useMemo(() => new Date().toISOString().split('T')[0], []);
-  const maxDateISO = useMemo(() => {
-    const max = new Date();
-    max.setDate(max.getDate() + 6);
-    return max.toISOString().split('T')[0];
-  }, []);
+  const todayISO = useMemo(() => todaySantiagoKey(), []);
+  const maxDateISO = useMemo(() => addDaysToSantiagoKey(todaySantiagoKey(), 6), []);
 
   const availableHours = useMemo(
     () => Array.from({ length: 18 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`),

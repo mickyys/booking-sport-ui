@@ -47,13 +47,11 @@ export const CourtBookingSection: React.FC<CourtBookingSectionProps> = ({
       ? selectedCourtId
       : (courtsForCenter[0]?.id ?? null);
 
-  const lastFetch = useRef<{ center: string; date: string } | null>(null);
-
+  // Sin guard local: cada cambio de día dispara la petición y el store
+  // descarta las respuestas obsoletas (última petición gana).
   useEffect(() => {
     if (!centerId) return;
     const formattedDate = format(selectedDay, 'yyyy-MM-dd');
-    if (lastFetch.current?.center === centerId && lastFetch.current?.date === formattedDate) return;
-    lastFetch.current = { center: centerId, date: formattedDate };
     fetchSchedules(centerId, formattedDate);
   }, [centerId, selectedDay, fetchSchedules]);
 
@@ -69,6 +67,8 @@ export const CourtBookingSection: React.FC<CourtBookingSectionProps> = ({
           courtId: courtSchedule.id,
           centerId,
           date,
+          hour: slot.hour,
+          minutes: slot.minutes || 0,
           status,
           price: slot.price,
           paymentRequired: slot.paymentRequired,

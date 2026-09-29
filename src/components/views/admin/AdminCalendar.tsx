@@ -149,6 +149,7 @@ export const AdminCalendar: React.FC<AdminCalendarProps> = ({
                     court_id: bookingMode.slot.courtId,
                     date: currentDate.toISOString(),
                     hour: bookingMode.slot.hour,
+                    minutes: bookingMode.slot.minutes || 0,
                     customer_name: guestInfo.name,
                     customer_phone: guestInfo.phone,
                     guest_details: bookingMode.mode === 'reserve' ? {
