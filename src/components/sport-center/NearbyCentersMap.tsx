@@ -90,13 +90,13 @@ export const NearbyCentersMap: React.FC<NearbyCentersMapProps> = ({ center }) =>
     // ── Carga de centros (ordenados por cercanía cuando hay geolocalización)
     useEffect(() => {
         if (!isOpen) return;
-        fetchSportCenters(coords ? { lat: coords.lat, lng: coords.lng } : undefined);
+        fetchSportCenters(coords ? { lat: coords.lat, lng: coords.lng, limit: 50 } : { limit: 50 });
     }, [isOpen]);
 
     useEffect(() => {
         if (!coords || geoFetchedRef.current) return;
         geoFetchedRef.current = true;
-        if (isOpen) fetchSportCenters({ lat: coords.lat, lng: coords.lng });
+        if (isOpen) fetchSportCenters({ lat: coords.lat, lng: coords.lng, limit: 50 });
     }, [coords]);
 
     // ── Mapa del modal ─────────────────────────────────────────────────────

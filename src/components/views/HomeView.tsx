@@ -10,14 +10,21 @@ import EmptySearchResults from '@/components/search/EmptySearchResults';
 import { addDaysToSantiagoKey, todaySantiagoKey } from '@/lib/santiago';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUserLocation } from '@/hooks/useUserLocation';
+import { reverseGeocodeCity } from '@/utils/geo';
+import { updateUserLocation } from '@/lib/userLocationStore';
+
+const NEARBY_RADIUS_KM = 20;
+const NEARBY_LIMIT = 50;
 
 const MarketplacePage: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { sportCenters, isLoading, cities, fetchCities, fetchSportCenters } = useBookingStore();
+  const { sportCenters, isLoading, cities, usedRadiusFallback, fetchCities, fetchSportCenters } = useBookingStore();
   const searchRef = useRef<HTMLDivElement>(null);
   const geoFetchedRef = useRef(false);
-  const { coords } = useUserLocation();
+  const geoCityResolvedRef = useRef(false);
+  const autoCityAppliedRef = useRef(false);
+  const { coords, city: detectedCity } = useUserLocation();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -95,6 +102,45 @@ const MarketplacePage: React.FC = () => {
     router.replace('/', { scroll: false });
   }, [todayISO, router]);
 
+  // Reverse geocoding una sola vez: coords -> ciudad detectada (guardada en el store).
+  useEffect(() => {
+    if (!coords || geoCityResolvedRef.current) return;
+    geoCityResolvedRef.current = true;
+    if (detectedCity) return;
+    let cancelled = false;
+    reverseGeocodeCity(coords.lat, coords.lng).then((detected) => {
+      if (!cancelled && detected) updateUserLocation({ city: detected });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [coords, detectedCity]);
+
+  // Auto-selección de la ciudad detectada (solo si el usuario no eligió ni interactuó).
+  useEffect(() => {
+    if (autoCityAppliedRef.current) return;
+    if (hasInteracted || (selectedCity && selectedCity !== 'Todas')) {
+      autoCityAppliedRef.current = true;
+      return;
+    }
+    if (!detectedCity || cities.length === 0) return;
+    const match = cities.find((c) => c.toLowerCase() === detectedCity.toLowerCase());
+    if (!match) return;
+    autoCityAppliedRef.current = true;
+    setSelectedCity(match);
+    setHasInteracted(true);
+  }, [detectedCity, cities, hasInteracted, selectedCity]);
+
+  // Radio solo cerca del usuario: 'Todas' o la ciudad detectada; otras ciudades no llevan radio.
+  const nearbyRadiusKm = useMemo(() => {
+    if (!coords) return undefined;
+    const cityFilter = selectedCity && selectedCity !== 'Todas' ? selectedCity : undefined;
+    if (cityFilter && (!detectedCity || cityFilter.toLowerCase() !== detectedCity.toLowerCase())) {
+      return undefined;
+    }
+    return NEARBY_RADIUS_KM;
+  }, [coords, selectedCity, detectedCity]);
+
   // Initial fetch
   useEffect(() => {
     fetchCities?.();
@@ -114,6 +160,8 @@ const MarketplacePage: React.FC = () => {
       hour: hourParam,
       lat: coords?.lat,
       lng: coords?.lng,
+      radius: nearbyRadiusKm,
+      limit: NEARBY_LIMIT,
     });
 
     const params = new URLSearchParams();
@@ -124,14 +172,14 @@ const MarketplacePage: React.FC = () => {
 
     const newUrl = params.toString() ? `?${params.toString()}` : '/';
     router.replace(newUrl, { scroll: false });
-  }, [debouncedSearchTerm, selectedCity, selectedHour, selectedDate, fetchSportCenters, hasInteracted, router, todayISO, coords]);
+  }, [debouncedSearchTerm, selectedCity, selectedHour, selectedDate, fetchSportCenters, hasInteracted, router, todayISO, coords, nearbyRadiusKm]);
 
   // Cuando se obtiene la geolocalización y no hay filtros activos, reordenar
   // los resultados por cercanía (el backend prioriza destacados de la ciudad).
   useEffect(() => {
     if (!coords || hasInteracted || geoFetchedRef.current) return;
     geoFetchedRef.current = true;
-    fetchSportCenters?.({ lat: coords.lat, lng: coords.lng });
+    fetchSportCenters?.({ lat: coords.lat, lng: coords.lng, radius: NEARBY_RADIUS_KM, limit: NEARBY_LIMIT });
   }, [coords, hasInteracted, fetchSportCenters]);
 
   const totalCourts = useMemo(
@@ -239,14 +287,27 @@ const MarketplacePage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">
-              {sportCenters.length === 0 && !isLoading
-                ? 'Sin resultados'
-                : `${sportCenters.length} centro${sportCenters.length !== 1 ? 's' : ''} deportivo${sportCenters.length !== 1 ? 's' : ''}`}
-            </h2>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="text-2xl font-bold text-slate-900">
+                {sportCenters.length === 0 && !isLoading
+                  ? 'Sin resultados'
+                  : `${sportCenters.length} centro${sportCenters.length !== 1 ? 's' : ''} deportivo${sportCenters.length !== 1 ? 's' : ''}`}
+              </h2>
+              {detectedCity && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200">
+                  <MapPin className="w-3.5 h-3.5" />
+                  Cerca de ti: {detectedCity}
+                </span>
+              )}
+            </div>
             <p className="text-sm text-slate-500 mt-1">
               Reserva y paga en minutos
             </p>
+            {usedRadiusFallback && (
+              <p className="text-xs text-amber-600 mt-1">
+                No hay centros dentro de {NEARBY_RADIUS_KM} km; mostrando los más cercanos.
+              </p>
+            )}
           </div>
         </div>
 

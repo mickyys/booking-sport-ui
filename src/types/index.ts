@@ -16,6 +16,7 @@ export interface ScheduleSlot {
   partialPaymentEnabled?: boolean | null;
   is_recurring_weekly?: boolean;
   recurring_reservation_id?: string;
+  duration_minutes?: number;
 }
 
 export interface CourtWithSchedule {
@@ -43,6 +44,8 @@ export interface ScheduleRule {
   slots: ScheduleRuleSlot[];
   active?: boolean;
 }
+
+export type ScheduleSource = 'rules' | 'legacy' | 'none';
 
 export type ScheduleExceptionType = 'closed' | 'special';
 
@@ -92,6 +95,7 @@ export interface SportCenter {
   services: string[];
   partialPaymentEnabled?: boolean;
   partialPaymentPercent?: number;
+  payment_mode?: 'pay_online' | 'pay_at_center' | '';
   isPrivate?: boolean;
   subdomain?: string;
   isFeatured?: boolean;
@@ -222,6 +226,7 @@ export interface SportCenter {
   services: string[];
   partialPaymentEnabled?: boolean;
   partialPaymentPercent?: number;
+  payment_mode?: 'pay_online' | 'pay_at_center' | '';
   isPrivate?: boolean;
   subdomain?: string;
   default_schedule?: CenterTimeSlot;
@@ -407,6 +412,7 @@ export interface CreateRecurringReservationDTO {
   customer_name: string;
   customer_phone: string;
   hour: number;
+  minutes?: number;
   price?: number;
   notes?: string;
   date: string; // YYYY-MM-DD

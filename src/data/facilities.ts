@@ -1,7 +1,9 @@
 // ─── Tipos de facilities (arriendo de canchas como sedes/piscinas/quinchos) ───
-// Los datos vienen del backend (booking-sport) vía GET /sport-centers/slug/{slug}/facilities.
+// Los datos vienen del backend (booking-sport) vía GET /sport-centers/slug/{slug}
+// (incluidas en la respuesta del detalle del centro) y se cachean por slug en
+// el store `useBookingStore.facilitiesBySlug`.
 
-import { getFacilitiesBySlug } from '@/api/bookingApi';
+import type { Facility } from '@/types';
 
 export interface QuinchoFacility {
   id: string;
@@ -82,13 +84,9 @@ function mapFacilities(list: any[]): FacilityCatalog {
   return { quinchos, monthlyFacilities };
 }
 
-// Carga facilities reales del backend. Si el centro no tiene facilities o la
-// API falla, se devuelve un catálogo vacío (la UI oculta las secciones).
-export async function fetchFacilitiesForSlug(slug: string): Promise<FacilityCatalog> {
-  try {
-    const res = await getFacilitiesBySlug(slug);
-    return mapFacilities(res?.facilities || []);
-  } catch {
-    return { quinchos: [], monthlyFacilities: [] };
-  }
+// Convierte la lista cruda de facilities del store en el catálogo que usa la UI.
+// Si el centro no tiene facilities (o aún no cargaron), se devuelve un catálogo
+// vacío (la UI oculta las secciones).
+export function buildFacilityCatalog(list: Facility[] | undefined | null): FacilityCatalog {
+  return mapFacilities(list || []);
 }

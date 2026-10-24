@@ -6,6 +6,8 @@ import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
 import { uploadImageToCloudinary } from '@/components/booking/CourtImageUpload';
 import { LocationMapPicker } from '@/components/admin/LocationMapPicker';
+import { MPOnlinePaymentCard } from '@/components/admin/MPOnlinePaymentCard';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CenterTimeSlot } from '@/types';
 import { platformDomain } from '@/utils/host';
 
@@ -30,6 +32,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
     const [defaultSchedule, setDefaultSchedule] = useState<CenterTimeSlot | null>(null);
     const [scheduleOverrides, setScheduleOverrides] = useState<Record<number, CenterTimeSlot>>({});
     const [activeDays, setActiveDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+    const [activeTab, setActiveTab] = useState('general');
 
     // Branding
     const [brandingName, setBrandingName] = useState('');
@@ -203,6 +206,15 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
         e.preventDefault();
         if (!sportCenter?.id && !sportCenter?._id) return;
 
+        // Los campos de pestañas inactivas se desmontan, así que la validación
+        // nativa `required` no se ejecuta. Validamos el slug explícitamente y
+        // volvemos a la pestaña General para que el usuario pueda corregirlo.
+        if (!slug.trim()) {
+            toast.error('El subdominio (slug) es obligatorio');
+            setActiveTab('general');
+            return;
+        }
+
         try {
             const id = sportCenter.id || sportCenter._id;
             let finalImageUrl = imageUrl;
@@ -270,6 +282,16 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
         );
     };
 
+    const settingsTabs = [
+        { value: 'general', label: 'General', icon: Settings, description: 'Información pública y visibilidad del club.' },
+        { value: 'ubicacion', label: 'Ubicación', icon: MapPin, description: 'Dirección, ciudad y ubicación en el mapa.' },
+        { value: 'marca', label: 'Marca', icon: Palette, description: 'Logo, colores y apariencia de tu club.' },
+        { value: 'reservas', label: 'Reservas', icon: Clock, description: 'Política de cancelación y devoluciones.' },
+        { value: 'pagos', label: 'Pagos', icon: CreditCard, description: 'Mercado Pago, comisiones y abonos.' },
+    ];
+
+    const activeTabDescription = settingsTabs.find((tab) => tab.value === activeTab)?.description;
+
     return (
         <div className="max-w-2xl mx-auto space-y-6 pb-12">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -280,7 +302,27 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                     <h3 className="text-lg font-bold text-slate-900">Configuración General del Club</h3>
                 </div>
 
-                <form onSubmit={handleSave} className="p-8 space-y-6">
+                <form onSubmit={handleSave}>
+                    <Tabs value={activeTab} onValueChange={setActiveTab}>
+                        <div className="border-b border-slate-100 px-4 pt-4 sm:px-6">
+                            <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                {settingsTabs.map(({ value, label, icon: Icon }) => (
+                                    <TabsTrigger
+                                        key={value}
+                                        value={value}
+                                        className="h-auto flex-none gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm sm:text-sm"
+                                    >
+                                        <Icon className="h-4 w-4" />
+                                        {label}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                        </div>
+
+                        <div className="px-5 py-6 sm:px-8">
+                            <p className="mb-5 text-xs font-medium text-slate-500">{activeTabDescription}</p>
+
+                            <TabsContent value="general" className="space-y-6 [&>div:first-child]:border-t-0 [&>div:first-child]:pt-0">
                     {/* Image Upload */}
                     <div className="space-y-2">
                         <label className="block text-sm font-medium text-slate-700">Imagen del Club</label>
@@ -328,6 +370,37 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                         </p>
                     </div>
 
+                    {/* Centro destacado */}
+                    <div className="border-t border-slate-200 pt-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Star className="w-5 h-5 text-amber-500" />
+                            <h4 className="text-base font-bold text-slate-900">Centro destacado</h4>
+                        </div>
+                        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={isFeatured}
+                                onClick={() => setIsFeatured(!isFeatured)}
+                                className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${isFeatured ? 'bg-amber-500' : 'bg-slate-300'}`}
+                            >
+                                <span
+                                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isFeatured ? 'translate-x-5' : 'translate-x-0.5'}`}
+                                />
+                            </button>
+                            <div>
+                                <p className="text-sm font-semibold text-slate-800">
+                                    {isFeatured ? 'Este centro aparece destacado' : 'Activar destacado'}
+                                </p>
+                                <p className="text-xs text-slate-600 mt-1">
+                                    Los centros destacados aparecen primero en las búsquedas de su ciudad, por encima del orden por distancia.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                            </TabsContent>
+
+                            <TabsContent value="ubicacion" className="space-y-6 [&>div:first-child]:border-t-0 [&>div:first-child]:pt-0">
                     {/* Ubicación */}
                     <div className="border-t border-slate-200 pt-6">
                         <div className="flex items-center gap-2 mb-4">
@@ -441,7 +514,9 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                             </p>
                         </div>
                     </div>
+                            </TabsContent>
 
+                            <TabsContent value="marca" className="space-y-6 [&>div:first-child]:border-t-0 [&>div:first-child]:pt-0">
                     {/* Identidad de Marca */}
                     <div className="border-t border-slate-200 pt-6">
                         <div className="flex items-center gap-2 mb-4">
@@ -540,7 +615,9 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                             </div>
                         </div>
                     </div>
+                            </TabsContent>
 
+                            <TabsContent value="reservas" className="space-y-6 [&>div:first-child]:border-t-0 [&>div:first-child]:pt-0">
                     {/* Cancellation Policy */}
                     <div className="border-t border-slate-200 pt-6">
                         <div className="flex items-center gap-2 mb-4">
@@ -591,6 +668,42 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                             </div>
                         </div>
                     </div>
+                            </TabsContent>
+
+                            <TabsContent value="pagos" className="space-y-6 [&>div:first-child]:border-t-0 [&>div:first-child]:pt-0">
+                    {/* Mercado Pago / Cobro online */}
+                    <MPOnlinePaymentCard />
+
+                    {/* Mercado Pago Marketplace Fee */}
+                    <div className="border-t border-slate-200 pt-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Percent className="w-5 h-5 text-emerald-500" />
+                            <h4 className="text-base font-bold text-slate-900">Comisión de Mercado Pago</h4>
+                        </div>
+                        <div className="space-y-5">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    <Percent className="w-4 h-4 inline mr-1.5 text-slate-400" />
+                                    Porcentaje de comisión por reserva
+                                </label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        max={100}
+                                        value={marketplaceFeePercent}
+                                        onChange={(e) => setMarketplaceFeePercent(Math.max(0, Math.min(100, Number(e.target.value))))}
+                                        className="w-28 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-center text-lg font-bold"
+                                    />
+                                    <span className="text-sm text-slate-600">% del pago</span>
+                                </div>
+                                <p className="mt-1.5 text-xs text-slate-500">
+                                    Comisión que recibe la plataforma por cada pago procesado. Si no se configura, se usa el <strong>7%</strong> por defecto.
+                                    Solo aplica cuando el cobro online con Mercado Pago está activo.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
 
                     {/* Partial Payment */}
                     <div className="border-t border-slate-200 pt-6">
@@ -635,74 +748,24 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                         </div>
                     </div>
 
-                    {/* Mercado Pago Marketplace Fee */}
-                    <div className="border-t border-slate-200 pt-6">
-                        <div className="flex items-center gap-2 mb-4">
-                            <Percent className="w-5 h-5 text-emerald-500" />
-                            <h4 className="text-base font-bold text-slate-900">Comisión de Mercado Pago</h4>
+                            </TabsContent>
                         </div>
-                        <div className="space-y-5">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    <Percent className="w-4 h-4 inline mr-1.5 text-slate-400" />
-                                    Porcentaje de comisión por reserva
-                                </label>
-                                <div className="flex items-center gap-3">
-                                    <input
-                                        type="number"
-                                        min={0}
-                                        max={100}
-                                        value={marketplaceFeePercent}
-                                        onChange={(e) => setMarketplaceFeePercent(Math.max(0, Math.min(100, Number(e.target.value))))}
-                                        className="w-28 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-center text-lg font-bold"
-                                    />
-                                    <span className="text-sm text-slate-600">% del pago</span>
-                                </div>
-                                <p className="mt-1.5 text-xs text-slate-500">
-                                    Comisión que recibe la plataforma por cada pago procesado. Si no se configura, se usa el <strong>7%</strong> por defecto.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    </Tabs>
 
-                    {/* Centro destacado */}
-                    <div className="border-t border-slate-200 pt-6">
-                        <div className="flex items-center gap-2 mb-4">
-                            <Star className="w-5 h-5 text-amber-500" />
-                            <h4 className="text-base font-bold text-slate-900">Centro destacado</h4>
-                        </div>
-                        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <div className="border-t border-slate-100 px-5 py-4 sm:px-8">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-xs text-slate-500">
+                                Se guardan los cambios de todas las pestañas. Mercado Pago se guarda al instante.
+                            </p>
                             <button
-                                type="button"
-                                role="switch"
-                                aria-checked={isFeatured}
-                                onClick={() => setIsFeatured(!isFeatured)}
-                                className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${isFeatured ? 'bg-amber-500' : 'bg-slate-300'}`}
+                                type="submit"
+                                disabled={isLoading || isUploading}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 font-bold text-white transition-all hover:bg-slate-800 shadow-lg shadow-slate-200 disabled:opacity-50 sm:w-auto sm:min-w-[190px]"
                             >
-                                <span
-                                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isFeatured ? 'translate-x-5' : 'translate-x-0.5'}`}
-                                />
+                                <Save className="w-5 h-5" />
+                                {isLoading || isUploading ? 'Guardando...' : 'Guardar Cambios'}
                             </button>
-                            <div>
-                                <p className="text-sm font-semibold text-slate-800">
-                                    {isFeatured ? 'Este centro aparece destacado' : 'Activar destacado'}
-                                </p>
-                                <p className="text-xs text-slate-600 mt-1">
-                                    Los centros destacados aparecen primero en las búsquedas de su ciudad, por encima del orden por distancia.
-                                </p>
-                            </div>
                         </div>
-                    </div>
-
-                    <div className="pt-4">
-                        <button
-                            type="submit"
-                            disabled={isLoading || isUploading}
-                            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-50"
-                        >
-                            <Save className="w-5 h-5" />
-                            {isLoading || isUploading ? 'Guardando...' : 'Guardar Cambios'}
-                        </button>
                     </div>
                 </form>
             </div>

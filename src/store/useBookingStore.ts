@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { toast } from 'sonner';
-import { SportCenter, Court, CourtWithSchedule, Booking, BookingDTO, RecurringReservation, CreateRecurringReservationDTO } from '../types';
+import { SportCenter, Court, CourtWithSchedule, Booking, BookingDTO, RecurringReservation, CreateRecurringReservationDTO, Facility } from '../types';
 import api from '../api/axiosInstance';
 import { getUserCancelledBookings, createRecurringReservation as createRecurringApi, cancelRecurringReservation as cancelRecurringApi, cancelRecurringDate as cancelRecurringDateApi, getRecurringReservationsByCenter } from '../api/bookingApi';
 import { mapBooking } from '../mapper/mapBooking';
@@ -34,12 +34,16 @@ interface BookingState {
   adminDashboardData: any | null;
   recurringSeries: any[];
   sportCenterBySlug: SportCenter | null;
+  /** Facilities (quincho/sede/piscina) cacheadas por slug; llegan con GET /sport-centers/slug/{slug}. */
+  facilitiesBySlug: Record<string, Facility[]>;
   cities: string[];
+  /** true cuando el filtro por radio no dejó centros y el backend devolvió los más cercanos. */
+  usedRadiusFallback: boolean;
   recurringReservations: RecurringReservation[];
 
 
   // Actions
-  fetchSportCenters: (filters?: { page?: number; limit?: number; name?: string; city?: string; date?: string; hour?: number; lat?: number; lng?: number }) => Promise<void>;
+  fetchSportCenters: (filters?: { page?: number; limit?: number; name?: string; city?: string; date?: string; hour?: number; lat?: number; lng?: number; radius?: number }) => Promise<void>;
   fetchCities: () => Promise<string[]>;
   fetchCourts: () => Promise<void>;
   fetchSchedules: (centerId: string, date?: string) => Promise<void>;
@@ -76,12 +80,13 @@ interface BookingState {
   createBooking: (bookingData: any) => Promise<any>;
   createInternalBooking: (bookingData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
   deleteBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  rescheduleBooking: (bookingId: string, data: { date: string; hour: number; minutes: number; court_id?: string }, getToken: (options?: any) => Promise<string>) => Promise<any>;
   payBalance: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   undoPayBalance: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   deleteSeries: (seriesId: string, getToken: (options?: any) => Promise<string>, reason?: string) => Promise<void>;
   fetchSportCenterBySlug: (slug: string) => Promise<SportCenter | null>;
   updateSportCenter: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
-  updateSportCenterSettings: (id: string, centerData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; image_url?: string; marketplace_fee_percent?: number; is_featured?: boolean; address?: string; city?: string; coordinates?: { lat: number; lng: number }; branding?: { name?: string; logo_url?: string; primary_color?: string; primary_dark?: string; accent?: string; nav_bg?: string; hero_gradient?: string } }, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  updateSportCenterSettings: (id: string, centerData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; payment_mode?: 'pay_online' | 'pay_at_center'; image_url?: string; marketplace_fee_percent?: number; is_featured?: boolean; address?: string; city?: string; coordinates?: { lat: number; lng: number }; branding?: { name?: string; logo_url?: string; primary_color?: string; primary_dark?: string; accent?: string; nav_bg?: string; hero_gradient?: string } }, getToken: (options?: any) => Promise<string>) => Promise<void>;
   updateSportCenterOnboarding: (data: { step?: number; nombre?: string; rut?: string; email?: string; direccion?: string; telefono?: string; templates?: { tipo: string; cantidad: number; cancha?: boolean; rules?: any[]; price_all_day?: number; price_half_day?: number; price_per_day?: number; price_per_month?: number }[]; payment_mode?: string; image_url?: string; first_month_free?: boolean; finalize?: boolean }, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchSportCenterByID: (id: string, getToken: (options?: any) => Promise<string>) => Promise<any>;
   createRecurringReservation: (data: CreateRecurringReservationDTO, getToken: (options?: any) => Promise<string>) => Promise<void>;
@@ -127,6 +132,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     },
   sportCenters: [],
   cities: [],
+  usedRadiusFallback: false,
   courts: [],
   schedules: [],
   weeklySchedules: {},
@@ -144,6 +150,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
   adminDashboardData: null,
   recurringSeries: [],
   sportCenterBySlug: null,
+  facilitiesBySlug: {},
   recurringReservations: [],
 
   fetchRecurringSeries: async (getToken: (options?: any) => Promise<string>) => {
@@ -358,7 +365,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         authorizationParams: {
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
         },
-        cacheMode: 'off'
       });
       await api.delete(`/admin/bookings/series/${seriesId}`, {
         headers: {
@@ -376,7 +382,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
-  fetchSportCenters: async (filters?: { page?: number; limit?: number; name?: string; city?: string; date?: string; hour?: number; lat?: number; lng?: number }) => {
+  fetchSportCenters: async (filters?: { page?: number; limit?: number; name?: string; city?: string; date?: string; hour?: number; lat?: number; lng?: number; radius?: number }) => {
     set({ isLoading: true });
     try {
       const params: any = {};
@@ -389,6 +395,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         if (typeof filters.hour === 'number') params.hour = String(filters.hour);
         if (typeof filters.lat === 'number') params.lat = String(filters.lat);
         if (typeof filters.lng === 'number') params.lng = String(filters.lng);
+        if (typeof filters.radius === 'number') params.radius = String(filters.radius);
       }
 
       let data;
@@ -427,14 +434,14 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         } as SportCenter;
       });
 
-      set({ sportCenters: centers, error: null });
+      set({ sportCenters: centers, usedRadiusFallback: !!data?.used_radius_fallback, error: null });
 
       if (centers.length > 0 && !get().selectedCenterId) {
         get().setSelectedCenterId(centers[0].id);
       }
     } catch (err) {
       console.error('Error fetching sport centers:', err);
-      set({ error: 'Failed to fetch sport centers' });
+      set({ error: 'Failed to fetch sport centers', usedRadiusFallback: false });
     } finally {
       set({ isLoading: false });
     }
@@ -480,7 +487,13 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         services: c.services || [],
         coordinates: normalizeCoordinates(c.coordinates)
       };
-      set({ sportCenterBySlug: center, selectedCenterId: center.id, error: null });
+      const facilities: Facility[] = Array.isArray(data.facilities) ? data.facilities : [];
+      set({
+        sportCenterBySlug: center,
+        selectedCenterId: center.id,
+        facilitiesBySlug: { ...get().facilitiesBySlug, [slug]: facilities },
+        error: null,
+      });
       return center;
     } catch (err) {
       console.error("Error fetching sport center by slug:", err);
@@ -515,7 +528,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
-  updateSportCenterSettings: async (id: string, settingsData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; image_url?: string; marketplace_fee_percent?: number; is_featured?: boolean; address?: string; city?: string; coordinates?: { lat: number; lng: number }; branding?: { name?: string; logo_url?: string; primary_color?: string; primary_dark?: string; accent?: string; nav_bg?: string; hero_gradient?: string } }, getToken: (options?: any) => Promise<string>) => {
+  updateSportCenterSettings: async (id: string, settingsData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; payment_mode?: 'pay_online' | 'pay_at_center'; image_url?: string; marketplace_fee_percent?: number; is_featured?: boolean; address?: string; city?: string; coordinates?: { lat: number; lng: number }; branding?: { name?: string; logo_url?: string; primary_color?: string; primary_dark?: string; accent?: string; nav_bg?: string; hero_gradient?: string } }, getToken: (options?: any) => Promise<string>) => {
     set({ isLoading: true });
     try {
       const token = await getToken({
@@ -531,6 +544,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       if (settingsData.partialPaymentEnabled !== undefined) filteredData.partial_payment_enabled = settingsData.partialPaymentEnabled;
       if (settingsData.partialPaymentPercent !== undefined) filteredData.partial_payment_percent = settingsData.partialPaymentPercent;
       if (settingsData.marketplace_fee_percent !== undefined) filteredData.marketplace_fee_percent = settingsData.marketplace_fee_percent;
+      if (settingsData.payment_mode !== undefined) filteredData.payment_mode = settingsData.payment_mode;
       if (settingsData.is_featured !== undefined) filteredData.is_featured = settingsData.is_featured;
       if (settingsData.slug) filteredData.slug = settingsData.slug;
       if (settingsData.address !== undefined) filteredData.address = settingsData.address;
@@ -697,7 +711,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: 'openid profile email'
         },
-        cacheMode: 'off'
       });
 
       const params = new URLSearchParams();
@@ -755,7 +768,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: 'openid profile email'
         },
-        cacheMode: 'off'
       });
 
       const params = new URLSearchParams({ all: 'true', centerId, from, to });
@@ -829,7 +841,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         },
-        cacheMode: 'off'
       });
       const { data } = await api.get('/admin/courts', {
         headers: {
@@ -853,7 +864,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         },
-        cacheMode: 'off'
       });
       const { data } = await api.get('/admin/facilities', {
         headers: {
@@ -877,7 +887,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         },
-        cacheMode: 'off'
       });
       const res = await api.post('/admin/facilities', facilityData, {
         headers: {
@@ -903,7 +912,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         },
-        cacheMode: 'off'
       });
       const res = await api.put(`/admin/facilities/${facilityId}`, facilityData, {
         headers: {
@@ -929,7 +937,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         },
-        cacheMode: 'off'
       });
       await api.delete(`/admin/facilities/${facilityId}`, {
         headers: {
@@ -954,7 +961,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         },
-        cacheMode: 'off'
       });
       const { data } = await api.get('/admin/spaces', {
         headers: {
@@ -978,7 +984,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         },
-        cacheMode: 'off'
       });
       const res = await api.post('/admin/spaces', spaceData, {
         headers: {
@@ -1004,7 +1009,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         },
-        cacheMode: 'off'
       });
       const res = await api.put(`/admin/spaces/${spaceId}`, spaceData, {
         headers: {
@@ -1030,7 +1034,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         },
-        cacheMode: 'off'
       });
       await api.delete(`/admin/spaces/${spaceId}`, {
         headers: {
@@ -1309,7 +1312,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         },
-        cacheMode: 'off'
       });
       await api.post('/admin/bookings/internal', bookingData, {
         headers: {
@@ -1334,7 +1336,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         },
-        cacheMode: 'off'
       });
       await api.delete(`/admin/bookings/${bookingId}`, {
         headers: {
@@ -1351,6 +1352,31 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
+  rescheduleBooking: async (bookingId, data, getToken) => {
+    set({ isLoading: true });
+    try {
+      const token = await getToken({
+        authorizationParams: {
+          audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+          scope: "openid profile email"
+        },
+      });
+      const { data: booking } = await api.patch(`/admin/bookings/${bookingId}/reschedule`, data, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      set({ error: null });
+      return booking;
+    } catch (err) {
+      console.error("Error rescheduling booking:", err);
+      set({ error: 'Failed to reschedule booking' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
   payBalance: async (bookingId: string, getToken: (options?: any) => Promise<string>) => {
     set({ isLoading: true });
     try {
@@ -1359,7 +1385,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         },
-        cacheMode: 'off'
       });
       await api.post(`/admin/bookings/${bookingId}/pay-balance`, {}, {
         headers: {
@@ -1384,7 +1409,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         },
-        cacheMode: 'off'
       });
       await api.patch(`/admin/bookings/${bookingId}/undo-pay-balance`, {}, {
         headers: {
@@ -1440,7 +1464,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         },
-        cacheMode: 'off'
       }));
       set({ error: null });
       toast.success('Reserva semanal creada con éxito');
@@ -1463,7 +1486,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         },
-        cacheMode: 'off'
       }), 'admin', reason);
       set({ error: null });
       toast.success('Reserva indefinida finalizada');
@@ -1485,7 +1507,6 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: "openid profile email"
         },
-        cacheMode: 'off'
       }));
       set({ error: null });
       toast.success('Fecha cancelada de la reserva semanal');

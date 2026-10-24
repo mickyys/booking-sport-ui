@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Save, Building, Waves, Trees, Trophy, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -50,6 +50,19 @@ export const SpaceFormModal: React.FC<SpaceFormModalProps> = ({ space, onClose, 
   const [depositMonths, setDepositMonths] = useState<number>(space?.deposit_months || 1);
   const [availableMonths, setAvailableMonths] = useState<number[]>(space?.available_months || [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
 
   const toggleMonth = (m: number) => {
     setAvailableMonths((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m].sort((a, b) => a - b)));
@@ -142,23 +155,31 @@ export const SpaceFormModal: React.FC<SpaceFormModalProps> = ({ space, onClose, 
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        className="max-h-[100dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:max-h-[92dvh] sm:rounded-2xl"
       >
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white p-4 sm:p-6">
           <div>
             <h3 className="text-xl font-bold text-slate-900">{isEdit ? 'Editar Espacio' : 'Nuevo Espacio'}</h3>
             <p className="text-sm text-slate-500">Canchas, quinchos, sedes y piscinas</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700">
+          <button
+            onClick={onClose}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            aria-label="Cerrar"
+          >
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-6 p-4 sm:p-6"
+          style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+        >
           {/* Category selector */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Categoría</label>
@@ -395,14 +416,14 @@ export const SpaceFormModal: React.FC<SpaceFormModalProps> = ({ space, onClose, 
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 rounded-xl font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all"
+              className="min-h-11 rounded-xl px-6 font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white bg-slate-900 hover:bg-slate-800 transition-all disabled:opacity-50"
+              className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl font-bold text-white bg-slate-900 hover:bg-slate-800 transition-all disabled:opacity-50"
             >
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {isSaving ? 'Guardando...' : isEdit ? 'Guardar Cambios' : 'Crear Espacio'}

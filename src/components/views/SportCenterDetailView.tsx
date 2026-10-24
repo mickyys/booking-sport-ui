@@ -14,7 +14,7 @@ import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useBookingActions } from '@/hooks/useBookingActions';
 import { resolveBranding } from '@/utils/branding';
-import { fetchFacilitiesForSlug, FacilityCatalog } from '@/data/facilities';
+import { buildFacilityCatalog } from '@/data/facilities';
 import { Court, SpaceCategory } from '@/types';
 import { CourtBookingSection } from '@/components/booking/CourtBookingSection';
 import { QuinchoBookingSection } from '@/components/booking/QuinchoBookingSection';
@@ -49,6 +49,7 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
     courts,
     schedules,
     isLoading,
+    facilitiesBySlug,
     fetchSportCenterBySlug,
     fetchCourts,
   } = useBookingStore();
@@ -73,19 +74,11 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
 
   const branding = useMemo(() => resolveBranding(center?.branding), [center?.branding]);
 
-  const [facilities, setFacilities] = useState<FacilityCatalog>({ quinchos: [], monthlyFacilities: [] });
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchFacilitiesForSlug(slug)
-      .then((f) => {
-        if (!cancelled) setFacilities(f);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [slug]);
+  // Facilities cacheadas por slug en el store (llegan con fetchSportCenterBySlug).
+  const facilities = useMemo(
+    () => buildFacilityCatalog(facilitiesBySlug[slug]),
+    [facilitiesBySlug, slug]
+  );
 
   const centerId = center?.id || '';
   const courtsForCenter = useMemo(

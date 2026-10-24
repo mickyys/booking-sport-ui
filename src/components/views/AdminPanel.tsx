@@ -6,8 +6,6 @@ import { useBookingStore } from '@/store/useBookingStore';
 
 import { AdminDashboard } from './admin/AdminDashboard';
 import { AdminCourts } from './admin/AdminCourts';
-import { AdminSchedules } from './admin/AdminSchedules';
-import { AdminCalendar } from './admin/AdminCalendar';
 import { AdminAgenda } from './admin/AdminAgenda';
 import { AdminSettings } from './admin/AdminSettings';
 import { AdminQR } from './admin/AdminQR';
@@ -48,11 +46,11 @@ const AdminPanelContent: React.FC<AdminPanelProps> = ({ children }) => {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
             <AdminSidebar sportCenterName={currentSportCenter?.name} />
-            
-            <div className="flex-1 flex flex-col min-w-0">
+
+            <div className="flex-1 flex flex-col min-w-0 pt-14 lg:pt-0">
                 <MPStatusBanner />
-                <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
-                    <div className="max-w-7xl mx-auto pt-16 lg:pt-0">
+                <main className="flex-1 p-4 pb-24 lg:p-8 lg:pb-8 lg:overflow-y-auto">
+                    <div className="max-w-7xl mx-auto">
                         {children}
                     </div>
                 </main>
@@ -120,7 +118,7 @@ export const AdminDashboardSubPage: React.FC = () => {
         <AdminDashboard
             dashboardData={adminDashboardData}
             onCancelBooking={handleDashboardCancel}
-            onNewBooking={() => router.push('/admin/calendar')}
+            onNewBooking={() => router.push('/admin')}
             courts={courts}
             filters={{
                 page: dashboardPage,
@@ -164,27 +162,6 @@ export const AdminCourtsSubPage: React.FC = () => {
     }, [courts.length, fetchAdminCourts, getAccessTokenSilently]);
 
     return <AdminCourts courts={courts} onSaveCourt={onSaveCourt} onDeleteCourt={onDeleteCourt} currentSportCenter={currentSportCenter} />;
-};
-
-export const AdminSchedulesSubPage: React.FC = () => {
-    const { courts, schedules, onUpdateSchedule, onUpdateScheduleSlot, centerDefaultSchedule, centerScheduleOverrides, centerActiveDays, currentSportCenter } = useAdminPanel();
-    return (
-        <AdminSchedules 
-            courts={courts} 
-            schedules={schedules} 
-            onUpdateSchedule={onUpdateSchedule} 
-            onUpdateScheduleSlot={onUpdateScheduleSlot}
-            centerDefaultSchedule={centerDefaultSchedule}
-            centerScheduleOverrides={centerScheduleOverrides}
-            centerActiveDays={centerActiveDays}
-            paymentMode={(currentSportCenter as any)?.payment_mode}
-        />
-    );
-};
-
-export const AdminCalendarSubPage: React.FC = () => {
-    const { courts } = useAdminPanel();
-    return <AdminCalendar courts={courts} />;
 };
 
 export const AdminAgendaSubPage: React.FC = () => {

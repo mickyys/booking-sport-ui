@@ -62,3 +62,42 @@ export function googleMapsDirectionsUrl(target: MapsTarget): string {
   const query = encodeURIComponent([target.name, target.address, target.city].filter(Boolean).join(', '));
   return `https://www.google.com/maps/search/?api=1&query=${query}`;
 }
+
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+
+/**
+ * Reverse geocoding: coordenadas -> ciudad (Chile). Devuelve null si Mapbox
+ * no responde o no hay contexto de ciudad en el feature.
+ */
+export async function reverseGeocodeCity(lat: number, lng: number, signal?: AbortSignal): Promise<string | null> {
+  if (!MAPBOX_TOKEN || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  try {
+    const res = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&country=cl&language=es&limit=1`,
+      { signal },
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const feature = Array.isArray(data?.features) ? data.features[0] : undefined;
+    if (!feature) return null;
+    const cityContext = (feature.context ?? []).find(
+      (c: { id?: string }) => typeof c?.id === 'string' && (c.id.startsWith('place.') || c.id.startsWith('locality.')),
+    );
+    const city = cityContext?.text ?? feature.text;
+    return typeof city === 'string' && city.trim() ? city.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Distancia en kilómetros entre dos puntos (fórmula de haversine). */
+export function haversineKm(a: Coordinates, b: Coordinates): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}

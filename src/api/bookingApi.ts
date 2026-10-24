@@ -1,5 +1,5 @@
 import api from './axiosInstance';
-import { SportCenter, CenterTimeSlot, Tenant, ScheduleRule, ScheduleException, Block } from '../types';
+import { SportCenter, CenterTimeSlot, Tenant, ScheduleRule, ScheduleException, Block, ScheduleSource } from '../types';
 
 export const getTenantByHost = async (host: string) => {
   const response = await api.get(`/tenants/host/${encodeURIComponent(host)}`);
@@ -29,11 +29,8 @@ export const getSportCenterSchedules = async (centerId: string) => {
   return response.data;
 };
 
-// Facilities (quinchos, sedes, piscinas)
-export const getFacilitiesBySlug = async (slug: string) => {
-  const response = await api.get(`/sport-centers/slug/${encodeURIComponent(slug)}/facilities`);
-  return response.data;
-};
+// Facilities (quinchos, sedes, piscinas): llegan incluidas en
+// GET /sport-centers/slug/{slug} (ver useBookingStore.facilitiesBySlug).
 
 export const createFacilityInquiry = async (data: {
   facility_id: string;
@@ -71,11 +68,17 @@ export const getMySportCenter = async (token: string) => {
 
 // ===== Configuración de horarios por espacio (reglas / excepciones / bloqueos) =====
 
-export const getSpaceSchedule = async (spaceId: string, token: string): Promise<ScheduleRule[]> => {
+export const getSpaceSchedule = async (
+  spaceId: string,
+  token: string,
+): Promise<{ rules: ScheduleRule[]; source: ScheduleSource }> => {
   const response = await api.get(`/admin/spaces/${spaceId}/schedule`, {
     headers: { Authorization: `Bearer ${token}` }
   });
-  return response.data.rules || [];
+  return {
+    rules: response.data.rules || [],
+    source: (response.data.source as ScheduleSource) || 'none',
+  };
 };
 
 export const saveSpaceSchedule = async (spaceId: string, rules: ScheduleRule[], token: string): Promise<ScheduleRule[]> => {

@@ -79,7 +79,7 @@ export const Navbar: React.FC = () => {
               </div>
             ) : (
               <button
-                onClick={() => loginWithRedirect()}
+                onClick={() => loginWithRedirect({ appState: { returnTo: pathname } })}
                 className="flex items-center gap-1.5 bg-white text-slate-900 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-bold hover:bg-slate-100 transition-colors shrink-0"
               >
                 <UserIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
