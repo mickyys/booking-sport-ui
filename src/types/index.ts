@@ -395,13 +395,26 @@ export interface RecurringReservation {
   customer_name: string;
   customer_phone: string;
   hour: number;
+  minutes?: number;
+  duration_minutes?: number;
   day_of_week: number; // 0=domingo, 1=lunes, ..., 6=sábado
   day_of_week_name?: string;
   price: number;
   notes?: string;
-  status: 'active' | 'cancelled';
+  status: 'active' | 'cancelled' | 'finished';
   cancelled_by?: string;
   cancel_reason?: string;
+  cancelled_dates?: string[];
+  start_date?: string;
+  horizon_weeks?: number;
+  finished_at?: string;
+  finished_by?: string;
+  finish_reason?: string;
+  last_generated_at?: string;
+  last_generation_ok?: boolean;
+  last_generated_count?: number;
+  generation_error?: string;
+  generation_issues?: Array<{ date: string; reason: string }>;
   created_at: string;
   updated_at: string;
 }
