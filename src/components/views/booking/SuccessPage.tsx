@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'motion/react';
 import { CheckCircle, Calendar, ArrowRight, Info, AlertCircle, MapPin, Clock, CreditCard, User, Plane } from 'lucide-react';
 import { useBookingStore } from '@/store/useBookingStore';
+import { DEFAULT_TIMEZONE, formatInTimeZone, timeInTimeZone } from '@/lib/santiago';
 
 interface SuccessPageProps {
     onGoHome?: () => void;
@@ -47,13 +48,20 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
     const limitHours = cancellationPolicy?.limit_hours ?? 3;
     const retentionPercent = cancellationPolicy?.retention_percent ?? 10;
 
-    const dateObj = booking?.date ? new Date(booking.date) : null;
+    const timeZone = booking?.timezone ?? DEFAULT_TIMEZONE;
+    const dateObj = booking?.scheduled_at
+        ? new Date(booking.scheduled_at)
+        : booking?.date
+            ? new Date(booking.date)
+            : null;
     const formattedDate = dateObj
-        ? dateObj.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+        ? formatInTimeZone(dateObj, timeZone, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
         : '';
-    const formattedTime = booking?.hour !== undefined
-        ? `${String(booking.hour).padStart(2, '0')}:${String(booking.minutes ?? 0).padStart(2, '0')} hrs`
-        : '';
+    const formattedTime = booking?.scheduled_at
+        ? `${timeInTimeZone(booking.scheduled_at, timeZone)} hrs`
+        : booking?.hour !== undefined
+            ? `${String(booking.hour).padStart(2, '0')}:${String(booking.minutes ?? 0).padStart(2, '0')} hrs`
+            : '';
 
     const displayPrice = booking?.paidAmount ?? 0;
     const pendingAmount = booking?.pendingAmount ?? 0;

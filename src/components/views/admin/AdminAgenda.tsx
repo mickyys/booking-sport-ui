@@ -14,6 +14,7 @@ const FullCalendar = dynamic(() => import('@fullcalendar/react'), {
 >;
 import { format, addDays, startOfDay } from 'date-fns';
 import { es as esFns } from 'date-fns/locale';
+import { DEFAULT_TIMEZONE } from '@/lib/santiago';
 import { useIsMobile } from '@/components/ui/use-mobile';
 import {
     CalendarDays,
@@ -982,6 +983,7 @@ export const AdminAgenda: React.FC = () => {
                         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                         initialView={isMobile ? 'timeGridDay' : 'timeGridWeek'}
                         locale={esLocale}
+                        timeZone={currentSportCenter?.timezone || DEFAULT_TIMEZONE}
                         events={events}
                         eventContent={renderEventContent}
                         eventClick={handleEventClick}

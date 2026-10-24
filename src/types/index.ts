@@ -100,6 +100,8 @@ export interface SportCenter {
   subdomain?: string;
   isFeatured?: boolean;
   distanceKm?: number;
+  /** Zona IANA del centro (por ejemplo America/Santiago). */
+  timezone?: string;
 }
 
 export interface Court {
@@ -233,6 +235,8 @@ export interface SportCenter {
   schedule_overrides?: Record<number, CenterTimeSlot>;
   active_days?: number[];
   branding?: TenantBranding;
+  /** Zona IANA del centro (por ejemplo America/Santiago). */
+  timezone?: string;
 }
 
 export interface Booking {
@@ -252,6 +256,11 @@ export interface Booking {
   date: string
   hour: number
   minutes?: number
+  // Contrato UTC (v2): instantes canónicos enviados por el backend.
+  scheduled_at?: string
+  ends_at?: string
+  timezone?: string
+  duration_minutes?: number
 
   // precios
   price: number

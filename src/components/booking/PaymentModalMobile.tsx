@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, MapPin, CreditCard, ChevronRight, Info, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { differenceInHours } from 'date-fns';
-import { santiagoDateKey, santiagoLongDate } from '../../lib/santiago';
+import { DEFAULT_TIMEZONE, santiagoDateKey, santiagoLongDate } from '../../lib/santiago';
 import { TimeSlot, Court, UserProfile, GuestDetails } from '../../types';
 import { useBookingStore } from '../../store/useBookingStore';
 import CancellationPolicyModal from '../search/CancellationPolicyModal';
@@ -27,6 +27,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
 }) => {
   const { sportCenters, fetchSchedules } = useBookingStore();
   const center = sportCenters.find(c => c.id === slot.centerId);
+  const timeZone = center?.timezone || DEFAULT_TIMEZONE;
   const [processing, setProcessing] = useState<null | 'mercadopago' | 'venue' | 'presential'>(null);
   const [showPolicies, setShowPolicies] = useState(false);
   const hoursUntilBooking = differenceInHours(slot.date, new Date());
@@ -74,7 +75,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
 
       if (axios.isAxiosError(error) && error.response?.status === 409) {
         if (slot.centerId) {
-          fetchSchedules(slot.centerId, santiagoDateKey(slot.date));
+          fetchSchedules(slot.centerId, santiagoDateKey(slot.date, timeZone));
         }
       }
     }
@@ -104,7 +105,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
                 {center?.name || 'Centro Deportivo'}
               </p>
               <p className="text-sm text-slate-500 uppercase font-semibold">{court.name}</p>
-              <p className="font-bold text-slate-800">{santiagoLongDate(slot.date)}</p>
+              <p className="font-bold text-slate-800">{santiagoLongDate(slot.date, timeZone)}</p>
               <p className="text-emerald-600 font-medium">
                 {String(slot.hour).padStart(2, '0')}:{String(slot.minutes || 0).padStart(2, '0')} hrs
               </p>
