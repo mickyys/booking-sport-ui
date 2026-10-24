@@ -91,6 +91,7 @@ export interface SportCenter {
   image: string;
   cancellationHours?: number;
   retentionPercent?: number;
+  googlePlaceId?: string;
   courts?: number;
   services: string[];
   partialPaymentEnabled?: boolean;
@@ -224,6 +225,7 @@ export interface SportCenter {
   image: string;
   cancellationHours?: number;
   retentionPercent?: number;
+  googlePlaceId?: string;
   courts?: number;
   services: string[];
   partialPaymentEnabled?: boolean;

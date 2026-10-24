@@ -17,8 +17,8 @@ import {
 
 const navItems = [
   { to: '/admin', icon: CalendarDays, label: 'Agenda', end: true },
-  { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/admin/recurring', icon: Repeat, label: 'Reservas' },
+  { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Inicio' },
+  { to: '/admin/recurring', icon: Repeat, label: 'Reservas fijas' },
   { to: '/admin/spaces', icon: Trophy, label: 'Espacios' },
   { to: '/admin/users', icon: Users, label: 'Usuarios' },
   { to: '/admin/qr', icon: QrCode, label: 'QR' },

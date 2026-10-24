@@ -86,7 +86,7 @@ interface BookingState {
   deleteSeries: (seriesId: string, getToken: (options?: any) => Promise<string>, reason?: string) => Promise<void>;
   fetchSportCenterBySlug: (slug: string) => Promise<SportCenter | null>;
   updateSportCenter: (id: string, centerData: any, getToken: (options?: any) => Promise<string>) => Promise<void>;
-  updateSportCenterSettings: (id: string, centerData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; payment_mode?: 'pay_online' | 'pay_at_center'; image_url?: string; marketplace_fee_percent?: number; is_featured?: boolean; address?: string; city?: string; coordinates?: { lat: number; lng: number }; branding?: { name?: string; logo_url?: string; primary_color?: string; primary_dark?: string; accent?: string; nav_bg?: string; hero_gradient?: string } }, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  updateSportCenterSettings: (id: string, centerData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; payment_mode?: 'pay_online' | 'pay_at_center'; image_url?: string; marketplace_fee_percent?: number; is_featured?: boolean; address?: string; city?: string; coordinates?: { lat: number; lng: number }; google_place_id?: string; branding?: { name?: string; logo_url?: string; primary_color?: string; primary_dark?: string; accent?: string; nav_bg?: string; hero_gradient?: string } }, getToken: (options?: any) => Promise<string>) => Promise<void>;
   updateSportCenterOnboarding: (data: { step?: number; nombre?: string; rut?: string; email?: string; direccion?: string; telefono?: string; templates?: { tipo: string; cantidad: number; cancha?: boolean; rules?: any[]; price_all_day?: number; price_half_day?: number; price_per_day?: number; price_per_month?: number }[]; payment_mode?: string; image_url?: string; first_month_free?: boolean; finalize?: boolean }, getToken: (options?: any) => Promise<string>) => Promise<void>;
   fetchSportCenterByID: (id: string, getToken: (options?: any) => Promise<string>) => Promise<any>;
   createRecurringReservation: (data: CreateRecurringReservationDTO, getToken: (options?: any) => Promise<string>) => Promise<void>;
@@ -485,7 +485,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         partialPaymentEnabled: c.partial_payment_enabled,
         partialPaymentPercent: c.partial_payment_percent,
         services: c.services || [],
-        coordinates: normalizeCoordinates(c.coordinates)
+        coordinates: normalizeCoordinates(c.coordinates),
+        googlePlaceId: c.google_place_id || undefined,
       };
       const facilities: Facility[] = Array.isArray(data.facilities) ? data.facilities : [];
       set({
@@ -528,7 +529,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     }
   },
 
-  updateSportCenterSettings: async (id: string, settingsData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; payment_mode?: 'pay_online' | 'pay_at_center'; image_url?: string; marketplace_fee_percent?: number; is_featured?: boolean; address?: string; city?: string; coordinates?: { lat: number; lng: number }; branding?: { name?: string; logo_url?: string; primary_color?: string; primary_dark?: string; accent?: string; nav_bg?: string; hero_gradient?: string } }, getToken: (options?: any) => Promise<string>) => {
+  updateSportCenterSettings: async (id: string, settingsData: { slug?: string; cancellation_hours?: number; retention_percent?: number; partialPaymentEnabled?: boolean; partialPaymentPercent?: number; payment_mode?: 'pay_online' | 'pay_at_center'; image_url?: string; marketplace_fee_percent?: number; is_featured?: boolean; address?: string; city?: string; coordinates?: { lat: number; lng: number }; google_place_id?: string; branding?: { name?: string; logo_url?: string; primary_color?: string; primary_dark?: string; accent?: string; nav_bg?: string; hero_gradient?: string } }, getToken: (options?: any) => Promise<string>) => {
     set({ isLoading: true });
     try {
       const token = await getToken({
@@ -550,6 +551,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       if (settingsData.address !== undefined) filteredData.address = settingsData.address;
       if (settingsData.city !== undefined) filteredData.city = settingsData.city;
       if (settingsData.coordinates !== undefined && settingsData.coordinates.lat !== 0 && settingsData.coordinates.lng !== 0) filteredData.coordinates = settingsData.coordinates;
+      if (settingsData.google_place_id !== undefined) filteredData.google_place_id = settingsData.google_place_id;
       if (settingsData.branding) filteredData.branding = settingsData.branding;
       await api.patch(`/admin/sport-centers/${id}/settings`, filteredData, {
         headers: {

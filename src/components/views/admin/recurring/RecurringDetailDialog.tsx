@@ -31,6 +31,7 @@ import {
   formatRelativeDay,
   formatShortDate,
   getInitials,
+  getKindLabel,
   getTelUrl,
   getUpcomingDates,
   getWhatsappUrl,
@@ -104,7 +105,7 @@ export const RecurringDetailDialog: React.FC<RecurringDetailDialogProps> = ({
   };
 
   const upcoming = item ? getUpcomingDates(item, 3) : [];
-  const typeLabel = item?.kind === 'weekly' ? 'Recurrencia indefinida' : 'Serie de reservas';
+  const typeLabel = item?.kind === 'weekly' ? 'Reserva fija semanal' : 'Serie de reservas';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -146,7 +147,7 @@ export const RecurringDetailDialog: React.FC<RecurringDetailDialogProps> = ({
                     }`}
                   >
                     {item.isFinished ? <CheckCircle2 size={10} /> : item.kind === 'weekly' ? <Repeat size={10} /> : <CalendarRange size={10} />}
-                    {item.isFinished ? 'Finalizada' : item.kind === 'weekly' ? 'Indefinida' : 'Serie activa'}
+                    {getKindLabel(item)}
                   </span>
                 </div>
               </div>

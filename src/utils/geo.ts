@@ -63,6 +63,15 @@ export function googleMapsDirectionsUrl(target: MapsTarget): string {
   return `https://www.google.com/maps/search/?api=1&query=${query}`;
 }
 
+/** URL de Google Maps que muestra el lugar (para compartir la ubicación). */
+export function googleMapsPlaceUrl(target: MapsTarget): string {
+  const lngLat = getLngLat(target.coordinates);
+  const query = lngLat
+    ? `${lngLat[1]},${lngLat[0]}`
+    : encodeURIComponent([target.name, target.address, target.city].filter(Boolean).join(', '));
+  return `https://www.google.com/maps/search/?api=1&query=${query}`;
+}
+
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
 /**

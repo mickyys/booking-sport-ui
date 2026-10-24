@@ -112,7 +112,7 @@ export interface SeriesRecurringItem extends RecurringItemBase {
 
 export type RecurringItem = WeeklyRecurringItem | SeriesRecurringItem;
 
-export type RecurringTab = 'active' | 'weekly' | 'series' | 'finished';
+export type RecurringTab = 'active' | 'finished';
 export type DayFilter = number | 'all';
 export type CourtFilter = string | 'all';
 
@@ -361,8 +361,6 @@ export const filterRecurring = (items: RecurringItem[], filters: RecurringFilter
 
   return items.filter((item) => {
     if (filters.tab === 'active' && item.isFinished) return false;
-    if (filters.tab === 'weekly' && (item.isFinished || item.kind !== 'weekly')) return false;
-    if (filters.tab === 'series' && (item.isFinished || item.kind !== 'series')) return false;
     if (filters.tab === 'finished' && !item.isFinished) return false;
     if (filters.dayIndex !== 'all' && item.dayIndex !== filters.dayIndex) return false;
     if (filters.courtId !== 'all' && item.courtId !== filters.courtId) return false;
@@ -373,6 +371,16 @@ export const filterRecurring = (items: RecurringItem[], filters: RecurringFilter
 
 export const hasActiveFilters = (filters: RecurringFilters): boolean =>
   filters.query.trim() !== '' || filters.courtId !== 'all' || filters.dayIndex !== 'all';
+
+/** Filtros que viven dentro del panel (cancha y día). */
+export const countPanelFilters = (filters: RecurringFilters): number =>
+  (filters.courtId !== 'all' ? 1 : 0) + (filters.dayIndex !== 'all' ? 1 : 0);
+
+export const getKindLabel = (item: RecurringItem): string => {
+  if (item.isFinished) return 'Finalizada';
+  if (item.kind === 'weekly') return 'Cada semana';
+  return item.endDate ? `Hasta ${format(item.endDate, 'd MMM', { locale: es })}` : 'Serie';
+};
 
 export const groupByDay = (items: RecurringItem[]): RecurringGroup[] => {
   const groups = new Map<number, RecurringItem[]>();

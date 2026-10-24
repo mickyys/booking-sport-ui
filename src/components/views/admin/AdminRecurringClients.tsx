@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Repeat } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useBookingStore } from '@/store/useBookingStore';
@@ -45,7 +45,6 @@ export const AdminRecurringClients: React.FC = () => {
   } = useBookingStore();
 
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [filters, setFilters] = useState<RecurringFilters>(DEFAULT_FILTERS);
   const [selectedItem, setSelectedItem] = useState<RecurringItem | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -91,14 +90,13 @@ export const AdminRecurringClients: React.FC = () => {
 
   const handleClearFilters = () => setFilters(DEFAULT_FILTERS);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await load();
-    } finally {
-      setRefreshing(false);
-    }
-  };
+  useEffect(() => {
+    const refreshOnFocus = () => {
+      if (document.visibilityState === 'visible') void load();
+    };
+    document.addEventListener('visibilitychange', refreshOnFocus);
+    return () => document.removeEventListener('visibilitychange', refreshOnFocus);
+  }, [load]);
 
   const handleSelect = (item: RecurringItem) => {
     setSelectedItem(item);
@@ -144,24 +142,14 @@ export const AdminRecurringClients: React.FC = () => {
 
   return (
     <div className="space-y-5 pb-6 sm:space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
-            <Repeat size={12} />
-            Recurrencias
-          </span>
-          <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
-            Reservas recurrentes
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-500">
-            Clientes con horario fijo cada semana o series con fecha de término. Gestiona su vigencia y
-            contacta directamente desde el detalle.
-          </p>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="min-w-0 truncate text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+          Reservas fijas
+        </h1>
 
         <Link
           href="/admin"
-          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-black text-white transition-colors hover:bg-emerald-600 sm:w-auto"
+          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-black text-white transition-colors hover:bg-emerald-600"
         >
           <Plus size={16} />
           Crear en agenda
@@ -172,35 +160,10 @@ export const AdminRecurringClients: React.FC = () => {
 
       <RecurringToolbar
         filters={filters}
-        counts={{
-          active: stats.active,
-          weekly: stats.weekly,
-          series: stats.series,
-          finished: stats.finished,
-        }}
+        counts={{ active: stats.active, finished: stats.finished }}
         courts={courts}
-        refreshing={refreshing}
         onChange={handleFilterChange}
-        onRefresh={handleRefresh}
-        onClear={handleClearFilters}
       />
-
-      {!loading && (
-        <div
-          aria-live="polite"
-          className="flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] font-semibold text-slate-400"
-        >
-          <span>
-            Mostrando {filteredItems.length} de {items.length}{' '}
-            {items.length === 1 ? 'recurrencia' : 'recurrencias'}
-          </span>
-          {filters.tab === 'active' && stats.finished > 0 && (
-            <span>
-              {stats.finished} {stats.finished === 1 ? 'finalizada' : 'finalizadas'} en el historial
-            </span>
-          )}
-        </div>
-      )}
 
       <RecurringList
         groups={groups}
@@ -209,7 +172,6 @@ export const AdminRecurringClients: React.FC = () => {
         hasFilters={hasFilters}
         hasFinished={stats.finished > 0}
         onSelect={handleSelect}
-        onFinish={handleFinishClick}
         onClearFilters={handleClearFilters}
         onGoToAgenda={() => router.push('/admin')}
         onShowFinished={() => setFilters({ ...DEFAULT_FILTERS, tab: 'finished' })}

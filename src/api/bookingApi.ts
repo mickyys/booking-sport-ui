@@ -40,6 +40,7 @@ export const createFacilityInquiry = async (data: {
   message?: string;
   month?: number;
   days?: number[];
+  dates?: string[];
   date?: string;
   slot_kind?: string;
   total_price?: number;
@@ -192,4 +193,25 @@ export const cancelRecurringDate = async (id: string, date: string, token: strin
     headers: { Authorization: `Bearer ${token}` }
   });
   return response.data;
+};
+
+export interface GoogleReview {
+  author: string;
+  author_photo?: string;
+  author_url?: string;
+  rating: number;
+  text: string;
+  relative_time?: string;
+}
+
+export interface GoogleReviewsData {
+  rating: number;
+  total_reviews: number;
+  maps_url?: string;
+  reviews: GoogleReview[];
+}
+
+export const getGoogleReviews = async (slug: string): Promise<GoogleReviewsData | null> => {
+  const response = await api.get(`/sport-centers/slug/${encodeURIComponent(slug)}/reviews`);
+  return response.data?.available ? (response.data.google as GoogleReviewsData) : null;
 };

@@ -46,6 +46,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
     // Ubicación
     const [address, setAddress] = useState('');
     const [city, setCity] = useState('');
+    const [googlePlaceId, setGooglePlaceId] = useState('');
     const [coordinates, setCoordinates] = useState<{ lat: number; lng: number }>({ lat: 0, lng: 0 });
     const [isGeocoding, setIsGeocoding] = useState(false);
     const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
@@ -178,6 +179,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                     // Ubicación
                     setAddress(center.address || '');
                     setCity(center.city || '');
+                    setGooglePlaceId(center.google_place_id || '');
                     const c = center.coordinates;
                     if (Array.isArray(c)) {
                         setCoordinates({ lng: Number(c[0]) || 0, lat: Number(c[1]) || 0 });
@@ -237,6 +239,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                 address,
                 city,
                 coordinates,
+                google_place_id: googlePlaceId.trim(),
                 branding: {
                     name: brandingName,
                     logo_url: brandingLogoUrl,
@@ -458,6 +461,32 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm"
                                     />
                                 </div>
+                            </div>
+
+                            <div>
+                                <label htmlFor="google-place-id" className="block text-sm font-medium text-slate-700 mb-1">
+                                    Google Place ID (reseñas)
+                                </label>
+                                <input
+                                    id="google-place-id"
+                                    type="text"
+                                    value={googlePlaceId}
+                                    onChange={(e) => setGooglePlaceId(e.target.value)}
+                                    placeholder="ChIJ..."
+                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm font-mono"
+                                />
+                                <p className="mt-1.5 text-xs text-slate-500">
+                                    Muestra la calificación y reseñas de Google en tu página. Búscalo en el{' '}
+                                    <a
+                                        href="https://developers.google.com/maps/documentation/places/web-service/place-id"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="underline"
+                                    >
+                                        buscador de Place ID
+                                    </a>
+                                    . Déjalo vacío para ocultar las reseñas.
+                                </p>
                             </div>
 
                             <div>
