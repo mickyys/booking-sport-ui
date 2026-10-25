@@ -1,5 +1,8 @@
 "use client";
 import React from 'react';
+import { useAuth0 } from '@auth0/auth0-react';
+import { toast } from 'sonner';
+import { useBookingStore } from '@/store/useBookingStore';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -59,6 +62,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     onRefresh = () => {},
     isRefreshing = false,
 }) => {
+    const { getAccessTokenSilently } = useAuth0();
+    const verifyPayment = useBookingStore((s) => s.verifyPayment);
     const [selected, setSelected] = React.useState<any | null>(null);
     const [detailOpen, setDetailOpen] = React.useState(false);
     const [bookingToCancel, setBookingToCancel] = React.useState<any | null>(null);
@@ -72,6 +77,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         document.addEventListener('visibilitychange', refreshOnFocus);
         return () => document.removeEventListener('visibilitychange', refreshOnFocus);
     }, []);
+
+    const handleVerifyPayment = async (booking: any) => {
+        try {
+            const res = await verifyPayment(booking.id, getAccessTokenSilently);
+            if (res.booking_status === 'confirmed') {
+                toast.success('Pago aprobado: reserva confirmada');
+                setDetailOpen(false);
+            } else if (res.mp_status === 'in_process' || res.mp_status === 'authorized') {
+                toast.info('Mercado Pago aún está revisando el pago');
+            } else if (res.mp_status === 'rejected' || res.mp_status === 'cancelled') {
+                toast.error('Mercado Pago rechazó el pago');
+            } else if (res.mp_status === 'not_found') {
+                toast.info('No se encontró ningún pago en Mercado Pago para esta reserva');
+            } else {
+                toast.info('El pago sigue pendiente');
+            }
+            refreshRef.current();
+        } catch {
+            toast.error('No se pudo verificar el pago');
+        }
+    };
 
     const recentBookings: any[] = dashboardData?.recentBookings || [];
     const totalRecentCount: number = dashboardData?.totalRecentCount || 0;
@@ -154,6 +180,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 open={detailOpen}
                 onOpenChange={setDetailOpen}
                 onCancel={setBookingToCancel}
+                onVerifyPayment={handleVerifyPayment}
             />
 
             <AlertDialog open={!!bookingToCancel} onOpenChange={(open) => !open && setBookingToCancel(null)}>

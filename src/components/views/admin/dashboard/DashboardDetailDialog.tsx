@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Copy, Mail, MessageCircle, Phone, Trash2 } from 'lucide-react';
+import { Copy, Loader2, Mail, MessageCircle, Phone, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -30,6 +30,7 @@ interface DashboardDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCancel: (booking: any) => void;
+  onVerifyPayment?: (booking: any) => Promise<void>;
 }
 
 const normalizePhone = (phone: string): string => {
@@ -56,7 +57,9 @@ export const DashboardDetailDialog: React.FC<DashboardDetailDialogProps> = ({
   open,
   onOpenChange,
   onCancel,
+  onVerifyPayment,
 }) => {
+  const [verifying, setVerifying] = React.useState(false);
   const phone = booking?.customerPhone ? normalizePhone(booking.customerPhone) : '';
 
   const handleCopy = async () => {
@@ -66,6 +69,16 @@ export const DashboardDetailDialog: React.FC<DashboardDetailDialogProps> = ({
       toast.success('Código copiado');
     } catch {
       toast.error('No se pudo copiar el código');
+    }
+  };
+
+  const handleVerify = async () => {
+    if (!onVerifyPayment || !booking) return;
+    setVerifying(true);
+    try {
+      await onVerifyPayment(booking);
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -186,6 +199,17 @@ export const DashboardDetailDialog: React.FC<DashboardDetailDialogProps> = ({
               >
                 Cerrar
               </button>
+              {booking.status === 'pending' && booking.payment_method === 'mercadopago' && onVerifyPayment && (
+                <button
+                  type="button"
+                  onClick={handleVerify}
+                  disabled={verifying}
+                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-500 px-4 text-sm font-black text-white hover:bg-emerald-600 disabled:opacity-60"
+                >
+                  {verifying ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+                  Verificar pago en MP
+                </button>
+              )}
               {booking.status === 'confirmed' && (
                 <button
                   type="button"

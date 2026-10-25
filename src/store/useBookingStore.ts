@@ -82,6 +82,7 @@ interface BookingState {
   deleteBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   rescheduleBooking: (bookingId: string, data: { date: string; hour: number; minutes: number; court_id?: string }, getToken: (options?: any) => Promise<string>) => Promise<any>;
   payBalance: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
+  verifyPayment: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<{ booking_status: string; mp_status?: string; email_sent?: boolean; refunded?: boolean }>;
   undoPayBalance: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   deleteSeries: (seriesId: string, getToken: (options?: any) => Promise<string>, reason?: string) => Promise<void>;
   fetchSportCenterBySlug: (slug: string) => Promise<SportCenter | null>;
@@ -1442,6 +1443,19 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  verifyPayment: async (bookingId: string, getToken: (options?: any) => Promise<string>) => {
+    const token = await getToken({
+      authorizationParams: {
+        audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+        scope: "openid profile email"
+      },
+    });
+    const { data } = await api.post(`/admin/bookings/${bookingId}/verify-payment`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return data;
   },
 
   undoPayBalance: async (bookingId: string, getToken: (options?: any) => Promise<string>) => {
