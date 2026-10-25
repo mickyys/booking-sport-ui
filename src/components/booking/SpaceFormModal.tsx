@@ -95,7 +95,6 @@ export const SpaceFormModal: React.FC<SpaceFormModalProps> = ({ space, onClose, 
       toast.error('El nombre es obligatorio');
       return;
     }
-
     setIsSaving(true);
     try {
       let image = imageUrl;
@@ -247,7 +246,9 @@ export const SpaceFormModal: React.FC<SpaceFormModalProps> = ({ space, onClose, 
             {category !== 'cancha' && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Capacidad (personas)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    {category === 'quincho' ? 'Capacidad (personas)' : 'Máximo de personas (opcional)'}
+                  </label>
                   <input
                     type="number"
                     min={0}
@@ -255,6 +256,9 @@ export const SpaceFormModal: React.FC<SpaceFormModalProps> = ({ space, onClose, 
                     onChange={(e) => setCapacity(Number(e.target.value))}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm"
                   />
+                  {category !== 'quincho' && (
+                    <p className="mt-1 text-xs text-slate-500">Solo informativo: se muestra a los clientes, no limita las reservas. Déjalo en 0 si no aplica.</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Área / dimensiones</label>

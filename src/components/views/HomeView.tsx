@@ -12,8 +12,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import { reverseGeocodeCity } from '@/utils/geo';
 import { updateUserLocation } from '@/lib/userLocationStore';
+import { useNearbyRadius, NEARBY_RADIUS_OPTIONS_KM, NO_RADIUS } from '@/hooks/useNearbyRadius';
 
-const NEARBY_RADIUS_KM = 20;
 const NEARBY_LIMIT = 50;
 
 const MarketplacePage: React.FC = () => {
@@ -23,8 +23,8 @@ const MarketplacePage: React.FC = () => {
   const searchRef = useRef<HTMLDivElement>(null);
   const geoFetchedRef = useRef(false);
   const geoCityResolvedRef = useRef(false);
-  const autoCityAppliedRef = useRef(false);
   const { coords, city: detectedCity } = useUserLocation();
+  const { radiusKm, setRadiusKm, ready: radiusReady } = useNearbyRadius();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -59,6 +59,12 @@ const MarketplacePage: React.FC = () => {
     setHasInteracted(true);
   }, []);
 
+  const handleRadiusChange = useCallback((value: number) => {
+    setRadiusKm(value);
+    setSelectedCity('Todas');
+    setHasInteracted(true);
+  }, [setRadiusKm]);
+
   const handleHourChange = useCallback((value: string) => {
     setSelectedHour(value);
     setHasInteracted(true);
@@ -84,6 +90,10 @@ const MarketplacePage: React.FC = () => {
     () => Array.from({ length: 18 }, (_, i) => `${String(6 + i).padStart(2, '0')}:00`),
     []
   );
+
+  // Con ubicación y sin ciudad elegida se filtra por radio (0 = sin radio: todos,
+  // ordenados por cercanía). Si el usuario elige una ciudad, filtra por ciudad.
+  const radiusMode = !!coords && selectedCity === 'Todas' && radiusKm > NO_RADIUS;
 
   const hasActiveFilters = useMemo(
     () =>
@@ -116,30 +126,8 @@ const MarketplacePage: React.FC = () => {
     };
   }, [coords, detectedCity]);
 
-  // Auto-selección de la ciudad detectada (solo si el usuario no eligió ni interactuó).
-  useEffect(() => {
-    if (autoCityAppliedRef.current) return;
-    if (hasInteracted || (selectedCity && selectedCity !== 'Todas')) {
-      autoCityAppliedRef.current = true;
-      return;
-    }
-    if (!detectedCity || cities.length === 0) return;
-    const match = cities.find((c) => c.toLowerCase() === detectedCity.toLowerCase());
-    if (!match) return;
-    autoCityAppliedRef.current = true;
-    setSelectedCity(match);
-    setHasInteracted(true);
-  }, [detectedCity, cities, hasInteracted, selectedCity]);
-
-  // Radio solo cerca del usuario: 'Todas' o la ciudad detectada; otras ciudades no llevan radio.
-  const nearbyRadiusKm = useMemo(() => {
-    if (!coords) return undefined;
-    const cityFilter = selectedCity && selectedCity !== 'Todas' ? selectedCity : undefined;
-    if (cityFilter && (!detectedCity || cityFilter.toLowerCase() !== detectedCity.toLowerCase())) {
-      return undefined;
-    }
-    return NEARBY_RADIUS_KM;
-  }, [coords, selectedCity, detectedCity]);
+  // Radio activo solo cuando radiusMode.
+  const nearbyRadiusKm = radiusMode ? radiusKm : undefined;
 
   // Initial fetch
   useEffect(() => {
@@ -166,7 +154,7 @@ const MarketplacePage: React.FC = () => {
 
     const params = new URLSearchParams();
     if (debouncedSearchTerm) params.set('name', debouncedSearchTerm);
-    if (selectedCity && selectedCity !== 'Todas') params.set('city', selectedCity);
+    if (cityParam) params.set('city', cityParam);
     if (selectedHour) params.set('hour', selectedHour);
     if (selectedDate && selectedDate !== todayISO) params.set('date', selectedDate);
 
@@ -177,10 +165,15 @@ const MarketplacePage: React.FC = () => {
   // Cuando se obtiene la geolocalización y no hay filtros activos, reordenar
   // los resultados por cercanía (el backend prioriza destacados de la ciudad).
   useEffect(() => {
-    if (!coords || hasInteracted || geoFetchedRef.current) return;
+    if (!coords || hasInteracted || geoFetchedRef.current || !radiusReady) return;
     geoFetchedRef.current = true;
-    fetchSportCenters?.({ lat: coords.lat, lng: coords.lng, radius: NEARBY_RADIUS_KM, limit: NEARBY_LIMIT });
-  }, [coords, hasInteracted, fetchSportCenters]);
+    fetchSportCenters?.({
+      lat: coords.lat,
+      lng: coords.lng,
+      radius: radiusKm > NO_RADIUS ? radiusKm : undefined,
+      limit: NEARBY_LIMIT,
+    });
+  }, [coords, hasInteracted, fetchSportCenters, radiusKm, radiusReady]);
 
   const totalCourts = useMemo(
     () => sportCenters.reduce((acc, c) => acc + (c.courts ?? 0), 0),
@@ -241,6 +234,25 @@ const MarketplacePage: React.FC = () => {
               </select>
             </div>
 
+            {/* Radius filter (solo con ubicación activa) */}
+            {coords && (
+              <div className="relative">
+                <Zap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <select
+                  value={radiusKm}
+                  onChange={(e) => handleRadiusChange(Number(e.target.value))}
+                  aria-label="Radio de búsqueda"
+                  className="pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-300 outline-none appearance-none cursor-pointer min-w-[130px] w-full"
+                >
+                  {NEARBY_RADIUS_OPTIONS_KM.map((km) => (
+                    <option key={km} value={km}>
+                      {km === NO_RADIUS ? 'Sin radio (todas)' : `Radio: ${km} km`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Hour filter */}
             <div className="relative">
               <select
@@ -293,10 +305,10 @@ const MarketplacePage: React.FC = () => {
                   ? 'Sin resultados'
                   : `${sportCenters.length} centro${sportCenters.length !== 1 ? 's' : ''} deportivo${sportCenters.length !== 1 ? 's' : ''}`}
               </h2>
-              {detectedCity && (
+              {radiusMode && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200">
                   <MapPin className="w-3.5 h-3.5" />
-                  Cerca de ti: {detectedCity}
+                  Cerca de ti · a {radiusKm} km{detectedCity ? ` (${detectedCity})` : ''}
                 </span>
               )}
             </div>
@@ -305,7 +317,7 @@ const MarketplacePage: React.FC = () => {
             </p>
             {usedRadiusFallback && (
               <p className="text-xs text-amber-600 mt-1">
-                No hay centros dentro de {NEARBY_RADIUS_KM} km; mostrando los más cercanos.
+                No hay centros dentro de {radiusKm} km; mostrando los más cercanos.
               </p>
             )}
           </div>

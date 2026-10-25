@@ -2,7 +2,7 @@
 import React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'motion/react';
-import { CheckCircle, Calendar, ArrowRight, Info, AlertCircle, MapPin, Clock, CreditCard, User, Plane } from 'lucide-react';
+import { CheckCircle, Calendar, ArrowRight, Info, AlertCircle, MapPin, Clock, CreditCard, User, Plane, Share2 } from 'lucide-react';
 import { useBookingStore } from '@/store/useBookingStore';
 import { DEFAULT_TIMEZONE, formatInTimeZone, timeInTimeZone } from '@/lib/santiago';
 
@@ -269,6 +269,15 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
                                 <Calendar className="w-5 h-5" />
                                 Ver Mis Reservas
                             </button>
+                            {bookingCode && bookingCode !== 'N/A' && (
+                                <button
+                                    onClick={() => router.push(`/reserva/${bookingCode}`)}
+                                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-white border border-emerald-500 text-emerald-700 rounded-xl font-bold hover:bg-emerald-50 transition-colors"
+                                >
+                                    <Share2 className="w-5 h-5" />
+                                    Ver y compartir
+                                </button>
+                            )}
                             <button
                                 onClick={onGoHome || (() => router.push('/'))}
                                 className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors"

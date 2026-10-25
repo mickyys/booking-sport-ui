@@ -14,6 +14,28 @@ export const getUserCancelledBookings = async (token: string, page = 1, limit = 
   return response.data;
 };
 
+// Vincula a la cuenta las reservas hechas como invitado con el correo del usuario.
+export const claimGuestBookings = async (token: string): Promise<number> => {
+  const response = await api.post('/bookings/claim', {}, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data?.claimed || 0;
+};
+
+export const getMyPhone = async (token: string): Promise<string> => {
+  const response = await api.get('/users/me/phone', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data?.phone || '';
+};
+
+export const saveMyPhone = async (token: string, phone: string): Promise<string> => {
+  const response = await api.put('/users/me/phone', { phone }, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data?.phone || '';
+};
+
 export const getSportCenters = async (page = 1, limit = 50) => {
   const response = await api.get('/sport-centers', { params: { page, limit } });
   return response.data;
@@ -148,7 +170,85 @@ export const getSpaceAvailabilityRange = async (spaceId: string, from: string, t
   const response = await api.get(`/spaces/${spaceId}/availability`, {
     params: { from, to },
   });
-  return response.data?.data as Record<string, { closed: boolean; blocked: boolean; has_rules: boolean }>;
+  return response.data?.data as Record<string, { closed: boolean; blocked: boolean; booked?: boolean; has_rules: boolean }>;
+};
+
+export interface FacilityPaymentOptions {
+  online: boolean;
+  venue: boolean;
+  default: 'mercadopago' | 'venue' | '';
+  partial_enabled: boolean;
+  partial_percent: number;
+  price_per_day: number;
+  capacity: number;
+}
+
+export const getFacilityPaymentOptions = async (spaceId: string): Promise<FacilityPaymentOptions> => {
+  const response = await api.get(`/spaces/${spaceId}/payment-options`);
+  return response.data;
+};
+
+export interface FacilityBookingDay {
+  id: string;
+  booking_code: string;
+  space_id: string;
+  space_name: string;
+  space_type: 'sede' | 'piscina';
+  sport_center_name: string;
+  local_date: string;
+  guests: number;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'expired';
+  payment_method: 'mercadopago' | 'venue';
+  price: number;
+  paid_amount: number;
+  pending_amount: number;
+  is_partial_payment: boolean;
+  created_at: string;
+}
+
+export interface CreateFacilityBookingResult {
+  booking_code: string;
+  status: 'pending' | 'confirmed';
+  init_point?: string;
+  total: number;
+  amount_to_pay: number;
+  bookings: FacilityBookingDay[];
+}
+
+export const createFacilityBooking = async (data: {
+  space_id: string;
+  dates: string[];
+  guests: number;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  payment_method?: 'mercadopago' | 'venue';
+  partial?: boolean;
+}): Promise<CreateFacilityBookingResult> => {
+  const response = await api.post('/facility-bookings', data);
+  return response.data;
+};
+
+export const getFacilityBookingByCode = async (code: string): Promise<FacilityBookingDay[]> => {
+  const response = await api.get(`/bookings/code/${code}`);
+  return response.data?.bookings || [];
+};
+
+export const getAdminFacilityBookings = async (token: string): Promise<FacilityBookingDay[]> => {
+  const response = await api.get('/admin/facility-bookings', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data?.bookings || [];
+};
+
+export const cancelAdminFacilityBooking = async (id: string, token: string) => {
+  const response = await api.post(`/admin/facility-bookings/${id}/cancel`, {}, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
 };
 
 // Recurring Reservation API

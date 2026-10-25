@@ -9,6 +9,7 @@ import { QuinchoFacility } from '@/data/facilities';
 import { BrandingPalette } from '@/utils/branding';
 import { createFacilityInquiry, getSpaceAvailability } from '@/api/bookingApi';
 import { FacilityBookingModal } from './FacilityBookingModal';
+import { useAuth } from '@/hooks/useAuth';
 
 interface QuinchoBookingSectionProps {
   facilities: QuinchoFacility[];
@@ -37,6 +38,7 @@ export const QuinchoBookingSection: React.FC<QuinchoBookingSectionProps> = ({
   branding,
   selectedQuinchoId,
 }) => {
+  const { user } = useAuth();
   const [quinchoDate, setQuinchoDate] = useState<Date>(startOfToday());
   const [selectedSlotInfo, setSelectedSlotInfo] = useState<SelectedSlot | null>(null);
   const [availability, setAvailability] = useState<SpaceAvailability | null>(null);
@@ -194,6 +196,8 @@ export const QuinchoBookingSection: React.FC<QuinchoBookingSectionProps> = ({
       {selectedSlotInfo && (
         <FacilityBookingModal
           title="Reservar Quincho"
+          variant="booking"
+          user={user}
           subtitle={selectedSlotInfo.quincho.name}
           brandColor={branding.primary}
           summary={{
@@ -204,8 +208,8 @@ export const QuinchoBookingSection: React.FC<QuinchoBookingSectionProps> = ({
           onSubmit={async (details) => {
             await createFacilityInquiry({
               facility_id: selectedSlotInfo.quincho.id,
-              contact_name: details.name,
-              contact_email: details.email,
+              contact_name: user?.name || details.name,
+              contact_email: user?.email || details.email,
               contact_phone: details.phone,
               message: details.message,
               date: format(selectedSlotInfo.date, 'yyyy-MM-dd'),

@@ -271,6 +271,27 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     set({ isLoading: true });
     try {
       const { data } = await api.get(`/bookings/code/${code}`);
+      if (data?.type === 'facility') {
+        // Reserva de sede/piscina: el estado de todos los días se resume en uno solo.
+        const days: Array<{ status: string; paid_amount: number; pending_amount: number; is_partial_payment: boolean }> = data.bookings || [];
+        const status = days.some((d) => d.status === 'confirmed')
+          ? 'confirmed'
+          : days.some((d) => d.status === 'pending')
+            ? 'pending'
+            : days[0]?.status || 'cancelled';
+        set({
+          currentBooking: {
+            id: code,
+            booking_code: code,
+            status,
+            paidAmount: days.reduce((s, d) => s + d.paid_amount, 0),
+            pendingAmount: days.reduce((s, d) => s + d.pending_amount, 0),
+            isPartialPayment: !!days[0]?.is_partial_payment,
+          } as any,
+          error: null,
+        });
+        return data;
+      }
       // Return same shape as fetchBookingDetail (backend returns booking_detail + metadata)
       // Store both booking detail and cancellation policy
       set({ 

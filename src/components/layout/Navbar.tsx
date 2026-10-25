@@ -2,7 +2,7 @@
 import React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth0 } from "@auth0/auth0-react";
-import { Trophy, LayoutDashboard, LogOut, User as UserIcon } from 'lucide-react';
+import { Trophy, LayoutDashboard, LogOut, Ticket, ShieldCheck, User as UserIcon } from 'lucide-react';
 import { useTenant } from '../../context/TenantContext';
 
 export const Navbar: React.FC = () => {
@@ -14,6 +14,9 @@ export const Navbar: React.FC = () => {
   const roleClaim = process.env.NEXT_PUBLIC_AUTHO_ROL_CLAIM || 'https://golazohub.cl/roles';
   const userRole = auth0User?.[roleClaim];
   const isAdministrator = userRole?.includes('administrator');
+
+  const rolesList: string[] = Array.isArray(userRole) ? userRole : typeof userRole === 'string' ? [userRole] : [];
+  const isSuperAdmin = rolesList.some((r) => String(r).trim().toLowerCase() === 'superadmin');
 
   const isActive = (path: string) => pathname === path;
 
@@ -42,6 +45,26 @@ export const Navbar: React.FC = () => {
 
           {/* Right side items */}
           <div className="flex items-center gap-1 sm:gap-3 min-w-0">
+
+            <button
+              onClick={() => router.push('/reserva')}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs sm:text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-600 transition-colors"
+              title="Validar reserva"
+              aria-label="Validar reserva"
+            >
+              <Ticket className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span className="hidden sm:inline">Validar reserva</span>
+            </button>
+
+            {isSuperAdmin && (
+              <button
+                onClick={() => router.push('/superadmin')}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs sm:text-sm font-bold bg-emerald-500/20 text-emerald-300 hover:bg-emerald-600 hover:text-white border border-emerald-500/40 transition-colors"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="hidden sm:inline">Superadmin</span>
+              </button>
+            )}
 
             {/* Admin button - always visible */}
             {isAdministrator && (

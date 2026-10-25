@@ -1,11 +1,13 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { X, MapPin, CreditCard, ChevronRight, Info, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { X, MapPin, CreditCard, ChevronRight, Info, ShieldAlert, AlertTriangle, Loader2 } from 'lucide-react';
 import { differenceInHours } from 'date-fns';
 import { DEFAULT_TIMEZONE, santiagoDateKey, santiagoLongDate } from '../../lib/santiago';
 import { TimeSlot, Court, UserProfile, GuestDetails } from '../../types';
 import { useBookingStore } from '../../store/useBookingStore';
+import { useSavedPhone } from '../../hooks/useSavedPhone';
+import { formatChileanPhone, normalizeChileanPhone } from '../../utils/phone';
 import CancellationPolicyModal from '../search/CancellationPolicyModal';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -39,6 +41,13 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
   });
   const [errors, setErrors] = useState<Partial<GuestDetails>>({});
   const [payPartial, setPayPartial] = useState(false);
+  const { phone: savedPhone, loaded: phoneLoaded, savePhone } = useSavedPhone(!!user);
+  const loadingPhone = !!user && !phoneLoaded;
+
+  useEffect(() => {
+    if (!savedPhone) return;
+    setGuestDetails(prev => (prev.phone ? prev : { ...prev, phone: formatChileanPhone(savedPhone) }));
+  }, [savedPhone]);
 
   const isPartialAvailable = (() => {
     if (!center) return false;
@@ -67,6 +76,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
     if (!validate()) return;
 
     setProcessing(method);
+    if (normalizeChileanPhone(guestDetails.phone) !== savedPhone) await savePhone(guestDetails.phone);
     try {
       await onConfirm(method, guestDetails, payPartial);
     } catch (error) {
@@ -164,15 +174,25 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
             )}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
+              <div className="relative">
               <input
                 type="tel"
                 className={`w-full px-4 py-2 rounded-lg border ${errors.phone ? 'border-red-500' : 'border-slate-200'} focus:ring-2 focus:ring-emerald-200 outline-none`}
                 value={guestDetails.phone}
-                onChange={e => setGuestDetails({ ...guestDetails, phone: e.target.value.replace(/\D/g, '') })}
-                placeholder="912345678"
-                disabled={processing !== null}
-                maxLength={12}
+                onChange={e => setGuestDetails({ ...guestDetails, phone: formatChileanPhone(e.target.value) })}
+                placeholder="+56 9 1234 5678"
+                autoComplete="tel"
+                disabled={processing !== null || loadingPhone}
+                aria-busy={loadingPhone}
+                maxLength={18}
               />
+              {loadingPhone && (
+                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center gap-1.5 text-xs text-slate-500" role="status">
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    Buscando teléfono…
+                  </span>
+                )}
+              </div>
               {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
             </div>
 

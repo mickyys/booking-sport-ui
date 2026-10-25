@@ -152,7 +152,9 @@ export const FacilityFormModal: React.FC<FacilityFormModalProps> = ({ facility, 
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Capacidad (personas)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                {type === 'quincho' ? 'Capacidad (personas)' : 'Máximo de personas (opcional)'}
+              </label>
               <input
                 type="number"
                 min={0}
@@ -160,6 +162,9 @@ export const FacilityFormModal: React.FC<FacilityFormModalProps> = ({ facility, 
                 onChange={(e) => setCapacity(Number(e.target.value))}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm"
               />
+              {type !== 'quincho' && (
+                <p className="mt-1 text-xs text-slate-500">Solo informativo: se muestra a los clientes, no limita las reservas. Déjalo en 0 si no aplica.</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Área / dimensiones</label>

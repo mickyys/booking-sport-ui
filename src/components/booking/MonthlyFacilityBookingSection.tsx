@@ -1,15 +1,16 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { Users, Building, CheckCircle, X, PhoneCall, Loader2 } from 'lucide-react';
+import { Users, Building, CheckCircle, X, CalendarCheck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { addDays, addMonths, format, startOfMonth, startOfToday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { MonthlyFacility } from '@/data/facilities';
 import { BrandingPalette } from '@/utils/branding';
-import { createFacilityInquiry, getSpaceAvailabilityRange } from '@/api/bookingApi';
+import { getSpaceAvailabilityRange } from '@/api/bookingApi';
 import { Calendar } from '@/components/ui/calendar';
-import { FacilityBookingModal } from './FacilityBookingModal';
+import { FacilityCheckoutModal } from './FacilityCheckoutModal';
+import { useAuth } from '@/hooks/useAuth';
 
 const MAX_DAYS_AHEAD = 365;
 const monthKey = (d: Date) => format(d, 'yyyy-MM');
@@ -24,6 +25,7 @@ export const MonthlyFacilityBookingSection: React.FC<MonthlyFacilityBookingSecti
   facility,
   branding,
 }) => {
+  const { user } = useAuth();
   const today = useMemo(() => startOfToday(), []);
   const lastDay = useMemo(() => addDays(today, MAX_DAYS_AHEAD), [today]);
 
@@ -57,7 +59,7 @@ export const MonthlyFacilityBookingSection: React.FC<MonthlyFacilityBookingSecti
         .then((res) => {
           const set = new Set<string>();
           Object.entries(res || {}).forEach(([date, a]) => {
-            if (a?.closed || a?.blocked) set.add(date);
+            if (a?.closed || a?.blocked || a?.booked) set.add(date);
           });
           setUnavailable((prev) => ({ ...prev, [key]: set }));
         })
@@ -104,7 +106,9 @@ export const MonthlyFacilityBookingSection: React.FC<MonthlyFacilityBookingSecti
         <div className="absolute bottom-0 left-0 right-0 p-4">
           <h3 className="text-xl font-bold text-white">{facility.name}</h3>
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/90">
-            <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" aria-hidden="true" />{facility.capacity} personas</span>
+            {facility.capacity > 0 && (
+              <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" aria-hidden="true" />Capacidad: {facility.capacity} personas</span>
+            )}
             {facility.area && <span className="flex items-center gap-1"><Building className="h-3.5 w-3.5" aria-hidden="true" />{facility.area}</span>}
             <span className="font-bold">${facility.pricePerDay.toLocaleString('es-CL')}/día</span>
           </div>
@@ -227,30 +231,28 @@ export const MonthlyFacilityBookingSection: React.FC<MonthlyFacilityBookingSecti
         className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-base font-bold text-white transition-opacity hover:opacity-90 active:scale-[0.98]"
         style={{ backgroundColor: count > 0 ? branding.primary : '#64748b' }}
       >
-        <PhoneCall className="h-5 w-5" aria-hidden="true" />
-        {count > 0 ? `Solicitar ${count} día${count > 1 ? 's' : ''}` : 'Selecciona días primero'}
+        <CalendarCheck className="h-5 w-5" aria-hidden="true" />
+        {count > 0 ? `Reservar ${count} día${count > 1 ? 's' : ''}` : 'Selecciona días primero'}
       </button>
       <p className="mt-3 text-center text-xs text-slate-600">
-        Te contactaremos para confirmar disponibilidad en menos de 24 horas.
+        Se permite una sola reserva por día. Podrás pagar online o en el centro, según lo que ofrezca el centro.
       </p>
 
       {showModal && (
-        <FacilityBookingModal
-          title={`Solicitar Arriendo — ${facility.name}`}
-          subtitle={`${count} día${count > 1 ? 's' : ''} seleccionado${count > 1 ? 's' : ''}`}
+        <FacilityCheckoutModal
+          spaceId={facility.id}
+          spaceName={facility.name}
+          capacity={facility.capacity}
+          pricePerDay={facility.pricePerDay}
+          dates={sortedDates.map(dayKey)}
           brandColor={branding.primary}
-          summary={{ label: 'Total estimado', value: `$${totalPrice.toLocaleString('es-CL')}` }}
+          user={user}
           onClose={() => setShowModal(false)}
-          onSubmit={async (details) => {
-            await createFacilityInquiry({
-              facility_id: facility.id,
-              contact_name: details.name,
-              contact_email: details.email,
-              contact_phone: details.phone,
-              message: details.message,
-              dates: sortedDates.map(dayKey),
-              total_price: totalPrice,
-            });
+          onBooked={() => {
+            setSelectedDates([]);
+            setUnavailable({});
+            requested.current = new Set();
+            setVisibleMonth((m) => new Date(m));
           }}
         />
       )}

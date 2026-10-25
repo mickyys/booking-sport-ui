@@ -6,10 +6,11 @@ import { useRouter, usePathname } from 'next/navigation';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   adminOnly?: boolean;
+  superAdminOnly?: boolean;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, adminOnly = false }) => {
-  const { isLoading, isAuthenticated, isAdministrator, login } = useAuth();
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, adminOnly = false, superAdminOnly = false }) => {
+  const { isLoading, isAuthenticated, isAdministrator, isSuperAdmin, login } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   // Evita disparar varios redirects/login mientras el estado de auth cambia.
@@ -26,11 +27,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, adminO
       return;
     }
 
+    if (superAdminOnly && !isSuperAdmin) {
+      redirectingRef.current = true;
+      router.push('/');
+      return;
+    }
+
     if (adminOnly && !isAdministrator) {
       redirectingRef.current = true;
       router.push('/');
     }
-  }, [isLoading, isAuthenticated, isAdministrator, adminOnly, router, pathname, login]);
+  }, [isLoading, isAuthenticated, isAdministrator, isSuperAdmin, adminOnly, superAdminOnly, router, pathname, login]);
 
   if (isLoading || !isAuthenticated) {
     return (
@@ -40,6 +47,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, adminO
     );
   }
 
+  if (superAdminOnly && !isSuperAdmin) return null;
   if (adminOnly && !isAdministrator) return null;
 
   return <>{children}</>;

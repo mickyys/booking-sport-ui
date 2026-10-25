@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MapPin, Trophy, Clock, CheckCircle, Phone, Mail, ChevronRight,
-  Loader2, X, Navigation, ChevronLeft, CalendarDays,
+  Loader2, X, Navigation, ChevronLeft, CalendarDays, MessageCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useBookingStore } from '@/store/useBookingStore';
@@ -19,6 +19,7 @@ import { MonthlyFacilityBookingSection } from '@/components/booking/MonthlyFacil
 import { PaymentModal } from '@/components/booking/PaymentModal';
 import { NearbyCentersMap } from '@/components/sport-center/NearbyCentersMap';
 import { googleMapsDirectionsUrl, googleMapsPlaceUrl } from '@/utils/geo';
+import { getWhatsappUrl } from '@/utils/contact';
 import { ShareButton } from '@/components/sport-center/ShareButton';
 import { SpaceSelector, SpaceOption } from '@/components/sport-center/SpaceSelector';
 import { CancellationPolicyCard } from '@/components/sport-center/CancellationPolicyCard';
@@ -154,6 +155,7 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
   const fullAddress = [center.address, center.city].filter(Boolean).join(', ');
   const phone = center.contact?.phone || center.phone;
   const email = center.contact?.email || center.email;
+  const whatsappUrl = phone ? getWhatsappUrl(phone, `Hola, quiero consultar por ${center.name}`) : '';
   const mapsTarget = {
     name: center.name,
     address: center.address,
@@ -356,6 +358,17 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
                   <Navigation className="h-4 w-4" aria-hidden="true" />
                   Cómo llegar
                 </a>
+                {whatsappUrl && (
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] text-sm font-bold text-white no-underline transition-opacity hover:opacity-90 active:scale-[0.98]"
+                  >
+                    <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                    Escribir por WhatsApp
+                  </a>
+                )}
               </div>
 
               <Link
