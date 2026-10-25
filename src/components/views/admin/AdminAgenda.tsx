@@ -12,9 +12,9 @@ const FullCalendar = dynamic(() => import('@fullcalendar/react'), {
 }) as unknown as React.ForwardRefExoticComponent<
     CalendarOptions & React.RefAttributes<{ getApi: () => any }>
 >;
-import { format, addDays, startOfDay } from 'date-fns';
+import { format, startOfDay } from 'date-fns';
 import { es as esFns } from 'date-fns/locale';
-import { DEFAULT_TIMEZONE } from '@/lib/santiago';
+import { DEFAULT_TIMEZONE, addDaysToSantiagoKey } from '@/lib/santiago';
 import { useIsMobile } from '@/components/ui/use-mobile';
 import {
     CalendarDays,
@@ -58,6 +58,20 @@ import { AdminBookingModal } from './AdminBookingModal';
 import { AdminAgendaMobileBar } from './AdminAgendaMobileBar';
 
 type ViewType = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay';
+
+// Rango visible como claves civiles YYYY-MM-DD (fin exclusivo).
+type VisibleRange = { startKey: string; endKey: string };
+
+// Los Date que entrega FullCalendar con `timeZone` nombrado (sin plugin) llevan
+// la hora civil en sus getters UTC, así que leerlos con helpers locales corre
+// el día/hora. Se usan los strings (`startStr`, `dateStr`) que ya vienen en la
+// hora civil del calendario.
+const fcDateKey = (value?: string | null): string => (value ? value.slice(0, 10) : '');
+
+const fcTimeParts = (value?: string | null): { hour: number; minutes: number } => {
+    const m = /T(\d{2}):(\d{2})/.exec(value || '');
+    return m ? { hour: Number(m[1]), minutes: Number(m[2]) } : { hour: 0, minutes: 0 };
+};
 
 const VIEWS: { key: ViewType; label: string }[] = [
     { key: 'dayGridMonth', label: 'Mes' },
@@ -200,7 +214,7 @@ export const AdminAgenda: React.FC = () => {
     const [viewTitle, setViewTitle] = useState('');
     const [cursorDate, setCursorDate] = useState<Date>(startOfDay(new Date()));
     const [calendarReady, setCalendarReady] = useState(false);
-    const [visibleRange, setVisibleRange] = useState<{ start: Date; end: Date } | null>(null);
+    const [visibleRange, setVisibleRange] = useState<VisibleRange | null>(null);
     const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
 
     const [selectedSlot, setSelectedSlot] = useState<SlotData | null>(null);
@@ -267,18 +281,19 @@ export const AdminAgenda: React.FC = () => {
     );
 
     const handleDatesSet = useCallback((arg: any) => {
-        setVisibleRange({ start: arg.start, end: arg.end });
+        const startKey = fcDateKey(arg.startStr);
+        setVisibleRange({ startKey, endKey: fcDateKey(arg.endStr) });
         setViewType(arg.view.type);
         setViewTitle(arg.view.title);
-        setCursorDate(arg.view.currentStart);
+        setCursorDate(new Date(`${startKey}T12:00:00`));
         setCalendarReady(true);
         setHoveredEvent(null);
     }, []);
 
     useEffect(() => {
         if (!centerId || !visibleRange) return;
-        const from = format(visibleRange.start, 'yyyy-MM-dd');
-        const to = format(addDays(visibleRange.end, -1), 'yyyy-MM-dd');
+        const from = visibleRange.startKey;
+        const to = addDaysToSantiagoKey(visibleRange.endKey, -1);
         const key = `${centerId}|${from}|${to}`;
         if (fetchRef.current === key) return;
         fetchRef.current = key;
@@ -310,24 +325,21 @@ export const AdminAgenda: React.FC = () => {
 
     const refreshRange = useCallback(async () => {
         if (!centerId || !visibleRange) return;
-        const from = format(visibleRange.start, 'yyyy-MM-dd');
-        const to = format(addDays(visibleRange.end, -1), 'yyyy-MM-dd');
+        const from = visibleRange.startKey;
+        const to = addDaysToSantiagoKey(visibleRange.endKey, -1);
         fetchRef.current = `${centerId}|${from}|${to}`;
         await fetchAdminSchedulesRange(centerId, from, to, getAccessTokenSilently);
     }, [centerId, visibleRange, fetchAdminSchedulesRange, getAccessTokenSilently]);
 
     const handleDateClick = useCallback((arg: any) => {
-        const dateKey = format(arg.date, 'yyyy-MM-dd');
+        const dateKey = fcDateKey(arg.dateStr);
         const todayKey = format(new Date(), 'yyyy-MM-dd');
         if (dateKey < todayKey) {
             toast.error('No puedes crear reservas en fechas pasadas');
             return;
         }
-        setCreateTarget({
-            dateKey,
-            hour: arg.allDay ? 0 : arg.date.getHours(),
-            minutes: arg.allDay ? 0 : arg.date.getMinutes(),
-        });
+        const { hour, minutes } = arg.allDay ? { hour: 0, minutes: 0 } : fcTimeParts(arg.dateStr);
+        setCreateTarget({ dateKey, hour, minutes });
     }, []);
 
     const canDragEvent = useCallback((event: any): boolean => {
@@ -347,12 +359,10 @@ export const AdminAgenda: React.FC = () => {
         (dropInfo: any, draggedEvent: any) => {
             if (!draggedEvent || !canDragEvent(draggedEvent)) return false;
             const courtId = draggedEvent.extendedProps?.courtId;
-            const target = dropInfo.start as Date;
-            if (!target || !courtId) return false;
+            if (!dropInfo?.startStr || !courtId) return false;
 
-            const dateKey = format(target, 'yyyy-MM-dd');
-            const hour = target.getHours();
-            const minutes = target.getMinutes();
+            const dateKey = fcDateKey(dropInfo.startStr);
+            const { hour, minutes } = fcTimeParts(dropInfo.startStr);
             const dayCourts = weeklySchedules?.[dateKey] || [];
             const court = (dayCourts as any[]).find((c: any) => String(c.id) === String(courtId));
             const exists = (court?.schedule || []).some(
@@ -368,24 +378,16 @@ export const AdminAgenda: React.FC = () => {
     const handleEventDrop = useCallback((info: any) => {
         const p = info.event.extendedProps || {};
         const slot: SlotData = p.slot || {};
-        const oldStart: Date | null = info.oldEvent?.start || null;
-        const newStart: Date | null = info.event.start || null;
+        const oldStart: string | null = info.oldEvent?.startStr || null;
+        const newStart: string | null = info.event.startStr || null;
 
         // Nunca se mueve nada sin confirmación: el evento vuelve a su lugar.
         info.revert();
 
         if (!slot.booking_id || !oldStart || !newStart) return;
 
-        const from = {
-            dateKey: format(oldStart, 'yyyy-MM-dd'),
-            hour: oldStart.getHours(),
-            minutes: oldStart.getMinutes(),
-        };
-        const to = {
-            dateKey: format(newStart, 'yyyy-MM-dd'),
-            hour: newStart.getHours(),
-            minutes: newStart.getMinutes(),
-        };
+        const from = { dateKey: fcDateKey(oldStart), ...fcTimeParts(oldStart) };
+        const to = { dateKey: fcDateKey(newStart), ...fcTimeParts(newStart) };
         if (
             from.dateKey === to.dateKey &&
             from.hour === to.hour &&
@@ -510,12 +512,10 @@ export const AdminAgenda: React.FC = () => {
     const events = useMemo(() => {
         if (!visibleRange) return [];
         const list: any[] = [];
-        const fromT = startOfDay(visibleRange.start).getTime();
-        const toT = startOfDay(visibleRange.end).getTime();
+        const { startKey, endKey } = visibleRange;
 
         Object.entries(weeklySchedules || {}).forEach(([dateKey, cs]) => {
-            const t = startOfDay(new Date(dateKey + 'T00:00:00')).getTime();
-            if (t < fromT || t >= toT) return;
+            if (dateKey < startKey || dateKey >= endKey) return;
             (cs || []).forEach((court: any) => {
                 if (selectedCourtId && String(court.id) !== String(selectedCourtId)) return;
                 (court.schedule || []).forEach((slot: any) => {
@@ -584,7 +584,7 @@ export const AdminAgenda: React.FC = () => {
         const keys = new Set<string>();
         const slotMs = 30 * 60 * 1000;
         events.forEach((ev) => {
-            if (!ev.start) return;
+            if (!ev.start || ev.allDay) return;
             const start = new Date(ev.start).getTime();
             const end = ev.end ? new Date(ev.end).getTime() : start + 60 * 60 * 1000;
             for (let t = start; t < end; t += slotMs) {
@@ -595,8 +595,14 @@ export const AdminAgenda: React.FC = () => {
     }, [events]);
 
     const isCompactSlot = useCallback(
-        (arg: { date?: Date }) =>
-            !!arg.date && !occupiedSlotKeys.has(format(arg.date, 'HH:mm')),
+        (arg: { time?: { hours?: number; minutes?: number; milliseconds?: number } }) => {
+            if (!arg.time) return false;
+            const total = Math.round((arg.time.milliseconds || 0) / 60000);
+            const hours = arg.time.hours ?? Math.floor(total / 60);
+            const minutes = arg.time.minutes ?? total % 60;
+            const key = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+            return !occupiedSlotKeys.has(key);
+        },
         [occupiedSlotKeys]
     );
 
@@ -611,7 +617,7 @@ export const AdminAgenda: React.FC = () => {
     const goNext = () => calendarApi()?.next();
     const goToday = () => calendarApi()?.today();
     const changeView = (v: ViewType) => calendarApi()?.changeView(v);
-    const goToDate = (date: Date) => calendarApi()?.gotoDate(date);
+    const goToDate = (date: Date) => calendarApi()?.gotoDate(format(date, 'yyyy-MM-dd'));
     const selectCourt = (courtId: string | null) => {
         setSelectedCourtId(courtId);
         setHoveredEvent(null);
@@ -621,7 +627,7 @@ export const AdminAgenda: React.FC = () => {
         setHoveredEvent(null);
         const p = info.event.extendedProps;
         if (!p.isBooked || !p.slot) return;
-        const dateStr = format(info.event.start, 'yyyy-MM-dd');
+        const dateStr = fcDateKey(info.event.startStr);
         setSelectedSlot({ ...p.slot, __date: dateStr } as any);
     }, []);
 
@@ -636,7 +642,7 @@ export const AdminAgenda: React.FC = () => {
         setHoveredEvent({
             slot: p.slot,
             courtName: p.courtName,
-            dateKey: format(info.event.start, 'yyyy-MM-dd'),
+            dateKey: fcDateKey(info.event.startStr),
             rect: {
                 top: rect.top,
                 left: rect.left,
