@@ -21,6 +21,7 @@ interface PanelSidebarProps {
   mobile: {
     title: string;
     subtitle: string;
+    badge?: React.ReactNode;
     actionHref: string;
     actionIcon: LucideIcon;
     actionLabel: string;
@@ -76,7 +77,10 @@ export const PanelSidebar: React.FC<PanelSidebarProps> = ({
           <Menu size={22} />
         </button>
         <div className="min-w-0 flex-1 text-center">
-          <p className="truncate text-sm font-black text-slate-900">{mobile.title}</p>
+          <div className="flex min-w-0 items-center justify-center gap-1.5">
+            <p className="min-w-0 truncate text-sm font-black text-slate-900">{mobile.title}</p>
+            {mobile.badge}
+          </div>
           <p className="truncate text-[10px] font-bold uppercase tracking-wider text-slate-400">{mobile.subtitle}</p>
         </div>
         <Link

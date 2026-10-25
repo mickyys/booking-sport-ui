@@ -110,8 +110,18 @@ const formatDuration = (minutes: number): string => {
     return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
 };
 
+// Las sedes, piscinas y quinchos se reservan por día completo (24 h).
+const isDayLongSlot = (slot: SlotData): boolean => getSlotDuration(slot) >= 24 * 60;
+
 const formatSlotTime = (slot: SlotData): string =>
-    `${String(slot.hour).padStart(2, '0')}:${String(slot.minutes || 0).padStart(2, '0')}`;
+    isDayLongSlot(slot)
+        ? 'Día completo'
+        : `${String(slot.hour).padStart(2, '0')}:${String(slot.minutes || 0).padStart(2, '0')}`;
+
+const formatSlotWhen = (slot: SlotData): string =>
+    isDayLongSlot(slot)
+        ? formatSlotTime(slot)
+        : `${formatSlotTime(slot)} · ${formatDuration(getSlotDuration(slot))}`;
 
 const getPaymentMethodLabel = (slot: SlotData): string => {
     switch (slot.payment_method) {
@@ -178,7 +188,7 @@ export const AdminAgenda: React.FC = () => {
         rescheduleBooking,
     } = useBookingStore();
     const { getAccessTokenSilently } = useAuth0();
-    const { courts: contextCourts, currentSportCenter } = useAdminPanel();
+    const { courts: contextCourts, spaces: contextSpaces, currentSportCenter } = useAdminPanel();
 
     const calendarRef = useRef<any>(null);
     const fetchRef = useRef<string>('');
@@ -231,18 +241,22 @@ export const AdminAgenda: React.FC = () => {
 
     const courts = useMemo(() => {
         const seen = new Set<string>();
-        const list: { id: string; name: string }[] = [];
-        const push = (id: any, name: any) => {
+        const list: { id: string; name: string; category?: string }[] = [];
+        const push = (id: any, name: any, category?: string) => {
             if (!id || seen.has(String(id))) return;
             seen.add(String(id));
-            list.push({ id: String(id), name: name || 'Cancha' });
+            list.push({ id: String(id), name: name || 'Espacio', category: category || 'cancha' });
         };
-        (contextCourts || []).forEach((c: any) => push(c.id || c._id, c.name));
+        (contextCourts || []).forEach((c: any) => push(c.id || c._id, c.name, c.category));
+        // Todos los espacios del centro (canchas, quinchos, sedes y piscinas).
+        (contextSpaces || [])
+            .filter((c: any) => c.enabled !== false)
+            .forEach((c: any) => push(c.id || c._id, c.name, c.category));
         Object.values(weeklySchedules || {}).forEach((cs: any) =>
-            (cs || []).forEach((c: any) => push(c.id, c.name))
+            (cs || []).forEach((c: any) => push(c.id, c.name, c.category))
         );
         return list.sort((a, b) => a.name.localeCompare(b.name));
-    }, [contextCourts, weeklySchedules]);
+    }, [contextCourts, contextSpaces, weeklySchedules]);
 
     const courtColorIndex = useCallback(
         (courtId: string): number => {
@@ -311,8 +325,8 @@ export const AdminAgenda: React.FC = () => {
         }
         setCreateTarget({
             dateKey,
-            hour: arg.date.getHours(),
-            minutes: arg.date.getMinutes(),
+            hour: arg.allDay ? 0 : arg.date.getHours(),
+            minutes: arg.allDay ? 0 : arg.date.getMinutes(),
         });
     }, []);
 
@@ -321,6 +335,7 @@ export const AdminAgenda: React.FC = () => {
         const slot: SlotData = p.slot || {};
         if (!slot.booking_id) return false;
         if (p.isClosed) return false;
+        if (isDayLongSlot(slot)) return false;
         if (slot.status === 'passed_booked') return false;
         // Las recurrentes semanales no son bookings: se gestionan desde el detalle.
         if (slot.is_recurring_weekly || slot.recurring_reservation_id) return false;
@@ -517,7 +532,8 @@ export const AdminAgenda: React.FC = () => {
                     const hh = String(slot.hour).padStart(2, '0');
                     const mm = String(slot.minutes || 0).padStart(2, '0');
                     const start = `${dateKey}T${hh}:${mm}:00`;
-                    const durationMinutes = getSlotDuration(slot);
+                    const dayLong = court.category && court.category !== 'cancha';
+                    const durationMinutes = dayLong ? 24 * 60 : getSlotDuration(slot);
                     const end = new Date(new Date(start).getTime() + durationMinutes * 60 * 1000);
 
                     const title = isClosed
@@ -529,8 +545,9 @@ export const AdminAgenda: React.FC = () => {
                     list.push({
                         id: `${court.id}-${dateKey}-${hh}-${mm}`,
                         title,
-                        start,
-                        end: format(end, "yyyy-MM-dd'T'HH:mm:ss"),
+                        ...(dayLong
+                            ? { allDay: true, start: dateKey }
+                            : { start, end: format(end, "yyyy-MM-dd'T'HH:mm:ss") }),
                         extendedProps: {
                             courtId: String(court.id),
                             courtName: court.name,
@@ -927,7 +944,7 @@ export const AdminAgenda: React.FC = () => {
                         onChange={(e) => setSelectedCourtId(e.target.value || null)}
                         className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-200 outline-none"
                     >
-                        <option value="">Todas las canchas</option>
+                        <option value="">Todos los espacios</option>
                         {courts.map((c) => (
                             <option key={c.id} value={c.id}>
                                 {c.name}
@@ -1002,7 +1019,8 @@ export const AdminAgenda: React.FC = () => {
                         height="auto"
                         slotMinTime="08:00:00"
                         slotMaxTime="23:00:00"
-                        allDaySlot={false}
+                        allDaySlot
+                        allDayText="Día completo"
                         nowIndicator
                         dayMaxEvents={4}
                         firstDay={1}
@@ -1035,9 +1053,7 @@ export const AdminAgenda: React.FC = () => {
                                         { locale: esFns }
                                     )}
                                     {' · '}
-                                    {formatSlotTime(slot)}
-                                    {' · '}
-                                    {formatDuration(getSlotDuration(slot))}
+                                    {formatSlotWhen(slot)}
                                 </p>
                             </div>
                             <span className={`rl-badge rl-badge--${badge.tone}`}>{badge.text}</span>
@@ -1046,7 +1062,7 @@ export const AdminAgenda: React.FC = () => {
                         <dl className="rl-event-tooltip__grid">
                             {hoveredEvent.courtName && (
                                 <div>
-                                    <dt>Cancha</dt>
+                                    <dt>Espacio</dt>
                                     <dd>{hoveredEvent.courtName}</dd>
                                 </div>
                             )}
@@ -1122,7 +1138,7 @@ export const AdminAgenda: React.FC = () => {
                                         {selectedSlot.customer_name || 'Reserva'}
                                     </h3>
                                     <p className="text-sm text-slate-500">
-                                        {selectedSlotDate ? format(selectedSlotDate, "EEEE d 'de' MMMM", { locale: esFns }) : ''} · {formatSlotTime(selectedSlot)} · {formatDuration(getSlotDuration(selectedSlot))}
+                                        {selectedSlotDate ? format(selectedSlotDate, "EEEE d 'de' MMMM", { locale: esFns }) : ''} · {formatSlotWhen(selectedSlot)}
                                     </p>
                                 </div>
                             </div>

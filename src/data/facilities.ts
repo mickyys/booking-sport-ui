@@ -14,12 +14,11 @@ export interface QuinchoFacility {
   area: string;
   features: string[];
   priceAllDay: number;
-  priceHalfDay: number;
   openHour: number;
   closeHour: number;
 }
 
-export type MonthlyFacilityType = 'sede' | 'piscina';
+export type MonthlyFacilityType = 'sede' | 'piscina' | 'quincho';
 
 export interface MonthlyFacility {
   id: string;
@@ -58,7 +57,6 @@ function mapFacilities(list: any[]): FacilityCatalog {
         area: f.area || '',
         features: f.features || [],
         priceAllDay: f.price_all_day || 0,
-        priceHalfDay: f.price_half_day || 0,
         openHour: f.open_hour || 9,
         closeHour: f.close_hour || 22,
       });
@@ -89,4 +87,25 @@ function mapFacilities(list: any[]): FacilityCatalog {
 // vacío (la UI oculta las secciones).
 export function buildFacilityCatalog(list: Facility[] | undefined | null): FacilityCatalog {
   return mapFacilities(list || []);
+}
+
+// Un quincho se reserva por día completo, igual que sede y piscina: se adapta
+// a la forma que consume el flujo de reserva por día.
+export function quinchoToDayFacility(q: QuinchoFacility): MonthlyFacility {
+  return {
+    id: q.id,
+    type: 'quincho',
+    name: q.name,
+    description: q.description,
+    image: q.image,
+    capacity: q.capacity,
+    area: q.area,
+    features: q.features,
+    pricePerDay: q.priceAllDay,
+    pricePerMonth: 0,
+    minMonths: 1,
+    maxMonths: 12,
+    availableMonths: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    depositMonths: 1,
+  };
 }

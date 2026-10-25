@@ -39,7 +39,6 @@ export interface SpaceTemplate {
     cancha: boolean;
     rules?: RuleSemanal[];
     price_all_day?: number;
-    price_half_day?: number;
     price_per_day?: number;
     price_per_month?: number;
 }
@@ -116,7 +115,6 @@ export const SpaceTemplatesEditor: React.FC<SpaceTemplatesEditorProps> = ({
             cancha: src.cancha,
             rules: src.cancha ? JSON.parse(JSON.stringify(src.rules ?? [])) : undefined,
             price_all_day: src.price_all_day,
-            price_half_day: src.price_half_day,
             price_per_day: src.price_per_day,
             price_per_month: src.price_per_month,
         };
@@ -401,11 +399,6 @@ export const SpaceTemplatesEditor: React.FC<SpaceTemplatesEditorProps> = ({
                                         label="Precio día completo"
                                         value={selected.price_all_day ?? 0}
                                         onChange={(v) => updateTemplate(selected.tipo, { price_all_day: v })}
-                                    />
-                                    <FacilityPriceInput
-                                        label="Precio medio día"
-                                        value={selected.price_half_day ?? 0}
-                                        onChange={(v) => updateTemplate(selected.tipo, { price_half_day: v })}
                                     />
                                 </>
                             )}

@@ -77,7 +77,6 @@ const templatesPayload = (templates: SpaceTemplate[]) =>
             cancha: p.cancha,
             rules: p.cancha ? p.rules ?? [] : undefined,
             price_all_day: p.price_all_day,
-            price_half_day: p.price_half_day,
             price_per_day: p.price_per_day,
             price_per_month: p.price_per_month,
         }));
@@ -122,7 +121,6 @@ export const CenterOnboardingWizard: React.FC = () => {
                     cancha: p.tipo === 'cancha',
                     rules: p.rules,
                     price_all_day: p.price_all_day,
-                    price_half_day: p.price_half_day,
                     price_per_day: p.price_per_day,
                     price_per_month: p.price_per_month,
                 })),

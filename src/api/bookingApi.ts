@@ -237,20 +237,6 @@ export const getFacilityBookingByCode = async (code: string): Promise<FacilityBo
   return response.data?.bookings || [];
 };
 
-export const getAdminFacilityBookings = async (token: string): Promise<FacilityBookingDay[]> => {
-  const response = await api.get('/admin/facility-bookings', {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return response.data?.bookings || [];
-};
-
-export const cancelAdminFacilityBooking = async (id: string, token: string) => {
-  const response = await api.post(`/admin/facility-bookings/${id}/cancel`, {}, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return response.data;
-};
-
 // Recurring Reservation API
 export const createRecurringReservation = async (data: any, token: string) => {
   const response = await api.post('/admin/recurring', data, {

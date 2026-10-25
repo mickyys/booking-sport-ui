@@ -3,12 +3,13 @@ import React from 'react';
 import { TimeSlot, Court, UserProfile, GuestDetails } from '../../types';
 import { PaymentModalMobile } from './PaymentModalMobile';
 import { PaymentModalWeb } from './PaymentModalWeb';
+import { CheckoutBenefits } from './DiscountPicker';
 
 interface PaymentModalProps {
   slot: TimeSlot;
   court: Court;
   onClose: () => void;
-  onConfirm: (method: 'mercadopago' | 'venue' | 'presential', guestDetails?: GuestDetails, partial?: boolean) => Promise<boolean | void>;
+  onConfirm: (method: 'mercadopago' | 'venue' | 'presential', guestDetails?: GuestDetails, partial?: boolean, benefits?: CheckoutBenefits) => Promise<boolean | void>;
   user: UserProfile | null;
 }
 

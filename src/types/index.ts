@@ -132,7 +132,6 @@ export interface Facility {
   enabled?: boolean;
   // quincho
   price_all_day?: number;
-  price_half_day?: number;
   open_hour?: number;
   close_hour?: number;
   // sede / piscina
@@ -165,7 +164,6 @@ export interface Space {
   features?: string[];
   // quincho
   price_all_day?: number;
-  price_half_day?: number;
   open_hour?: number;
   close_hour?: number;
   // sede / piscina
@@ -263,6 +261,12 @@ export interface Booking {
   ends_at?: string
   timezone?: string
   duration_minutes?: number
+
+  // sedes, piscinas y quinchos: reserva de uno o más días completos
+  isFacility?: boolean
+  facilityDates?: string[]
+  space_type?: 'quincho' | 'sede' | 'piscina'
+  guests?: number
 
   // precios
   price: number

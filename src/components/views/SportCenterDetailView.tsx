@@ -11,10 +11,9 @@ import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useBookingActions } from '@/hooks/useBookingActions';
 import { resolveBranding } from '@/utils/branding';
-import { buildFacilityCatalog } from '@/data/facilities';
+import { buildFacilityCatalog, quinchoToDayFacility } from '@/data/facilities';
 import { Court } from '@/types';
 import { CourtBookingSection } from '@/components/booking/CourtBookingSection';
-import { QuinchoBookingSection } from '@/components/booking/QuinchoBookingSection';
 import { MonthlyFacilityBookingSection } from '@/components/booking/MonthlyFacilityBookingSection';
 import { PaymentModal } from '@/components/booking/PaymentModal';
 import { NearbyCentersMap } from '@/components/sport-center/NearbyCentersMap';
@@ -113,10 +112,12 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
   );
   const activeCategory = selectedSpace?.category;
 
-  const selectedMonthlyFacility = useMemo(
-    () => facilities.monthlyFacilities.find((f) => f.id === selectedSpaceId),
-    [facilities, selectedSpaceId]
-  );
+  const selectedMonthlyFacility = useMemo(() => {
+    const dayFacility = facilities.monthlyFacilities.find((f) => f.id === selectedSpaceId);
+    if (dayFacility) return dayFacility;
+    const quincho = facilities.quinchos.find((q) => q.id === selectedSpaceId);
+    return quincho ? quinchoToDayFacility(quincho) : undefined;
+  }, [facilities, selectedSpaceId]);
 
   const selectSpace = (space: SpaceOption) => setSelectedSpaceId(space.id);
 
@@ -257,7 +258,7 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
                 Reservar{selectedSpace ? ` · ${selectedSpace.name}` : ''}
               </h2>
               <p className="mb-5 text-sm text-slate-600">
-                {activeCategory === 'sede' || activeCategory === 'piscina'
+                {activeCategory !== 'cancha'
                   ? 'Elige los días que quieres arrendar (hasta 1 año).'
                   : 'Elige el día y el horario.'}
               </p>
@@ -272,15 +273,8 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
                 />
               )}
 
-              {activeCategory === 'quincho' && (
-                <QuinchoBookingSection
-                  facilities={facilities.quinchos}
-                  branding={branding}
-                  selectedQuinchoId={selectedSpaceId}
-                />
-              )}
 
-              {selectedMonthlyFacility && (activeCategory === 'sede' || activeCategory === 'piscina') && (
+              {selectedMonthlyFacility && activeCategory !== 'cancha' && (
                 <MonthlyFacilityBookingSection facility={selectedMonthlyFacility} branding={branding} />
               )}
 

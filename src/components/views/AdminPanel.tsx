@@ -10,7 +10,6 @@ import { AdminAgenda } from './admin/AdminAgenda';
 import { AdminSettings } from './admin/AdminSettings';
 import { AdminQR } from './admin/AdminQR';
 import { AdminUsers } from './admin/AdminUsers';
-import { AdminFacilities } from './admin/AdminFacilities';
 import { AdminSpaces } from './admin/AdminSpaces';
 import { AdminSidebar } from '@/components/layout/AdminSidebar';
 import { AdminPanelProvider, useAdminPanel } from '@/context/AdminPanelContext';
@@ -45,7 +44,7 @@ const AdminPanelContent: React.FC<AdminPanelProps> = ({ children }) => {
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
-            <AdminSidebar sportCenterName={currentSportCenter?.name} />
+            <AdminSidebar sportCenterName={currentSportCenter?.name} isFeatured={!!currentSportCenter?.is_featured} />
 
             <div className="flex-1 flex flex-col min-w-0 pt-14 lg:pt-0">
                 <MPStatusBanner />
@@ -180,11 +179,6 @@ export const AdminQRSubPage: React.FC = () => {
 
 export const AdminUsersSubPage: React.FC = () => {
     return <AdminUsers />;
-};
-
-export const AdminFacilitiesSubPage: React.FC = () => {
-    const { currentSportCenter } = useAdminPanel();
-    return <AdminFacilities sportCenter={currentSportCenter} />;
 };
 
 export const AdminSpacesSubPage: React.FC = () => {

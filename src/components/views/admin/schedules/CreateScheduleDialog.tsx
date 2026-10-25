@@ -264,7 +264,7 @@ export const CreateScheduleDialog: React.FC<CreateScheduleDialogProps> = ({
 
               {space.category === 'quincho' && (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
-                  El precio del quincho se configura en el espacio (día completo y media jornada).
+                  El precio del quincho se configura en el espacio (día completo).
                 </div>
               )}
 

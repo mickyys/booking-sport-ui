@@ -9,6 +9,7 @@ import { useBookingStore } from '../../store/useBookingStore';
 import { useSavedPhone } from '../../hooks/useSavedPhone';
 import { formatChileanPhone, normalizeChileanPhone } from '../../utils/phone';
 import CancellationPolicyModal from '../search/CancellationPolicyModal';
+import { DiscountPicker, CheckoutBenefits } from './DiscountPicker';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -16,7 +17,7 @@ interface PaymentModalMobileProps {
   slot: TimeSlot;
   court: Court;
   onClose: () => void;
-  onConfirm: (method: 'mercadopago' | 'venue' | 'presential', guestDetails?: GuestDetails, partial?: boolean) => Promise<boolean | void>;
+  onConfirm: (method: 'mercadopago' | 'venue' | 'presential', guestDetails?: GuestDetails, partial?: boolean, benefits?: CheckoutBenefits) => Promise<boolean | void>;
   user: UserProfile | null;
 }
 
@@ -43,6 +44,8 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
   const [payPartial, setPayPartial] = useState(false);
   const { phone: savedPhone, loaded: phoneLoaded, savePhone } = useSavedPhone(!!user);
   const loadingPhone = !!user && !phoneLoaded;
+  const [benefits, setBenefits] = useState<CheckoutBenefits>({ discountCode: '', memberToken: '', quote: null });
+  const effectivePrice = benefits.quote?.final_price ?? slot.price;
 
   useEffect(() => {
     if (!savedPhone) return;
@@ -59,7 +62,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
   const isPaymentRequired = slot.paymentRequired || (payPartial && isPartialAvailable);
 
   const partialAmount = isPartialAvailable && center?.partialPaymentPercent
-    ? Math.round(slot.price * ((center.partialPaymentPercent || 0) / 100))
+    ? Math.round(effectivePrice * ((center.partialPaymentPercent || 0) / 100))
     : 0;
 
   const validate = () => {
@@ -78,7 +81,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
     setProcessing(method);
     if (normalizeChileanPhone(guestDetails.phone) !== savedPhone) await savePhone(guestDetails.phone);
     try {
-      await onConfirm(method, guestDetails, payPartial);
+      await onConfirm(method, guestDetails, payPartial, benefits);
     } catch (error) {
       console.error("Booking failed:", error);
       setProcessing(null);
@@ -119,7 +122,14 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
               <p className="text-emerald-600 font-medium">
                 {String(slot.hour).padStart(2, '0')}:{String(slot.minutes || 0).padStart(2, '0')} hrs
               </p>
-              <p className="text-slate-900 font-bold text-lg mt-1">${slot.price.toLocaleString('es-CL')}</p>
+              {benefits.quote && benefits.quote.discount_total > 0 ? (
+                <p className="mt-1 flex items-baseline gap-2">
+                  <span className="text-slate-400 text-sm line-through">${slot.price.toLocaleString('es-CL')}</span>
+                  <span className="text-slate-900 font-bold text-lg">${effectivePrice.toLocaleString('es-CL')}</span>
+                </p>
+              ) : (
+                <p className="text-slate-900 font-bold text-lg mt-1">${slot.price.toLocaleString('es-CL')}</p>
+              )}
             </div>
           </div>
 
@@ -196,6 +206,19 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
               {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
             </div>
 
+            <DiscountPicker
+              courtId={slot.courtId}
+              centerId={center?.id || slot.centerId}
+              centerSlug={center?.slug}
+              date={slot.date}
+              hour={slot.hour ?? slot.date.getHours()}
+              minutes={slot.minutes ?? 0}
+              durationMinutes={60}
+              email={guestDetails.email || user?.email}
+              disabled={processing !== null}
+              onChange={setBenefits}
+            />
+
             {(slot.paymentRequired || slot.paymentOptional) && center && (
               <div className="pt-2">
                 <button
@@ -233,13 +256,13 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
                 </div>
                 <p className="text-xs text-slate-500 mb-3">
                   {payPartial
-                    ? `Pagarás $${partialAmount.toLocaleString('es-CL')} ahora y $${(slot.price - partialAmount).toLocaleString('es-CL')} en el club.`
+                    ? `Pagarás $${partialAmount.toLocaleString('es-CL')} ahora y $${(effectivePrice - partialAmount).toLocaleString('es-CL')} en el club.`
                     : 'Pagarás el total de la reserva ahora.'}
                 </p>
                 <div className="flex justify-between items-center pt-2 border-t border-blue-100/50">
                   <span className="text-xs font-medium text-slate-600 uppercase tracking-wider">Monto a pagar:</span>
                   <span className="text-lg font-black text-blue-700">
-                    ${(payPartial ? partialAmount : slot.price).toLocaleString('es-CL')}
+                    ${(payPartial ? partialAmount : effectivePrice).toLocaleString('es-CL')}
                   </span>
                 </div>
               </div>

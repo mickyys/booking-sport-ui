@@ -28,7 +28,7 @@ type RecurringType = 'single' | 'weeks' | 'weekly';
 
 interface AdminBookingModalProps {
     target: AdminBookingTarget;
-    courts: { id: string; name: string }[];
+    courts: { id: string; name: string; category?: string }[];
     initialCourtId: string | null;
     centerId: string | null;
     /** weeklySchedules del store: { [yyyy-MM-dd]: courts[] } */
@@ -40,6 +40,7 @@ interface AdminBookingModalProps {
 const pad = (value: number) => String(value).padStart(2, '0');
 const slotKey = (hour: number, minutes = 0) => `${hour}:${minutes}`;
 const toApiDate = (dateKey: string) => `${dateKey}T12:00:00Z`;
+const todayKey = () => format(new Date(), 'yyyy-MM-dd');
 
 export const AdminBookingModal: React.FC<AdminBookingModalProps> = ({
     target,
@@ -82,6 +83,19 @@ export const AdminBookingModal: React.FC<AdminBookingModalProps> = ({
         fetchAdminSchedulesRange(centerId, dateKey, dateKey, getAccessTokenSilently);
     }, [dateKey, centerId, schedulesByDate, fetchAdminSchedulesRange, getAccessTokenSilently]);
 
+    // Sedes, piscinas y quinchos se reservan por día completo: un único bloque.
+    const isFacility = useMemo(() => {
+        const day = schedulesByDate?.[dateKey] || [];
+        const fromSchedule = (day || []).find((c: any) => String(c.id) === String(courtId))?.category;
+        const category = fromSchedule || courts.find((c) => c.id === courtId)?.category;
+        return !!category && category !== 'cancha';
+    }, [schedulesByDate, dateKey, courtId, courts]);
+
+    // La reserva semanal indefinida solo existe para canchas por hora.
+    useEffect(() => {
+        if (isFacility && recurringType === 'weekly') setRecurringType('single');
+    }, [isFacility, recurringType]);
+
     const slotOptions = useMemo(() => {
         const day = schedulesByDate?.[dateKey] || [];
         const court = (day || []).find((c: any) => String(c.id) === String(courtId));
@@ -91,6 +105,7 @@ export const AdminBookingModal: React.FC<AdminBookingModalProps> = ({
         return schedule
             .filter((slot) => {
                 if (slot.status !== 'available' && slot.status !== 'unavailable') return false;
+                if (isFacility) return dateKey >= todayKey();
                 const start = new Date(
                     `${dateKey}T${pad(slot.hour)}:${pad(slot.minutes || 0)}:00`
                 ).getTime();
@@ -102,7 +117,7 @@ export const AdminBookingModal: React.FC<AdminBookingModalProps> = ({
                 price: (slot.price || 0) as number,
             }))
             .sort((a, b) => a.hour * 60 + a.minutes - (b.hour * 60 + b.minutes));
-    }, [schedulesByDate, dateKey, courtId]);
+    }, [schedulesByDate, dateKey, courtId, isFacility]);
 
     const effectiveTime = useMemo(() => {
         if (slotOptions.length === 0) return '';
@@ -154,7 +169,7 @@ export const AdminBookingModal: React.FC<AdminBookingModalProps> = ({
 
         let created = 0;
         try {
-            if (mode === 'reserve' && recurringType === 'weekly') {
+            if (mode === 'reserve' && recurringType === 'weekly' && !isFacility) {
                 await createRecurringReservation(
                     {
                         court_id: courtId,
@@ -244,7 +259,7 @@ export const AdminBookingModal: React.FC<AdminBookingModalProps> = ({
                         </span>
                         <div>
                             <h3 className="text-xl font-black text-slate-900">
-                                {mode === 'block' ? 'Bloquear horario' : 'Nueva reserva'}
+                                {mode === 'block' ? (isFacility ? 'Bloquear día' : 'Bloquear horario') : 'Nueva reserva'}
                             </h3>
                             <p className="text-sm text-slate-500">
                                 {format(parseISO(`${dateKey}T12:00:00`), "EEEE d 'de' MMMM", {
@@ -266,7 +281,7 @@ export const AdminBookingModal: React.FC<AdminBookingModalProps> = ({
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">
-                                Cancha
+                                Espacio
                             </label>
                             <select
                                 value={courtId}
@@ -295,7 +310,7 @@ export const AdminBookingModal: React.FC<AdminBookingModalProps> = ({
 
                     <div className="space-y-1.5">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wide px-1">
-                            Hora
+                            {isFacility ? 'Horario' : 'Hora'}
                         </label>
                         <div className="relative">
                             <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -306,11 +321,11 @@ export const AdminBookingModal: React.FC<AdminBookingModalProps> = ({
                                 className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-11 pr-4 py-3 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-200 outline-none disabled:text-slate-400"
                             >
                                 {slotOptions.length === 0 && (
-                                    <option value="">Sin horarios disponibles</option>
+                                    <option value="">{isFacility ? 'Día no disponible' : 'Sin horarios disponibles'}</option>
                                 )}
                                 {slotOptions.map((slot) => (
                                     <option key={slotKey(slot.hour, slot.minutes)} value={slotKey(slot.hour, slot.minutes)}>
-                                        {pad(slot.hour)}:{pad(slot.minutes)}
+                                        {isFacility ? 'Día completo' : `${pad(slot.hour)}:${pad(slot.minutes)}`}
                                     </option>
                                 ))}
                             </select>
@@ -384,7 +399,7 @@ export const AdminBookingModal: React.FC<AdminBookingModalProps> = ({
                                 { key: 'single' as const, label: 'Simple', hint: 'Solo esta fecha' },
                                 { key: 'weeks' as const, label: 'Por semanas', hint: 'Se repite N semanas' },
                                 { key: 'weekly' as const, label: 'Semanal', hint: 'Indefinida' },
-                            ].map((option) => (
+                            ].filter((option) => !(isFacility && option.key === 'weekly')).map((option) => (
                                 <button
                                     key={option.key}
                                     onClick={() => setRecurringType(option.key)}
@@ -456,7 +471,7 @@ export const AdminBookingModal: React.FC<AdminBookingModalProps> = ({
                     {selectedSlot && (
                         <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3">
                             <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-                                Valor del bloque
+                                {isFacility ? 'Valor por día' : 'Valor del bloque'}
                             </span>
                             <span className="text-base font-black text-slate-900">
                                 ${selectedSlot.price.toLocaleString('es-CL')}

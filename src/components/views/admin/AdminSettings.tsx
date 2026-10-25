@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Save, Globe, Clock, Percent, AlertTriangle, CheckCircle, Info, CreditCard, Image as ImageIcon, X, Palette, Star, MapPin, Loader2 } from 'lucide-react';
+import { Settings, Save, Globe, Clock, Percent, AlertTriangle, CheckCircle, CreditCard, Image as ImageIcon, X, Palette, MapPin, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
@@ -23,7 +23,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
     const [partialPaymentEnabled, setPartialPaymentEnabled] = useState<boolean>(false);
     const [partialPaymentPercent, setPartialPaymentPercent] = useState<number>(50);
     const [marketplaceFeePercent, setMarketplaceFeePercent] = useState<number>(7);
-    const [isFeatured, setIsFeatured] = useState<boolean>(false);
     const [imageUrl, setImageUrl] = useState<string>('');
     const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
     const [localImageFile, setLocalImageFile] = useState<File | null>(null);
@@ -170,7 +169,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                     setPartialPaymentEnabled(center.partialPaymentEnabled ?? false);
                     setPartialPaymentPercent(center.partialPaymentPercent ?? 50);
                     setMarketplaceFeePercent(center.marketplace_fee_percent ?? 7);
-                    setIsFeatured(center.is_featured ?? false);
                     setImageUrl(center.image_url || '');
                     if (center.default_schedule) setDefaultSchedule(center.default_schedule);
                     if (center.schedule_overrides) setScheduleOverrides(center.schedule_overrides);
@@ -235,7 +233,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                 partialPaymentEnabled: partialPaymentEnabled,
                 partialPaymentPercent: partialPaymentPercent,
                 marketplace_fee_percent: marketplaceFeePercent,
-                is_featured: isFeatured,
                 address,
                 city,
                 coordinates,
@@ -371,35 +368,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                         <p className="text-xs text-slate-500">
                             Esto se usará para acceder directamente via <span className="font-bold">{slug || 'tu-club'}.{platformDomain()}</span>
                         </p>
-                    </div>
-
-                    {/* Centro destacado */}
-                    <div className="border-t border-slate-200 pt-6">
-                        <div className="flex items-center gap-2 mb-4">
-                            <Star className="w-5 h-5 text-amber-500" />
-                            <h4 className="text-base font-bold text-slate-900">Centro destacado</h4>
-                        </div>
-                        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
-                            <button
-                                type="button"
-                                role="switch"
-                                aria-checked={isFeatured}
-                                onClick={() => setIsFeatured(!isFeatured)}
-                                className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${isFeatured ? 'bg-amber-500' : 'bg-slate-300'}`}
-                            >
-                                <span
-                                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isFeatured ? 'translate-x-5' : 'translate-x-0.5'}`}
-                                />
-                            </button>
-                            <div>
-                                <p className="text-sm font-semibold text-slate-800">
-                                    {isFeatured ? 'Este centro aparece destacado' : 'Activar destacado'}
-                                </p>
-                                <p className="text-xs text-slate-600 mt-1">
-                                    Los centros destacados aparecen primero en las búsquedas de su ciudad, por encima del orden por distancia.
-                                </p>
-                            </div>
-                        </div>
                     </div>
                             </TabsContent>
 

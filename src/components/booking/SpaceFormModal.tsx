@@ -40,7 +40,6 @@ export const SpaceFormModal: React.FC<SpaceFormModalProps> = ({ space, onClose, 
   const [area, setArea] = useState(space?.area || '');
   const [features, setFeatures] = useState<string>((space?.features || []).join(', '));
   const [priceAllDay, setPriceAllDay] = useState<number>(space?.price_all_day || 0);
-  const [priceHalfDay, setPriceHalfDay] = useState<number>(space?.price_half_day || 0);
   const [openHour, setOpenHour] = useState<number>(space?.open_hour ?? 9);
   const [closeHour, setCloseHour] = useState<number>(space?.close_hour ?? 22);
   const [pricePerDay, setPricePerDay] = useState<number>(space?.price_per_day || 0);
@@ -130,7 +129,7 @@ export const SpaceFormModal: React.FC<SpaceFormModalProps> = ({ space, onClose, 
           features: features.split(',').map((s) => s.trim()).filter(Boolean),
           enabled: true,
           ...(category === 'quincho'
-            ? { price_all_day: priceAllDay, price_half_day: priceHalfDay, open_hour: openHour, close_hour: closeHour }
+            ? { price_all_day: priceAllDay, open_hour: openHour, close_hour: closeHour }
             : {
                 price_per_day: pricePerDay,
                 price_per_month: pricePerMonth,
@@ -296,16 +295,6 @@ export const SpaceFormModal: React.FC<SpaceFormModalProps> = ({ space, onClose, 
                     min={0}
                     value={priceAllDay}
                     onChange={(e) => setPriceAllDay(Number(e.target.value))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Medio día</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={priceHalfDay}
-                    onChange={(e) => setPriceHalfDay(Number(e.target.value))}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm"
                   />
                 </div>

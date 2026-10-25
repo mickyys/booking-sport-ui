@@ -19,7 +19,12 @@ export const useBookingActions = (user: UserProfile | null) => {
     setSelectedSlot,
   } = useBooking(user);
 
-  const handleConfirmBooking = async (method: 'mercadopago' | 'venue' | 'presential' | 'cash', guestDetails?: any, partial: boolean = false) => {
+  const handleConfirmBooking = async (
+    method: 'mercadopago' | 'venue' | 'presential' | 'cash',
+    guestDetails?: any,
+    partial: boolean = false,
+    benefits?: { discountCode?: string; memberToken?: string },
+  ) => {
     const getErrorMessage = (error: unknown, fallback: string): string => {
       if (axios.isAxiosError(error) && error.response?.data?.error) {
         return error.response.data.error;
@@ -37,6 +42,8 @@ export const useBookingActions = (user: UserProfile | null) => {
           guest_details: guestDetails,
           user_id: user?.id,
           partial,
+          discount_code: benefits?.discountCode || undefined,
+          member_token: benefits?.memberToken || undefined,
         });
 
         // Redirigir a MercadoPago Checkout
@@ -58,6 +65,8 @@ export const useBookingActions = (user: UserProfile | null) => {
           guest_details: guestDetails,
           user_id: user?.id,
           partial: partial,
+          discount_code: benefits?.discountCode || undefined,
+          member_token: benefits?.memberToken || undefined,
         });
 
         toast.success("¡Reserva confirmada exitosamente!");

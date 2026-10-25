@@ -387,7 +387,6 @@ export function facilityPriceSummary(space: Space): string | null {
   if (space.category === 'quincho') {
     const parts: string[] = [];
     if (space.price_all_day) parts.push(`Día completo ${formatCLP(space.price_all_day)}`);
-    if (space.price_half_day) parts.push(`Media jornada ${formatCLP(space.price_half_day)}`);
     return parts.length > 0 ? parts.join(' · ') : null;
   }
   if (space.category === 'sede' || space.category === 'piscina') {

@@ -10,6 +10,7 @@ import { useSavedPhone } from '../../hooks/useSavedPhone';
 import { formatChileanPhone, normalizeChileanPhone } from '../../utils/phone';
 import CancellationPolicyModal from '../search/CancellationPolicyModal';
 import MockMPModal from './MockMPModal';
+import { DiscountPicker, CheckoutBenefits } from './DiscountPicker';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -17,7 +18,7 @@ interface PaymentModalWebProps {
   slot: TimeSlot;
   court: Court;
   onClose: () => void;
-  onConfirm: (method: 'mercadopago' | 'venue' | 'presential', guestDetails?: GuestDetails, partial?: boolean) => Promise<boolean | void>;
+  onConfirm: (method: 'mercadopago' | 'venue' | 'presential', guestDetails?: GuestDetails, partial?: boolean, benefits?: CheckoutBenefits) => Promise<boolean | void>;
   user: UserProfile | null;
 }
 
@@ -51,6 +52,9 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
   }, [savedPhone]);
   const [showMockModal, setShowMockModal] = useState(false);
   const [mockData, setMockData] = useState<{ initPoint: string; bookingCode: string } | null>(null);
+  const [benefits, setBenefits] = useState<CheckoutBenefits>({ discountCode: '', memberToken: '', quote: null });
+
+  const effectivePrice = benefits.quote?.final_price ?? slot.price;
 
   const isPartialAvailable = (() => {
     if (!center) return false;
@@ -62,7 +66,7 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
   const isPaymentRequired = slot.paymentRequired || (payPartial && isPartialAvailable);
 
   const partialAmount = isPartialAvailable && center?.partialPaymentPercent
-    ? Math.round(slot.price * ((center.partialPaymentPercent || 0) / 100))
+    ? Math.round(effectivePrice * ((center.partialPaymentPercent || 0) / 100))
     : 0;
 
   const validate = () => {
@@ -92,6 +96,8 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
           guest_details: guestDetails,
           user_id: user?.id,
           partial: payPartial,
+          discount_code: benefits.discountCode || undefined,
+          member_token: benefits.memberToken || undefined,
         });
         setMockData({ initPoint: init_point, bookingCode: booking_code });
         setShowMockModal(true);
@@ -105,7 +111,7 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
     }
 
     try {
-      await onConfirm(method, guestDetails, payPartial);
+      await onConfirm(method, guestDetails, payPartial, benefits);
     } catch (error) {
       console.error("Booking failed:", error);
       setProcessing(null);
@@ -150,7 +156,14 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
               <p className="text-emerald-600 font-medium">
                 {String(slot.hour).padStart(2, '0')}:{String(slot.minutes || 0).padStart(2, '0')} hrs
               </p>
-              <p className="text-slate-900 font-bold text-lg mt-1">${slot.price.toLocaleString('es-CL')}</p>
+              {benefits.quote && benefits.quote.discount_total > 0 ? (
+                <p className="mt-1 flex items-baseline gap-2">
+                  <span className="text-slate-400 text-sm line-through">${slot.price.toLocaleString('es-CL')}</span>
+                  <span className="text-slate-900 font-bold text-lg">${effectivePrice.toLocaleString('es-CL')}</span>
+                </p>
+              ) : (
+                <p className="text-slate-900 font-bold text-lg mt-1">${slot.price.toLocaleString('es-CL')}</p>
+              )}
             </div>
           </div>
 
@@ -227,6 +240,19 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
               {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
             </div>
 
+            <DiscountPicker
+              courtId={slot.courtId}
+              centerId={center?.id || slot.centerId}
+              centerSlug={center?.slug}
+              date={slot.date}
+              hour={slot.hour ?? slot.date.getHours()}
+              minutes={slot.minutes ?? 0}
+              durationMinutes={60}
+              email={guestDetails.email || user?.email}
+              disabled={processing !== null}
+              onChange={setBenefits}
+            />
+
             {(slot.paymentRequired || slot.paymentOptional) && center && (
               <div className="pt-2">
                 <button
@@ -264,13 +290,13 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
                 </div>
                 <p className="text-xs text-slate-500 mb-3">
                   {payPartial
-                    ? `Pagarás $${partialAmount.toLocaleString('es-CL')} ahora y $${(slot.price - partialAmount).toLocaleString('es-CL')} en el club.`
+                    ? `Pagarás $${partialAmount.toLocaleString('es-CL')} ahora y $${(effectivePrice - partialAmount).toLocaleString('es-CL')} en el club.`
                     : 'Pagarás el total de la reserva ahora.'}
                 </p>
                 <div className="flex justify-between items-center pt-2 border-t border-blue-100/50">
                   <span className="text-xs font-medium text-slate-600 uppercase tracking-wider">Monto a pagar:</span>
                   <span className="text-lg font-black text-blue-700">
-                    ${(payPartial ? partialAmount : slot.price).toLocaleString('es-CL')}
+                    ${(payPartial ? partialAmount : effectivePrice).toLocaleString('es-CL')}
                   </span>
                 </div>
               </div>
@@ -362,7 +388,7 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
 
       {showMockModal && mockData && (
         <MockMPModal
-          amount={payPartial ? partialAmount : slot.price}
+          amount={payPartial ? partialAmount : effectivePrice}
           bookingCode={mockData.bookingCode}
           initPoint={mockData.initPoint}
           onClose={() => setShowMockModal(false)}
