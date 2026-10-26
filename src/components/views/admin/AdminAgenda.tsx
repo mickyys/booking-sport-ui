@@ -137,7 +137,13 @@ const formatSlotWhen = (slot: SlotData): string =>
         ? formatSlotTime(slot)
         : `${formatSlotTime(slot)} · ${formatDuration(getSlotDuration(slot))}`;
 
+const isRecurringSlot = (slot: SlotData): boolean =>
+    slot.status === 'recurring_booked' ||
+    !!slot.is_recurring_weekly ||
+    !!slot.recurring_reservation_id;
+
 const getPaymentMethodLabel = (slot: SlotData): string => {
+    if (!slot.payment_method && isRecurringSlot(slot)) return 'Presencial';
     switch (slot.payment_method) {
         case 'internal_block':
             return 'Bloqueo';
@@ -152,9 +158,11 @@ const getPaymentMethodLabel = (slot: SlotData): string => {
     }
 };
 
-type SlotDensity = 'tight' | 'normal' | 'full';
+type SlotDensity = 'mini' | 'compact' | 'tight' | 'normal' | 'full';
 
-const getSlotDensity = (minutes: number): SlotDensity => {
+const getSlotDensity = (minutes: number, overlaps = 1): SlotDensity => {
+    if (overlaps >= 3) return 'mini';
+    if (overlaps === 2) return 'compact';
     if (minutes <= 30) return 'tight';
     if (minutes >= 90) return 'full';
     return 'normal';
@@ -164,7 +172,7 @@ const getStatusBadge = (slot: SlotData): { text: string; tone: string } => {
     const hasPending = slot.isPartialPayment && !slot.partialPaymentPaid;
     if (hasPending) return { text: 'Saldo pendiente', tone: 'pending' };
     if (isInternalSlot(slot)) return { text: getSlotLabel(slot), tone: 'internal' };
-    if (slot.status === 'recurring_booked') return { text: getSlotLabel(slot), tone: 'recurring' };
+    if (isRecurringSlot(slot)) return { text: getSlotLabel(slot), tone: 'recurring' };
     if (slot.payment_method === 'internal_block' || slot.status === 'closed') {
         return { text: getSlotLabel(slot), tone: 'block' };
     }
@@ -176,7 +184,7 @@ const getSlotLabel = (slot: SlotData): string => {
     if (slot.payment_method === 'internal_block') return 'Bloqueo';
     if (slot.payment_method === 'internal_reservation') return 'Interna';
     if (slot.payment_method === 'presential') return 'Presencial';
-    if (status === 'recurring_booked') return 'Recurrente';
+    if (isRecurringSlot(slot)) return 'Recurrente';
     if (status === 'passed_booked') return 'Pasado';
     if (status === 'closed') return 'Bloqueado';
     return 'Online';
@@ -560,6 +568,23 @@ export const AdminAgenda: React.FC = () => {
                 });
             });
         });
+        const timed = list.filter((e) => !e.allDay);
+        timed.forEach((e) => {
+            const s = new Date(e.start).getTime();
+            const en = new Date(e.end).getTime();
+            const overlapping = timed.filter(
+                (o) => new Date(o.start).getTime() < en && new Date(o.end).getTime() > s
+            );
+            let peak = 1;
+            overlapping.forEach((o) => {
+                const os = new Date(o.start).getTime();
+                const concurrent = overlapping.filter(
+                    (x) => new Date(x.start).getTime() <= os && new Date(x.end).getTime() > os
+                ).length;
+                if (concurrent > peak) peak = concurrent;
+            });
+            e.extendedProps.overlaps = peak;
+        });
         return list;
     }, [weeklySchedules, visibleRange, selectedCourtId]);
 
@@ -681,18 +706,28 @@ export const AdminAgenda: React.FC = () => {
         return { top, left, width };
     }, [hoveredEvent]);
 
-    const renderEventContent = useCallback(
-        (info: any) => {
-            const p = info.event.extendedProps;
+    const renderPill = useCallback(
+        (title: string, p: any, isMonth: boolean, forcedDensity?: SlotDensity) => {
             const slot: SlotData = p.slot || {};
             const palette = COURT_PALETTE[courtColorIndex(p.courtId)];
             const isBlock = slot.payment_method === 'internal_block' || p.isClosed;
             const hasPending = slot.isPartialPayment && !slot.partialPaymentPaid;
             const isInternal = isInternalSlot(slot);
-            const isMonth = String(info.view.type).startsWith('dayGrid');
             const duration = p.durationMinutes || getSlotDuration(slot);
-            const density = getSlotDensity(duration);
+            const density = forcedDensity ?? getSlotDensity(duration, p.overlaps || 1);
             const badge = getStatusBadge(slot);
+            const paymentState = isBlock ? null : hasPending ? 'pending' : 'paid';
+            const paidMark =
+                paymentState === 'pending' ? (
+                    <span className="rl-pill__paid rl-pill__paid--pending" title="Pendiente">●</span>
+                ) : paymentState === 'paid' ? (
+                    <span className="rl-pill__paid rl-pill__paid--ok" title="Pagado">✓</span>
+                ) : null;
+            const paidChip = paymentState ? (
+                <span className={`rl-pill__chip rl-pill__chip--${paymentState}`}>
+                    {paymentState === 'pending' ? 'Pendiente' : 'Pagado'}
+                </span>
+            ) : null;
 
             const baseStyle: React.CSSProperties = {
                 background: isBlock ? '#f1f5f9' : palette.soft,
@@ -712,11 +747,52 @@ export const AdminAgenda: React.FC = () => {
                         <span className="font-black" style={{ color: palette.solid }}>
                             {formatSlotTime(slot)}
                         </span>
-                        <span className="font-semibold truncate flex-1">{info.event.title}</span>
+                        <span className="font-semibold truncate flex-1">{title}</span>
                         {!isBlock && !!slot.price && (
                             <span className="rl-pill__price shrink-0">{formatCLP(slot.price)}</span>
                         )}
                         {hasPending && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />}
+                    </div>
+                );
+            }
+
+            if (density === 'mini') {
+                return (
+                    <div
+                        style={baseStyle}
+                        className="rl-pill rl-pill--time rl-pill--time--mini"
+                        title={`${p.courtName} · ${badge.text}`}
+                    >
+                        <span
+                            className="rl-pill__court-dot"
+                            style={{ background: isBlock ? '#94a3b8' : palette.solid }}
+                        />
+                        <span className="font-black" style={{ color: palette.solid }}>
+                            {formatSlotTime(slot)}
+                        </span>
+                        <span className="rl-pill__name truncate flex-1">{title}</span>
+                        {paidMark}
+                    </div>
+                );
+            }
+
+            if (density === 'compact') {
+                return (
+                    <div
+                        style={baseStyle}
+                        className="rl-pill rl-pill--time rl-pill--time--compact"
+                    >
+                        <div className="rl-pill__head">
+                            <span className="font-black" style={{ color: palette.solid }}>
+                                {formatSlotTime(slot)}
+                            </span>
+                            {paidChip}
+                        </div>
+                        <div className="rl-pill__name truncate">{title}</div>
+                        <div className="rl-pill__meta">
+                            <span className="rl-pill__court truncate">{p.courtName}</span>
+                            <span className={`rl-badge rl-badge--${badge.tone}`}>{badge.text}</span>
+                        </div>
                     </div>
                 );
             }
@@ -730,12 +806,15 @@ export const AdminAgenda: React.FC = () => {
                         <span className="font-black" style={{ color: palette.solid }}>
                             {formatSlotTime(slot)}
                         </span>
-                        <span className={`rl-badge rl-badge--${badge.tone}`}>
-                            {badge.text}
+                        <span className="flex items-center gap-1">
+                            {paidChip}
+                            <span className={`rl-badge rl-badge--${badge.tone}`}>
+                                {badge.text}
+                            </span>
                         </span>
                     </div>
 
-                    <div className="rl-pill__name truncate">{info.event.title}</div>
+                    <div className="rl-pill__name truncate">{title}</div>
 
                     <div className="rl-pill__meta">
                         <span className="rl-pill__court truncate">{p.courtName}</span>
@@ -778,6 +857,15 @@ export const AdminAgenda: React.FC = () => {
             );
         },
         [courtColorIndex]
+    );
+
+    const renderEventContent = useCallback(
+        (info: any) => {
+            const p = info.event.extendedProps;
+            const isMonth = String(info.view.type).startsWith('dayGrid');
+            return renderPill(info.event.title, p, isMonth);
+        },
+        [renderPill]
     );
 
     const handlePayBalanceClick = (slot: SlotData) => {
@@ -1016,7 +1104,7 @@ export const AdminAgenda: React.FC = () => {
                         editable={!isMobile}
                         eventStartEditable={!isMobile}
                         eventDurationEditable={false}
-                        slotEventOverlap={!isMobile}
+                        slotEventOverlap={false}
                         dayHeaders={!isMobile}
                         eventAllow={eventAllow}
                         eventDrop={handleEventDrop}
