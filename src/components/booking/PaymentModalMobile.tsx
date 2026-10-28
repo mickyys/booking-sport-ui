@@ -60,6 +60,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
   })();
 
   const isPaymentRequired = slot.paymentRequired || (payPartial && isPartialAvailable);
+  const isFreeWithBenefit = !!benefits.quote && benefits.quote.discount_total > 0 && effectivePrice <= 0;
 
   const partialAmount = isPartialAvailable && center?.partialPaymentPercent
     ? Math.round(effectivePrice * ((center.partialPaymentPercent || 0) / 100))
@@ -77,6 +78,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
 
   const handlePayment = async (method: 'mercadopago' | 'venue' | 'presential') => {
     if (!validate()) return;
+    if (benefits.quoting) return;
 
     setProcessing(method);
     if (normalizeChileanPhone(guestDetails.phone) !== savedPhone) await savePhone(guestDetails.phone);
@@ -271,7 +273,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
             {slot.paymentOptional && !slot.paymentRequired && (
               <div className="space-y-3">
                 <button
-                  disabled={processing !== null}
+                  disabled={processing !== null || benefits.quoting}
                   onClick={() => handlePayment('mercadopago')}
                   className={`w-full group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all ${processing === 'mercadopago'
                     ? 'border-blue-500 bg-blue-50'
@@ -295,7 +297,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
                 </button>
 
                 <button
-                  disabled={processing !== null}
+                  disabled={processing !== null || benefits.quoting}
                   onClick={() => handlePayment('venue')}
                   className={`w-full group relative flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white ${processing === 'venue' ? 'opacity-70' : ''
                     }`}
@@ -324,9 +326,25 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
         </div>
 
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-safe">          
-          {(isPaymentRequired || slot.paymentOptional) && (
+          {isFreeWithBenefit && (
             <button
-              disabled={processing !== null}
+              disabled={processing !== null || benefits.quoting}
+              onClick={() => handlePayment('mercadopago')}
+              className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-emerald-500 text-white bg-emerald-500 hover:bg-emerald-600 transition-all disabled:opacity-80"
+            >
+              {processing === 'mercadopago' ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span className="font-bold">Confirmando...</span>
+                </>
+              ) : (
+                <span className="font-bold">Confirmar Reserva</span>
+              )}
+            </button>
+          )}
+          {!isFreeWithBenefit && (isPaymentRequired || slot.paymentOptional) && (
+            <button
+              disabled={processing !== null || benefits.quoting}
               onClick={() => handlePayment('mercadopago')}
               className={`w-full group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all ${processing === 'mercadopago'
                 ? 'border-blue-500 bg-blue-50'
@@ -351,7 +369,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
           )}
           {!slot.paymentRequired && !slot.paymentOptional && (
             <button
-              disabled={processing !== null}
+              disabled={processing !== null || benefits.quoting}
               onClick={() => handlePayment('venue')}
               className={`w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-emerald-500 text-white transition-all ${processing !== null ? 'bg-emerald-600 opacity-80' : 'bg-emerald-500 hover:bg-emerald-600'
                 }`}

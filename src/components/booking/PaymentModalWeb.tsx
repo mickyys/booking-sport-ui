@@ -64,6 +64,7 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
   })();
 
   const isPaymentRequired = slot.paymentRequired || (payPartial && isPartialAvailable);
+  const isFreeWithBenefit = !!benefits.quote && benefits.quote.discount_total > 0 && effectivePrice <= 0;
 
   const partialAmount = isPartialAvailable && center?.partialPaymentPercent
     ? Math.round(effectivePrice * ((center.partialPaymentPercent || 0) / 100))
@@ -81,11 +82,12 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
 
   const handlePayment = async (method: 'mercadopago' | 'venue' | 'presential') => {
     if (!validate()) return;
+    if (benefits.quoting) return;
 
     setProcessing(method);
     if (normalizeChileanPhone(guestDetails.phone) !== savedPhone) await savePhone(guestDetails.phone);
 
-    if (method === 'mercadopago' && process.env.NEXT_PUBLIC_APP_ENV === 'development') {
+    if (method === 'mercadopago' && !isFreeWithBenefit && process.env.NEXT_PUBLIC_APP_ENV === 'development') {
       try {
         const store = useBookingStore.getState();
         const { init_point, booking_code } = await store.createMercadoPagoPayment({
@@ -302,9 +304,26 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
               </div>
             )}
 
-            {(isPaymentRequired || slot.paymentOptional) && (
+            {isFreeWithBenefit && (
               <button
-                disabled={processing !== null}
+                disabled={processing !== null || benefits.quoting}
+                onClick={() => handlePayment('mercadopago')}
+                className="w-full group flex items-center justify-center gap-3 p-4 rounded-xl border-2 border-emerald-500 text-white bg-emerald-500 hover:bg-emerald-600 transition-all disabled:opacity-80"
+              >
+                {processing === 'mercadopago' ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span className="font-bold text-lg">Confirmando...</span>
+                  </>
+                ) : (
+                  <span className="font-bold text-lg">Confirmar Reserva</span>
+                )}
+              </button>
+            )}
+
+            {!isFreeWithBenefit && (isPaymentRequired || slot.paymentOptional) && (
+              <button
+                disabled={processing !== null || benefits.quoting}
                 onClick={() => handlePayment('mercadopago')}
                 className={`w-full group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all ${processing === 'mercadopago'
                   ? 'border-blue-500 bg-blue-50'
@@ -332,7 +351,7 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
 
             {!slot.paymentRequired && !slot.paymentOptional && (
               <button
-                disabled={processing !== null}
+                disabled={processing !== null || benefits.quoting}
                 onClick={() => handlePayment('venue')}
                 className={`w-full group relative flex items-center justify-center gap-3 p-4 rounded-xl border-2 border-emerald-500 text-white transition-all ${processing !== null ? 'bg-emerald-600 opacity-80' : 'bg-emerald-500 hover:bg-emerald-600'
                   }`}
@@ -350,7 +369,7 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
 
             {slot.paymentOptional && !slot.paymentRequired && (
               <button
-                disabled={processing !== null}
+                disabled={processing !== null || benefits.quoting}
                 onClick={() => handlePayment('venue')}
                 className={`w-full group relative flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white ${processing === 'venue' ? 'opacity-70' : ''
                   }`}

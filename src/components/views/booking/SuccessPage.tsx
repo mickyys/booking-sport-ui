@@ -24,7 +24,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
     internal: 'Interno',
 };
 
-const FREE_BOOKING_METHODS = ['venue', 'cash', 'presential', 'internal'];
+const FREE_BOOKING_METHODS = ['venue', 'cash', 'presential', 'internal', 'coupon'];
 
 export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfile }) => {
     const router = useRouter(); 

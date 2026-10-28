@@ -34,7 +34,7 @@ export const useBookingActions = (user: UserProfile | null) => {
 
     if (method === 'mercadopago' && selectedSlot) {
       try {
-        const { init_point } = await createMercadoPagoPayment({
+        const { init_point, booking_code } = await createMercadoPagoPayment({
           court_id: selectedSlot.courtId,
           date: selectedSlot.date.toISOString(),
           hour: selectedSlot.hour,
@@ -45,6 +45,13 @@ export const useBookingActions = (user: UserProfile | null) => {
           discount_code: benefits?.discountCode || undefined,
           member_token: benefits?.memberToken || undefined,
         });
+
+        if (!init_point) {
+          toast.success("¡Reserva confirmada exitosamente!");
+          setSelectedSlot(null);
+          router.push(`/booking/success?code=${booking_code ?? 'N/A'}`);
+          return true;
+        }
 
         // Redirigir a MercadoPago Checkout
         window.location.href = init_point;

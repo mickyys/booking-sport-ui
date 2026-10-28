@@ -142,19 +142,40 @@ const isRecurringSlot = (slot: SlotData): boolean =>
     !!slot.is_recurring_weekly ||
     !!slot.recurring_reservation_id;
 
+// Nombres de relleno usados al crear bloqueos (la app móvil guarda "BLOQUEADO").
+const BLOCK_PLACEHOLDER_NAMES = new Set(['BLOQUEADO', 'BLOQUEADA', 'BLOQUEO']);
+
+// El backend marca como `internal_block` toda reserva interna sin guest_details,
+// incluidas reservas reales creadas desde la app móvil o por recurrencia.
+// Validamos contra la reserva: si hay un cliente identificable, no es bloqueo.
+const hasIdentifiedCustomer = (slot: SlotData): boolean => {
+    const name = (slot.customer_name || '').trim();
+    if (!name) return false;
+    return !BLOCK_PLACEHOLDER_NAMES.has(name.toUpperCase());
+};
+
+const isBlockSlot = (slot: SlotData): boolean => {
+    if (slot.status === 'closed') return true;
+    if (slot.payment_method !== 'internal_block') return false;
+    return !hasIdentifiedCustomer(slot);
+};
+
 const getPaymentMethodLabel = (slot: SlotData): string => {
-    if (!slot.payment_method && isRecurringSlot(slot)) return 'Presencial';
-    switch (slot.payment_method) {
-        case 'internal_block':
-            return 'Bloqueo';
-        case 'internal_reservation':
-            return 'Interna';
-        case 'presential':
-            return 'Presencial';
+    switch ((slot.payment_method || '').toLowerCase()) {
         case 'mercadopago':
             return 'Mercado Pago';
+        case 'flow':
+            return 'Flow';
+        case 'internal':
+        case 'internal_block':
+        case 'internal_reservation':
+        case 'presential':
+        case 'presencial':
+        case 'venue':
+        case 'cash':
+            return 'Presencial';
         default:
-            return slot.payment_method || 'Online';
+            return 'Presencial';
     }
 };
 
@@ -171,17 +192,17 @@ const getSlotDensity = (minutes: number, overlaps = 1): SlotDensity => {
 const getStatusBadge = (slot: SlotData): { text: string; tone: string } => {
     const hasPending = slot.isPartialPayment && !slot.partialPaymentPaid;
     if (hasPending) return { text: 'Saldo pendiente', tone: 'pending' };
+    if (isBlockSlot(slot)) return { text: getSlotLabel(slot), tone: 'block' };
     if (isInternalSlot(slot)) return { text: getSlotLabel(slot), tone: 'internal' };
     if (isRecurringSlot(slot)) return { text: getSlotLabel(slot), tone: 'recurring' };
-    if (slot.payment_method === 'internal_block' || slot.status === 'closed') {
-        return { text: getSlotLabel(slot), tone: 'block' };
-    }
     return { text: getSlotLabel(slot), tone: 'default' };
 };
 
 const getSlotLabel = (slot: SlotData): string => {
     const status = slot.status;
-    if (slot.payment_method === 'internal_block') return 'Bloqueo';
+    if (slot.payment_method === 'internal_block') {
+        return hasIdentifiedCustomer(slot) ? 'Interna' : 'Bloqueo';
+    }
     if (slot.payment_method === 'internal_reservation') return 'Interna';
     if (slot.payment_method === 'presential') return 'Presencial';
     if (isRecurringSlot(slot)) return 'Recurrente';
@@ -191,9 +212,30 @@ const getSlotLabel = (slot: SlotData): string => {
 };
 
 const isInternalSlot = (slot: SlotData): boolean =>
-    slot.payment_method === 'internal_block' ||
+    (slot.payment_method === 'internal_block' && hasIdentifiedCustomer(slot)) ||
     slot.payment_method === 'internal_reservation' ||
     slot.payment_method === 'presential';
+
+type PaymentState = 'paid' | 'pending' | null;
+
+// Solo marcamos "Pagado" cuando hay evidencia de cobro: pago online confirmado
+// o un saldo parcial ya cobrado. Los pagos en recinto no registran cobro en la
+// agenda, así que no se asumen pagados.
+const getPaymentState = (slot: SlotData): PaymentState => {
+    if (isBlockSlot(slot)) return null;
+    if (slot.isPartialPayment) return slot.partialPaymentPaid ? 'paid' : 'pending';
+    switch ((slot.payment_method || '').toLowerCase()) {
+        case 'mercadopago':
+        case 'mp':
+        case 'flow':
+        case 'fintoc':
+        case 'webpay':
+        case 'online':
+            return 'paid';
+        default:
+            return null;
+    }
+};
 
 export const AdminAgenda: React.FC = () => {
     const {
@@ -360,7 +402,7 @@ export const AdminAgenda: React.FC = () => {
         // Las recurrentes semanales no son bookings: se gestionan desde el detalle.
         if (slot.is_recurring_weekly || slot.recurring_reservation_id) return false;
         // Solo reservas internas y bloqueos (pago en recinto).
-        return isInternalSlot(slot);
+        return isInternalSlot(slot) || isBlockSlot(slot);
     }, []);
 
     const eventAllow = useCallback(
@@ -448,7 +490,7 @@ export const AdminAgenda: React.FC = () => {
             recurringId: slot.recurring_reservation_id,
             dateKey,
             customerName: slot.customer_name,
-            isBlock: slot.payment_method === 'internal_block',
+            isBlock: isBlockSlot(slot),
         });
     };
 
@@ -544,11 +586,12 @@ export const AdminAgenda: React.FC = () => {
                     const durationMinutes = dayLong ? 24 * 60 : getSlotDuration(slot);
                     const end = new Date(new Date(start).getTime() + durationMinutes * 60 * 1000);
 
-                    const title = isClosed
-                        ? 'Bloqueado'
-                        : slot.payment_method === 'internal_block'
-                            ? 'Bloqueo'
-                            : slot.customer_name || court.name || 'Reserva';
+                    const isBlock = isBlockSlot(slot);
+                    const title = isBlock
+                        ? isClosed
+                            ? 'Bloqueado'
+                            : 'Bloqueo'
+                        : slot.customer_name || court.name || 'Reserva';
 
                     list.push({
                         id: `${court.id}-${dateKey}-${hh}-${mm}`,
@@ -594,7 +637,7 @@ export const AdminAgenda: React.FC = () => {
         let blocked = 0;
         events.forEach((ev) => {
             const slot: SlotData = ev.extendedProps.slot;
-            if (ev.extendedProps.isClosed) blocked++;
+            if (isBlockSlot(slot)) blocked++;
             else if (ev.extendedProps.isBooked) {
                 booked++;
                 if (slot.isPartialPayment && !slot.partialPaymentPaid) pending++;
@@ -710,13 +753,13 @@ export const AdminAgenda: React.FC = () => {
         (title: string, p: any, isMonth: boolean, forcedDensity?: SlotDensity) => {
             const slot: SlotData = p.slot || {};
             const palette = COURT_PALETTE[courtColorIndex(p.courtId)];
-            const isBlock = slot.payment_method === 'internal_block' || p.isClosed;
+            const isBlock = isBlockSlot(slot);
             const hasPending = slot.isPartialPayment && !slot.partialPaymentPaid;
             const isInternal = isInternalSlot(slot);
             const duration = p.durationMinutes || getSlotDuration(slot);
             const density = forcedDensity ?? getSlotDensity(duration, p.overlaps || 1);
             const badge = getStatusBadge(slot);
-            const paymentState = isBlock ? null : hasPending ? 'pending' : 'paid';
+            const paymentState = getPaymentState(slot);
             const paidMark =
                 paymentState === 'pending' ? (
                     <span className="rl-pill__paid rl-pill__paid--pending" title="Pendiente">●</span>
@@ -1131,7 +1174,7 @@ export const AdminAgenda: React.FC = () => {
             {hoveredEvent && !isMobile && tooltipStyle && (() => {
                 const slot = hoveredEvent.slot;
                 const badge = getStatusBadge(slot);
-                const isBlock = slot.payment_method === 'internal_block' || slot.status === 'closed';
+                const isBlock = isBlockSlot(slot);
                 const displayName = isBlock
                     ? 'Bloqueo de horario'
                     : slot.customer_name || 'Reserva';
@@ -1229,7 +1272,9 @@ export const AdminAgenda: React.FC = () => {
                                 </span>
                                 <div>
                                     <h3 className="text-xl font-black text-slate-900">
-                                        {selectedSlot.customer_name || 'Reserva'}
+                                        {isBlockSlot(selectedSlot)
+                                            ? 'Bloqueo de horario'
+                                            : selectedSlot.customer_name || 'Reserva'}
                                     </h3>
                                     <p className="text-sm text-slate-500">
                                         {selectedSlotDate ? format(selectedSlotDate, "EEEE d 'de' MMMM", { locale: esFns }) : ''} · {formatSlotWhen(selectedSlot)}
@@ -1367,14 +1412,14 @@ export const AdminAgenda: React.FC = () => {
                                 >
                                     {selectedSlot.recurring_reservation_id ? (
                                         <Repeat size={16} />
-                                    ) : selectedSlot.payment_method === 'internal_block' ? (
+                                    ) : isBlockSlot(selectedSlot) ? (
                                         <Unlock size={16} />
                                     ) : (
                                         <Trash2 size={16} />
                                     )}
                                     {selectedSlot.recurring_reservation_id
                                         ? 'Cancelar reserva semanal'
-                                        : selectedSlot.payment_method === 'internal_block'
+                                        : isBlockSlot(selectedSlot)
                                             ? 'Desbloquear horario'
                                             : 'Eliminar reserva'}
                                 </button>

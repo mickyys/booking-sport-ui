@@ -14,6 +14,7 @@ export interface CheckoutBenefits {
   discountCode: string;
   memberToken: string;
   quote: PriceQuote | null;
+  quoting?: boolean;
 }
 
 interface DiscountPickerProps {
@@ -66,10 +67,13 @@ export const DiscountPicker: React.FC<DiscountPickerProps> = ({
   }, [email]);
 
   const refreshQuote = useCallback(async () => {
-    if (!courtId) return;
+    if (!courtId) {
+      onChangeRef.current({ discountCode: '', memberToken: '', quote: null, quoting: false });
+      return;
+    }
     if (!appliedCode && !memberToken) {
       setQuote(null);
-      onChangeRef.current({ discountCode: '', memberToken: '', quote: null });
+      onChangeRef.current({ discountCode: '', memberToken: '', quote: null, quoting: false });
       return;
     }
     setLoading(true);
@@ -85,10 +89,10 @@ export const DiscountPicker: React.FC<DiscountPickerProps> = ({
         email: memberEmail || email || undefined,
       });
       setQuote(result);
-      onChangeRef.current({ discountCode: appliedCode, memberToken, quote: result });
+      onChangeRef.current({ discountCode: appliedCode, memberToken, quote: result, quoting: false });
     } catch (error) {
       setQuote(null);
-      onChangeRef.current({ discountCode: appliedCode, memberToken, quote: null });
+      onChangeRef.current({ discountCode: appliedCode, memberToken, quote: null, quoting: false });
       toast.error(error instanceof Error ? error.message : 'No pudimos cotizar el descuento');
     } finally {
       setLoading(false);
@@ -102,9 +106,14 @@ export const DiscountPicker: React.FC<DiscountPickerProps> = ({
     return () => clearTimeout(timer);
   }, [refreshQuote]);
 
+  const markQuoting = (code: string) => {
+    onChangeRef.current({ discountCode: code, memberToken, quote, quoting: true });
+  };
+
   const applyCode = () => {
     const value = codeInput.trim().toUpperCase();
     if (!value) return;
+    markQuoting(value);
     setAppliedCode(value);
   };
 
@@ -188,6 +197,7 @@ export const DiscountPicker: React.FC<DiscountPickerProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    markQuoting('');
                     setAppliedCode('');
                     setCodeInput('');
                   }}
