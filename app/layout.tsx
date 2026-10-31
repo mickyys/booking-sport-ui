@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { Providers } from "./providers";
 import { TenantProvider } from "../src/context/TenantContext";
 import { Navbar } from "../src/components/layout/Navbar";
+import { Footer } from "../src/components/layout/Footer";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -33,6 +34,7 @@ export default function RootLayout({
             <div className="pt-16">
               {children}
             </div>
+            <Footer />
           </TenantProvider>
           <Analytics />
         </Providers>
