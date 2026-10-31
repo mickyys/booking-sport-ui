@@ -147,6 +147,7 @@ export const DiscountPicker: React.FC<DiscountPickerProps> = ({
         verification_id: verificationId,
         code: verificationCode.trim(),
       });
+      onChangeRef.current({ discountCode: appliedCode, memberToken: result.member_token, quote, quoting: true });
       setMemberToken(result.member_token);
       setMemberName(result.member?.name || 'Socio');
       setVerificationId('');
@@ -160,6 +161,7 @@ export const DiscountPicker: React.FC<DiscountPickerProps> = ({
   };
 
   const clearMember = () => {
+    onChangeRef.current({ discountCode: appliedCode, memberToken: '', quote, quoting: true });
     setMemberToken('');
     setMemberName('');
   };

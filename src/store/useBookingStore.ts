@@ -13,7 +13,7 @@ import { todaySantiagoKey } from '../lib/santiago';
 // Evita que una respuesta tardía (centro/fecha equivocados) pise la respuesta correcta.
 let schedulesRequestId = 0;
 
-const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1759210720456-c9814f721479?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvdXRkb29yJTIwc29jY2VyJTIwZmllbGQlMjBuaWdodCUyMGxpZ2h0c3xlbnwxfHx8fDE3NzQ4OTgwODd8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
+const FALLBACK_IMAGE = "/images/center-fallback.jpg";
 
 interface BookingState {
   sportCenters: SportCenter[];
