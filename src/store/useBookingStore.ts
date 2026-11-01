@@ -5,6 +5,11 @@ import { SportCenter, Court, CourtWithSchedule, Booking, BookingDTO, RecurringRe
 import api from '../api/axiosInstance';
 import { getUserCancelledBookings, createRecurringReservation as createRecurringApi, cancelRecurringReservation as cancelRecurringApi, cancelRecurringDate as cancelRecurringDateApi, getRecurringReservationsByCenter } from '../api/bookingApi';
 import { mapBooking } from '../mapper/mapBooking';
+import { todaySantiagoKey } from '../lib/santiago';
+
+// Sólo la última petición de schedules en curso puede escribir en el store.
+// Evita que una respuesta tardía (centro/fecha equivocados) pise la respuesta correcta.
+let schedulesRequestId = 0;
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1759210720456-c9814f721479?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvdXRkb29yJTIwc29jY2VyJTIwZmllbGQlMjBuaWdodCUyMGxpZ2h0c3xlbnwxfHx8fDE3NzQ4OTgwODd8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
 
@@ -151,7 +156,9 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
   setSelectedCenterId: (id: string | null) => {
     set({ selectedCenterId: id });
     if (id) {
-      get().fetchSchedules(id);
+      // Fecha explícita: sin ella el backend devuelve "hoy" aunque el usuario
+      // esté viendo otro día, y esa respuesta tardía pisaba la del día correcto.
+      get().fetchSchedules(id, todaySantiagoKey());
     }
   },
 
@@ -563,31 +570,42 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
 
   fetchCourts: async () => {
     try {
-      let data;
-      try {
-        const response = await api.get('/courts');
-        data = response.data;
-      } catch (err) {
-        console.warn("API failed");
-        data = { data: [] };
-      }
+      const limit = 500;
+      const allCourts: Court[] = [];
+      let page = 1;
+      let totalPages = 1;
 
-      const courtsData = data.data || data;
-      const allCourts: Court[] = courtsData.map((c: any) => ({
-        id: c.id || c._id,
-        name: c.name,
-        shortName: c.name.split(' ')[0],
-        type: c.description || 'Pasto Sintético',
-        image: c.image || '/images/cancha1.jpeg',
-        centerId: c.sport_center_id
-      }));
+      // El backend pagina con limit=10 por defecto: hay que recorrer todas las
+      // páginas o los centros creados después quedarían sin canchas.
+      do {
+        const response = await api.get(`/courts?page=${page}&limit=${limit}`);
+        const data = response.data;
+        const courtsData: any[] = data.data || data || [];
+
+        courtsData.forEach((c: any) => {
+          allCourts.push({
+            id: c.id || c._id,
+            name: c.name,
+            shortName: c.name.split(' ')[0],
+            type: c.description || 'Pasto Sintético',
+            image: c.image || '/images/cancha1.jpeg',
+            centerId: c.sport_center_id
+          });
+        });
+
+        totalPages = Number(data.totalPages) || 1;
+        page += 1;
+      } while (page <= totalPages && page <= 50);
+
       set({ courts: allCourts });
     } catch (err) {
+      // No limpiar courts: se conserva la instantánea previa del localStorage
       console.error("Error fetching courts:", err);
     }
   },
 
   fetchSchedules: async (centerId: string, date?: string) => {
+    const requestId = ++schedulesRequestId;
     set({ isLoading: true });
     try {
       const baseUrl = `/sport-centers/${centerId}/schedules`;
@@ -596,6 +614,9 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       if (date) params.append('date', date);
       
       const { data } = await api.get(`${baseUrl}?${params.toString()}`);
+
+      // Otra petición más nueva se lanzó mientras ésta esperaba: descartarla
+      if (requestId !== schedulesRequestId) return;
       
       // Asegurarse de que payment_required se asigne correctamente a paymentRequired
       const formattedData = (data || []).map((court: any) => ({
@@ -617,10 +638,11 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
 
       set({ schedules: formattedData, error: null });
     } catch (err) {
+      if (requestId !== schedulesRequestId) return;
       console.error("Error fetching schedules:", err);
       set({ error: 'Failed to fetch schedules' });
     } finally {
-      set({ isLoading: false });
+      if (requestId === schedulesRequestId) set({ isLoading: false });
     }
   },
 
@@ -1080,20 +1102,14 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       set({ apiUrl: currentApiUrl });
     }
 
-    const currentSportCenters = get().sportCenters;
-    const currentCourts = get().courts;
     const promises: Promise<void>[] = [];
     
-    if (!currentSportCenters || currentSportCenters.length === 0) {
-      promises.push(get().fetchSportCenters());
-    }
-    if (!currentCourts || currentCourts.length === 0) {
-      promises.push(get().fetchCourts());
-    }
+    // Revalidar SIEMPRE: el cache de localStorage puede quedar obsoleto
+    // (centros/canchas que ya no existen o una lista truncada a 10 canchas)
+    promises.push(get().fetchSportCenters());
+    promises.push(get().fetchCourts());
     
-    if (promises.length > 0) {
-      await Promise.all(promises);
-    }
+    await Promise.all(promises);
   },
 
   createRecurringReservation: async (data: CreateRecurringReservationDTO, getToken: (options?: any) => Promise<string>) => {
@@ -1182,11 +1198,17 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
   }),
   {
     name: 'booking-store',
+    version: 1,
+    // selectedCenterId ya no se persiste: la ruta (slug) es la fuente de verdad.
+    // Rehidratar un centro viejo hacía que el primer fetch saliera con el centro equivocado.
     partialize: (state: BookingState) => ({
       sportCenters: state.sportCenters,
       courts: state.courts,
-      selectedCenterId: state.selectedCenterId,
       apiUrl: state.apiUrl,
+    }),
+    migrate: (persistedState: any) => ({
+      ...persistedState,
+      selectedCenterId: null,
     }),
   }
   )
