@@ -11,7 +11,6 @@ El responsable de la plataforma es:
 - **Razón social:** Hector Martinez SpA
 - **Nombre comercial:** ReservaloYA
 - **RUT:** 77.331.094-7
-- **Domicilio:** Manuel Montt Torres 812, San Antonio, Región de Valparaíso, Chile.
 - **Correo electrónico:** contacto@reservaloYA.cl
 - **Sitio web:** https://reservaloYA.cl
 
@@ -300,7 +299,6 @@ Para consultas, solicitudes relacionadas con datos personales o ejercicio de der
 **Hector Martinez SpA — ReservaloYA**
 
 - **RUT:** 77.331.094-7
-- **Domicilio:** Manuel Montt Torres 812, San Antonio, Región de Valparaíso, Chile.
 - **Correo electrónico:** contacto@reservaloYA.cl
 - **Sitio web:** https://reservaloYA.cl
 
