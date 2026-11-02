@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "cl.reservaloya.reservaloya",
+      "sha256_cert_fingerprints": [
+        "D4:FD:50:1D:F7:AC:3E:16:23:FF:94:95:FC:EB:18:26:E6:32:63:57:88:15:98:01:B0:A2:CD:29:87:06:40:96"
+      ]
+    }
+  }
+]
