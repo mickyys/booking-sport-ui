@@ -8,6 +8,17 @@ import { uploadImageToCloudinary } from '@/components/booking/CourtImageUpload';
 import { LocationMapPicker } from '@/components/admin/LocationMapPicker';
 import { MPOnlinePaymentCard } from '@/components/admin/MPOnlinePaymentCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useAdminPanel } from '@/context/AdminPanelContext';
 import { CenterTimeSlot } from '@/types';
 import { platformDomain } from '@/utils/host';
 
@@ -55,6 +66,40 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
     const { updateSportCenterSettings, fetchSportCenterByID, isLoading } = useBookingStore();
     const { getAccessTokenSilently } = useAuth0();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { currentSportCenter, refreshSportCenter } = useAdminPanel();
+    const [confirmOnlineOpen, setConfirmOnlineOpen] = useState(false);
+    const [switchingMode, setSwitchingMode] = useState(false);
+
+    const currentPaymentMode: string | undefined =
+        (currentSportCenter as any)?.payment_mode ?? sportCenter?.payment_mode;
+
+    // El abono solo funciona con cobro online: si el centro está en
+    // "pay_at_center" hay que pedir confirmación para cambiar la modalidad.
+    const handleTogglePartialPayment = () => {
+        if (!partialPaymentEnabled && currentPaymentMode !== 'pay_online') {
+            setConfirmOnlineOpen(true);
+            return;
+        }
+        setPartialPaymentEnabled(!partialPaymentEnabled);
+    };
+
+    const handleConfirmOnlineAndPartial = async () => {
+        const id = sportCenter?.id || sportCenter?._id;
+        if (!id) return;
+        setSwitchingMode(true);
+        try {
+            await updateSportCenterSettings(id, { payment_mode: 'pay_online' }, getAccessTokenSilently);
+            await refreshSportCenter();
+            setPartialPaymentEnabled(true);
+            setConfirmOnlineOpen(false);
+            toast.success('Cobro online activado. Guarda los cambios para aplicar los abonos y conecta Mercado Pago para recibir pagos.');
+        } catch (error) {
+            console.error('Error activando cobro online:', error);
+            toast.error('No se pudo activar el cobro online');
+        } finally {
+            setSwitchingMode(false);
+        }
+    };
 
     const handleImageSelect = (file: File) => {
         if (!file.type.startsWith('image/')) {
@@ -716,7 +761,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                                 </div>
                                 <button
                                     type="button"
-                                    onClick={() => setPartialPaymentEnabled(!partialPaymentEnabled)}
+                                    onClick={handleTogglePartialPayment}
                                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${partialPaymentEnabled ? 'bg-slate-900' : 'bg-slate-200'}`}
                                 >
                                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${partialPaymentEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -744,6 +789,30 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                                 </div>
                         </div>
                     </div>
+
+                    <AlertDialog open={confirmOnlineOpen} onOpenChange={(open) => { if (!switchingMode) setConfirmOnlineOpen(open); }}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>¿Activar cobro online?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Tu centro está en modalidad «solo reservas» (pago en el club). Los abonos requieren cobro online con Mercado Pago.
+                                    ¿Quieres cambiar a pago online y activar los abonos?
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel disabled={switchingMode}>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                    disabled={switchingMode}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        void handleConfirmOnlineAndPartial();
+                                    }}
+                                >
+                                    {switchingMode ? 'Activando...' : 'Cambiar y activar'}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
 
                             </TabsContent>
                         </div>
