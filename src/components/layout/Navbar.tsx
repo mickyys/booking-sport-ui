@@ -101,13 +101,28 @@ export const Navbar: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <button
-                onClick={() => loginWithRedirect({ appState: { returnTo: pathname } })}
-                className="flex items-center gap-1.5 bg-white text-slate-900 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-bold hover:bg-slate-100 transition-colors shrink-0"
-              >
-                <UserIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span>Ingresar</span>
-              </button>
+              <>
+                {/* Registro con correo/contraseña, para clientes sin Google.
+                    Auth0 muestra el formulario de alta (Universal Login). */}
+                <button
+                  onClick={() =>
+                    loginWithRedirect({
+                      appState: { returnTo: pathname },
+                      authorizationParams: { screen_hint: 'signup' },
+                    })
+                  }
+                  className="hidden sm:flex items-center px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold text-slate-200 border border-slate-600 hover:text-white hover:border-slate-400 transition-colors shrink-0"
+                >
+                  Crear cuenta
+                </button>
+                <button
+                  onClick={() => loginWithRedirect({ appState: { returnTo: pathname } })}
+                  className="flex items-center gap-1.5 bg-white text-slate-900 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-bold hover:bg-slate-100 transition-colors shrink-0"
+                >
+                  <UserIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span>Ingresar</span>
+                </button>
+              </>
             )}
           </div>
         </div>
