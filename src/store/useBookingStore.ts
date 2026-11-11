@@ -15,6 +15,28 @@ let schedulesRequestId = 0;
 
 const FALLBACK_IMAGE = "/images/center-fallback.jpg";
 
+// Normaliza los espacios que devuelve el endpoint admin de schedules
+// (snake_case → camelCase) para que la agenda los consuma igual que los del
+// endpoint público.
+const mapAdminCourtSchedules = (courts: any[], partialPaymentFallback: boolean) =>
+  (courts || []).map((court: any) => ({
+    ...court,
+    schedule: (court.schedule || []).map((slot: any) => ({
+      ...slot,
+      paymentRequired: slot.payment_required,
+      paymentOptional: slot.payment_optional,
+      partialPaymentEnabled: slot.partial_payment_enabled !== undefined ? slot.partial_payment_enabled : partialPaymentFallback,
+      customer_name: slot.customer_name,
+      customer_email: slot.customer_email,
+      customer_phone: slot.customer_phone,
+      booking_code: slot.booking_code,
+      isPartialPayment: slot.is_partial_payment,
+      paidAmount: slot.paid_amount,
+      pendingAmount: slot.pending_amount,
+      partialPaymentPaid: slot.partial_payment_paid
+    }))
+  }));
+
 interface BookingState {
   sportCenters: SportCenter[];
   courts: Court[];
@@ -479,9 +501,10 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
 
       set({ sportCenters: centers, usedRadiusFallback: !!data?.used_radius_fallback, error: null });
 
-      if (centers.length > 0 && !get().selectedCenterId) {
-        get().setSelectedCenterId(centers[0].id);
-      }
+      // No seleccionar un centro automáticamente: este listado es el catálogo
+      // público completo (todos los centros de la plataforma). Escribir
+      // `selectedCenterId` aquí hacía que la agenda admin arrancara apuntando al
+      // primer centro del catálogo, que puede no pertenecer al admin.
     } catch (err) {
       console.error('Error fetching sport centers:', err);
       set({ error: 'Failed to fetch sport centers', usedRadiusFallback: false });
@@ -759,29 +782,17 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
 
       const params = new URLSearchParams();
       params.append('all', 'true');
+      if (centerId) params.append('centerId', centerId);
       if (date) params.append('date', date);
 
       const { data } = await api.get(`/admin/sport-centers/schedules/bookings?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      const formattedData = (data || []).map((court: any) => ({
-        ...court,
-        schedule: (court.schedule || []).map((slot: any) => ({
-          ...slot,
-          paymentRequired: slot.payment_required,
-          paymentOptional: slot.payment_optional,
-          partialPaymentEnabled: slot.partial_payment_enabled !== undefined ? slot.partial_payment_enabled : (get().sportCenterBySlug?.partialPaymentEnabled ?? false),
-          customer_name: slot.customer_name,
-          customer_email: slot.customer_email,
-          customer_phone: slot.customer_phone,
-          booking_code: slot.booking_code,
-          isPartialPayment: slot.is_partial_payment,
-          paidAmount: slot.paid_amount,
-          pendingAmount: slot.pending_amount,
-          partialPaymentPaid: slot.partial_payment_paid
-        }))
-      }));
+      const formattedData = mapAdminCourtSchedules(
+        data,
+        get().sportCenterBySlug?.partialPaymentEnabled ?? false
+      );
 
       const dateKey = date || new Date().toISOString().split('T')[0];
       set(state => ({
@@ -797,48 +808,44 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
     } catch (err) {
       console.error('Error fetching admin schedules:', err);
       set({ error: 'Failed to fetch admin schedules' });
+      return [];
     } finally {
       set({ isLoading: false });
     }
   },
 
   // Trae los schedules de un rango de fechas en una sola llamada al backend.
-  // Si falla, hace fallback por día usando el endpoint público.
+  // Si falla por un error transitorio, hace fallback día por día contra el
+  // endpoint admin (nunca contra el público: ese solo trae canchas y no valida
+  // que el centro pertenezca al usuario).
   fetchAdminSchedulesRange: async (centerId: string, from: string, to: string, getToken: (options?: any) => Promise<string>) => {
     set({ isLoading: true });
+
+    let token: string;
     try {
-      const token = await getToken({
+      token = await getToken({
         authorizationParams: {
           audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
           scope: 'openid profile email'
         },
       });
+    } catch (err) {
+      console.error('Error getting token for admin schedules range:', err);
+      set({ error: 'Failed to fetch admin schedules range', isLoading: false });
+      return null;
+    }
 
-      const params = new URLSearchParams({ all: 'true', centerId, from, to });
+    const partialPaymentFallback = get().sportCenterBySlug?.partialPaymentEnabled ?? false;
+    const params = new URLSearchParams({ all: 'true', centerId, from, to });
 
+    try {
       const { data } = await api.get(`/admin/sport-centers/schedules/bookings?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       const entries: Record<string, any[]> = {};
       (Array.isArray(data) ? data : []).forEach((entry: any) => {
-        entries[entry.date] = (entry.courts || []).map((court: any) => ({
-          ...court,
-          schedule: (court.schedule || []).map((slot: any) => ({
-            ...slot,
-            paymentRequired: slot.payment_required,
-            paymentOptional: slot.payment_optional,
-            partialPaymentEnabled: slot.partial_payment_enabled !== undefined ? slot.partial_payment_enabled : (get().sportCenterBySlug?.partialPaymentEnabled ?? false),
-            customer_name: slot.customer_name,
-            customer_email: slot.customer_email,
-            customer_phone: slot.customer_phone,
-            booking_code: slot.booking_code,
-            isPartialPayment: slot.is_partial_payment,
-            paidAmount: slot.paid_amount,
-            pendingAmount: slot.pending_amount,
-            partialPaymentPaid: slot.partial_payment_paid
-          }))
-        }));
+        entries[entry.date] = mapAdminCourtSchedules(entry.courts, partialPaymentFallback);
       });
 
       set(state => ({
@@ -847,8 +854,17 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       }));
 
       return entries;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching admin schedules range:', err);
+
+      // 401/403 no son transitorios: reintentar solo multiplica llamadas a un
+      // centro que el usuario no administra.
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) {
+        set({ error: 'Failed to fetch admin schedules range' });
+        return null;
+      }
+
       try {
         const entries: Record<string, any[]> = {};
         const dates: string[] = [];
@@ -859,8 +875,11 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           d = addDays(d, 1);
         }
         for (const dateStr of dates) {
-          await get().fetchSchedules(centerId, dateStr);
-          entries[dateStr] = get().schedules;
+          const dayParams = new URLSearchParams({ all: 'true', centerId, date: dateStr });
+          const { data } = await api.get(`/admin/sport-centers/schedules/bookings?${dayParams.toString()}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          entries[dateStr] = mapAdminCourtSchedules(Array.isArray(data) ? data : [], partialPaymentFallback);
         }
         set(state => ({
           weeklySchedules: { ...(state.weeklySchedules || {}), ...entries },
@@ -1503,8 +1522,15 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
       set({ apiUrl: currentApiUrl });
     }
 
+    // El panel admin no consume el catálogo público: cargarlo ahí descarga todos
+    // los centros y canchas de la plataforma y además ensuciaba el estado
+    // público (selectedCenterId) que la agenda usaba como fallback.
+    const isAdminRoute =
+      typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+    if (isAdminRoute) return;
+
     const promises: Promise<void>[] = [];
-    
+
     // Revalidar SIEMPRE: el cache de localStorage puede quedar obsoleto
     // (centros/canchas que ya no existen o una lista truncada a 10 canchas)
     promises.push(get().fetchSportCenters());

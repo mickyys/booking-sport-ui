@@ -240,7 +240,6 @@ const getPaymentState = (slot: SlotData): PaymentState => {
 export const AdminAgenda: React.FC = () => {
     const {
         weeklySchedules,
-        selectedCenterId,
         isLoading: storeLoading,
         payBalance,
         undoPayBalance,
@@ -301,7 +300,10 @@ export const AdminAgenda: React.FC = () => {
         rect: { top: number; left: number; width: number; height: number };
     } | null>(null);
 
-    const centerId = currentSportCenter?.id || currentSportCenter?._id || selectedCenterId || null;
+    // La agenda siempre opera sobre el centro del admin autenticado. No usar
+    // `selectedCenterId`: ese id viene del catálogo público y puede ser un
+    // centro que el usuario no administra (el backend responde 403).
+    const centerId = currentSportCenter?.id || currentSportCenter?._id || null;
 
     const courts = useMemo(() => {
         const seen = new Set<string>();
