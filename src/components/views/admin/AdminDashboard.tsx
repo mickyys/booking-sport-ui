@@ -19,6 +19,8 @@ import { DashboardStats } from './dashboard/DashboardStats';
 import { DashboardToolbar } from './dashboard/DashboardToolbar';
 import { DashboardList } from './dashboard/DashboardList';
 import { DashboardDetailDialog } from './dashboard/DashboardDetailDialog';
+import { ExportBookingsDialog } from './dashboard/ExportBookingsDialog';
+import { Download } from 'lucide-react';
 import { formatBookingTime, getCustomerName, toDate } from './dashboard/dashboardUtils';
 
 interface AdminDashboardProps {
@@ -63,6 +65,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     isRefreshing = false,
 }) => {
     const { getAccessTokenSilently } = useAuth0();
+    const [exportOpen, setExportOpen] = React.useState(false);
     const verifyPayment = useBookingStore((s) => s.verifyPayment);
     const [selected, setSelected] = React.useState<any | null>(null);
     const [detailOpen, setDetailOpen] = React.useState(false);
@@ -117,14 +120,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <h1 className="min-w-0 truncate text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
                     Inicio
                 </h1>
-                <button
-                    type="button"
-                    onClick={onNewBooking}
-                    className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500 px-4 text-sm font-black text-white transition-colors hover:bg-emerald-600"
-                >
-                    Nueva reserva
-                </button>
+                <div className="flex shrink-0 items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setExportOpen(true)}
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+                    >
+                        <Download className="h-4 w-4" aria-hidden="true" />
+                        Exportar
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onNewBooking}
+                        className="inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-500 px-4 text-sm font-black text-white transition-colors hover:bg-emerald-600"
+                    >
+                        Nueva reserva
+                    </button>
+                </div>
             </div>
+            <ExportBookingsDialog open={exportOpen} onOpenChange={setExportOpen} />
 
             {dashboardData && <DashboardStats data={dashboardData} />}
 

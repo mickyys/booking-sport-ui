@@ -301,3 +301,32 @@ export const getGoogleReviews = async (slug: string): Promise<GoogleReviewsData 
   const response = await api.get(`/sport-centers/slug/${encodeURIComponent(slug)}/reviews`);
   return response.data?.available ? (response.data.google as GoogleReviewsData) : null;
 };
+
+export const MAX_BOOKINGS_REPORT_DAYS = 92;
+
+// Reporte XLSX de reservas entre dos fechas civiles (yyyy-MM-dd, inclusive).
+export const downloadBookingsReport = async (
+  token: string,
+  params: { start: string; end: string; status?: string },
+): Promise<Blob> => {
+  try {
+    const response = await api.get('/admin/bookings/export', {
+      params: { start: params.start, end: params.end, ...(params.status ? { status: params.status } : {}) },
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  } catch (error: any) {
+    // Con responseType blob el JSON de error llega como Blob.
+    const data = error?.response?.data;
+    if (data instanceof Blob) {
+      try {
+        const parsed = JSON.parse(await data.text());
+        if (parsed?.error) throw new Error(parsed.error);
+      } catch (inner) {
+        if (inner instanceof Error && !(inner instanceof SyntaxError)) throw inner;
+      }
+    }
+    throw new Error('No se pudo descargar el reporte');
+  }
+};
