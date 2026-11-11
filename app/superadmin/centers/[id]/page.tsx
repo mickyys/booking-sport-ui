@@ -101,7 +101,14 @@ export default function CenterDetailPage() {
           )}
           <dl className="space-y-1 text-sm">
             <div className="flex justify-between"><dt className="text-slate-600">Mercado Pago</dt><dd className={`font-semibold ${mpConnected ? 'text-emerald-700' : 'text-amber-700'}`}>{mpConnected ? 'Conectado' : 'No conectado'}</dd></div>
-            <div className="flex justify-between"><dt className="text-slate-600">Onboarding</dt><dd className="font-semibold text-slate-800">{center.onboarding_status || 'completo'}</dd></div>
+            <div className="flex justify-between">
+              <dt className="text-slate-600">Onboarding</dt>
+              <dd>
+                <Link href={`/superadmin/centers/${id}/onboarding`} className="font-semibold text-emerald-700 underline-offset-2 hover:underline">
+                  {center.onboarding_status === 'pending' ? 'Pendiente' : 'Completo'} · ver detalle
+                </Link>
+              </dd>
+            </div>
             <div className="flex justify-between"><dt className="text-slate-600">Canchas</dt><dd className="font-semibold text-slate-800">{center.courts ?? 0}</dd></div>
           </dl>
           {center.payment_mode === 'pay_online' && !mpConnected && (

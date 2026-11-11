@@ -20,6 +20,7 @@ function CentersList() {
   const [status, setStatus] = useState(params.get('status') || '');
   const [paymentMode, setPaymentMode] = useState(params.get('payment_mode') || '');
   const [featured, setFeatured] = useState(params.get('featured') || '');
+  const [onboarding, setOnboarding] = useState(params.get('onboarding') || '');
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{ items: SuperadminCenter[]; total: number } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,16 +31,16 @@ function CentersList() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setData(await sa.listCenters(getAccessTokenSilently, { q: dq, status, payment_mode: paymentMode, featured, page, limit: LIMIT }));
+      setData(await sa.listCenters(getAccessTokenSilently, { q: dq, status, payment_mode: paymentMode, featured, onboarding, page, limit: LIMIT }));
     } catch (e) {
       toast.error(apiError(e, 'No se pudieron cargar los centros'));
     } finally {
       setLoading(false);
     }
-  }, [getAccessTokenSilently, dq, status, paymentMode, featured, page]);
+  }, [getAccessTokenSilently, dq, status, paymentMode, featured, onboarding, page]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { setPage(1); }, [dq, status, paymentMode, featured]);
+  useEffect(() => { setPage(1); }, [dq, status, paymentMode, featured, onboarding]);
 
   const changeStatus = async (s: CenterStatus, reason: string) => {
     if (!statusTarget) return;
@@ -73,7 +74,7 @@ function CentersList() {
         }
       />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="relative sm:col-span-2 lg:col-span-1">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
           <input aria-label="Buscar centro" placeholder="Nombre, slug, email o RUT" value={q} onChange={(e) => setQ(e.target.value)} className={`${fieldCls} pl-9`} />
@@ -89,6 +90,11 @@ function CentersList() {
           <option value="pay_online">Pago online</option>
           <option value="pay_at_center">Paga en el centro</option>
         </select>
+        <select aria-label="Onboarding" value={onboarding} onChange={(e) => setOnboarding(e.target.value)} className={fieldCls}>
+          <option value="">Onboarding: todos</option>
+          <option value="pending">Pendiente</option>
+          <option value="completed">Completado</option>
+        </select>
         <select aria-label="Destacado" value={featured} onChange={(e) => setFeatured(e.target.value)} className={fieldCls}>
           <option value="">Destacados y no</option>
           <option value="true">Solo destacados</option>
@@ -103,6 +109,7 @@ function CentersList() {
               <TableHead>Centro</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Pago</TableHead>
+              <TableHead>Onboarding</TableHead>
               <TableHead className="text-right">Comisión</TableHead>
               <TableHead>Destacado</TableHead>
               <TableHead className="text-right"><span className="sr-only">Acciones</span></TableHead>
@@ -111,10 +118,10 @@ function CentersList() {
           <TableBody>
             {loading && !data
               ? Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}><TableCell colSpan={6}><div className="h-6 animate-pulse rounded bg-slate-100" /></TableCell></TableRow>
+                  <TableRow key={i}><TableCell colSpan={7}><div className="h-6 animate-pulse rounded bg-slate-100" /></TableCell></TableRow>
                 ))
               : data?.items.length === 0
-              ? <TableRow><TableCell colSpan={6} className="py-10 text-center text-slate-600">No hay centros con esos filtros.</TableCell></TableRow>
+              ? <TableRow><TableCell colSpan={7} className="py-10 text-center text-slate-600">No hay centros con esos filtros.</TableCell></TableRow>
               : data?.items.map((c) => {
                   const st = (c.status || 'active') as CenterStatus;
                   return (
@@ -128,6 +135,18 @@ function CentersList() {
                         {c.status_reason && st !== 'active' && <p className="mt-1 max-w-[16rem] truncate text-xs text-slate-600" title={c.status_reason}>{c.status_reason}</p>}
                       </TableCell>
                       <TableCell><PaymentModeBadge mode={c.payment_mode} /></TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/superadmin/centers/${c.id}/onboarding`}
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset hover:underline ${
+                            c.onboarding_status === 'pending'
+                              ? 'bg-amber-50 text-amber-800 ring-amber-600/25'
+                              : 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+                          }`}
+                        >
+                          {c.onboarding_status === 'pending' ? `Pendiente${c.onboarding_step ? ` · paso ${c.onboarding_step}` : ''}` : 'Completo'}
+                        </Link>
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">{c.payment_mode === 'pay_online' ? `${c.marketplace_fee_percent ?? 0}%` : '—'}</TableCell>
                       <TableCell>
                         {c.is_featured

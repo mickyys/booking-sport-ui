@@ -25,8 +25,27 @@ export interface SuperadminCenter {
   partial_payment_percent?: number;
   mp_user_id?: { mp_user_id?: string } | null;
   onboarding_status?: string;
+  onboarding_step?: number;
+  contact?: { phone?: string; email?: string };
+  space_templates?: { tipo: string; cantidad: number }[];
+  image_url?: string;
+  first_month_free?: boolean;
+  timezone?: string;
   courts?: number;
   created_at?: string;
+}
+
+export interface CommercialView {
+  center_id: string;
+  payment_mode: string;
+  lifecycle_status: string;
+  published: boolean;
+  enforced: boolean;
+  review: boolean;
+  publish: { can_publish: boolean; status: string; missing: string[] };
+  subscription?: { status: string; plan?: string; amount: number; next_charge_at?: string };
+  mercadopago_status?: string;
+  commission?: { effective: number; source: string; configured?: number };
 }
 
 export interface CenterStats {
@@ -109,7 +128,27 @@ export const sa = {
     (await api.get(`/superadmin/sport-centers/${id}`, await cfg(t))).data,
 
   createCenter: async (t: GetToken, body: Record<string, unknown>) =>
-    (await api.post('/superadmin/sport-centers', body, await cfg(t))).data as { id: string; slug: string; name: string },
+    (await api.post('/superadmin/sport-centers', body, await cfg(t))).data as {
+      id: string;
+      slug: string;
+      name: string;
+      city?: string;
+      admin_user_id?: string;
+      email_sent?: boolean;
+    },
+
+  resendAdminInvite: async (t: GetToken, id: string) =>
+    (await api.post(`/superadmin/sport-centers/${id}/admin-invite/resend`, {}, await cfg(t))).data as {
+      message: string;
+      email_sent: boolean;
+      trace_id?: string;
+    },
+
+  commercial: async (t: GetToken, id: string): Promise<CommercialView> =>
+    (await api.get(`/superadmin/sport-centers/${id}/commercial`, await cfg(t))).data,
+
+  publishCenter: async (t: GetToken, id: string): Promise<CommercialView> =>
+    (await api.post(`/superadmin/sport-centers/${id}/commercial/publish`, {}, await cfg(t))).data,
 
   updateSettings: async (t: GetToken, id: string, body: Record<string, unknown>) =>
     (await api.patch(`/superadmin/sport-centers/${id}/settings`, body, await cfg(t))).data,
