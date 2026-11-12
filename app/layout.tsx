@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { Providers } from "./providers";
+import { TenantProvider } from "../src/context/TenantContext";
 import { Navbar } from "../src/components/layout/Navbar";
+import { Footer } from "../src/components/layout/Footer";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,10 +29,13 @@ export default function RootLayout({
     <html lang="es">
       <body className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-emerald-100">
         <Providers>
-          <Navbar />
-          <div className="pt-16">
-            {children}
-          </div>
+          <TenantProvider>
+            <Navbar />
+            <div className="pt-16">
+              {children}
+            </div>
+            <Footer />
+          </TenantProvider>
           <Analytics />
         </Providers>
       </body>

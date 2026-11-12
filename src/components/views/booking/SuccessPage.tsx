@@ -2,8 +2,9 @@
 import React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'motion/react';
-import { CheckCircle, Calendar, ArrowRight, Info, AlertCircle, MapPin, Clock, CreditCard, User, Plane } from 'lucide-react';
+import { CheckCircle, Calendar, ArrowRight, Info, AlertCircle, MapPin, Clock, CreditCard, User, Plane, Share2 } from 'lucide-react';
 import { useBookingStore } from '@/store/useBookingStore';
+import { DEFAULT_TIMEZONE, formatInTimeZone, timeInTimeZone } from '@/lib/santiago';
 
 interface SuccessPageProps {
     onGoHome?: () => void;
@@ -23,7 +24,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
     internal: 'Interno',
 };
 
-const FREE_BOOKING_METHODS = ['venue', 'cash', 'presential', 'internal'];
+const FREE_BOOKING_METHODS = ['venue', 'cash', 'presential', 'internal', 'coupon'];
 
 export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfile }) => {
     const router = useRouter(); 
@@ -47,13 +48,20 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
     const limitHours = cancellationPolicy?.limit_hours ?? 3;
     const retentionPercent = cancellationPolicy?.retention_percent ?? 10;
 
-    const dateObj = booking?.date ? new Date(booking.date) : null;
+    const timeZone = booking?.timezone ?? DEFAULT_TIMEZONE;
+    const dateObj = booking?.scheduled_at
+        ? new Date(booking.scheduled_at)
+        : booking?.date
+            ? new Date(booking.date)
+            : null;
     const formattedDate = dateObj
-        ? dateObj.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+        ? formatInTimeZone(dateObj, timeZone, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
         : '';
-    const formattedTime = booking?.hour !== undefined
-        ? `${String(booking.hour).padStart(2, '0')}:${String(booking.minutes ?? 0).padStart(2, '0')} hrs`
-        : '';
+    const formattedTime = booking?.scheduled_at
+        ? `${timeInTimeZone(booking.scheduled_at, timeZone)} hrs`
+        : booking?.hour !== undefined
+            ? `${String(booking.hour).padStart(2, '0')}:${String(booking.minutes ?? 0).padStart(2, '0')} hrs`
+            : '';
 
     const displayPrice = booking?.paidAmount ?? 0;
     const pendingAmount = booking?.pendingAmount ?? 0;
@@ -63,6 +71,17 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
     const bookingCode = booking?.booking_code ?? booking?.bookingCode ?? code;
     const isFreeBooking = FREE_BOOKING_METHODS.includes(booking?.payment_method ?? '');
     const priceAtVenue = booking?.finalPrice ?? booking?.price ?? 0;
+
+    // Sedes, piscinas y quinchos: reserva de uno o más días completos.
+    const isFacility = !!booking?.isFacility;
+    const facilityDates: string[] = booking?.facilityDates ?? [];
+    const facilityDateLabels = facilityDates.map((d) =>
+        formatInTimeZone(new Date(`${d}T12:00:00Z`), DEFAULT_TIMEZONE, {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+        })
+    );
+    const spaceLabel =
+        booking?.space_type === 'piscina' ? 'Piscina' : booking?.space_type === 'sede' ? 'Sede' : booking?.space_type === 'quincho' ? 'Quincho' : 'Espacio';
 
     if (isLoading) {
         return (
@@ -154,22 +173,31 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
                                     <div className="flex items-start gap-3">
                                         <Plane className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" />
                                         <div className="flex-1">
-                                            <p className="text-xs text-slate-500 uppercase tracking-wide">Cancha</p>
+                                            <p className="text-xs text-slate-500 uppercase tracking-wide">{isFacility ? spaceLabel : 'Cancha'}</p>
                                             <p className="text-sm font-medium text-slate-800">{courtName}</p>
+                                            {isFacility && !!booking?.guests && (
+                                                <p className="text-xs text-slate-500">{booking.guests} {booking.guests === 1 ? 'persona' : 'personas'}</p>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex items-start gap-3">
                                         <Calendar className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" />
                                         <div className="flex-1">
-                                            <p className="text-xs text-slate-500 uppercase tracking-wide">Fecha</p>
-                                            <p className="text-sm font-medium text-slate-800 capitalize">{formattedDate}</p>
+                                            <p className="text-xs text-slate-500 uppercase tracking-wide">{isFacility && facilityDates.length > 1 ? 'Fechas' : 'Fecha'}</p>
+                                            {isFacility ? (
+                                                facilityDateLabels.map((label, i) => (
+                                                    <p key={facilityDates[i]} className="text-sm font-medium text-slate-800 capitalize">{label}</p>
+                                                ))
+                                            ) : (
+                                                <p className="text-sm font-medium text-slate-800 capitalize">{formattedDate}</p>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex items-start gap-3">
                                         <Clock className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" />
                                         <div className="flex-1">
-                                            <p className="text-xs text-slate-500 uppercase tracking-wide">Hora</p>
-                                            <p className="text-sm font-medium text-slate-800">{formattedTime}</p>
+                                            <p className="text-xs text-slate-500 uppercase tracking-wide">{isFacility ? 'Horario' : 'Hora'}</p>
+                                            <p className="text-sm font-medium text-slate-800">{isFacility ? 'Día completo' : formattedTime}</p>
                                         </div>
                                     </div>
                                     <div className="flex items-start gap-3">
@@ -238,7 +266,7 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
                                     <div>
                                         <p className="text-sm text-amber-900 font-medium mb-1">Política de cancelación</p>
                                         <p className="text-sm text-amber-800">
-                                            {isFreeBooking ? (
+                                            {isFreeBooking || isFacility ? (
                                                 <>Puedes cancelar tu reserva contactando directamente con el centro deportivo.</>
                                             ) : (
                                                 <>Puedes cancelar hasta <strong>{limitHours} horas antes</strong> del horario reservado para recibir el reembolso completo.
@@ -261,6 +289,15 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
                                 <Calendar className="w-5 h-5" />
                                 Ver Mis Reservas
                             </button>
+                            {bookingCode && bookingCode !== 'N/A' && (
+                                <button
+                                    onClick={() => router.push(`/reserva/${bookingCode}`)}
+                                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-white border border-emerald-500 text-emerald-700 rounded-xl font-bold hover:bg-emerald-50 transition-colors"
+                                >
+                                    <Share2 className="w-5 h-5" />
+                                    Ver y compartir
+                                </button>
+                            )}
                             <button
                                 onClick={onGoHome || (() => router.push('/'))}
                                 className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors"

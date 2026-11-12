@@ -1,6 +1,15 @@
 "use client";
-import React, { useState, useRef } from 'react';
-import { Upload, X, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { Upload, X, Image as ImageIcon, Link as LinkIcon, Search, Loader2 } from 'lucide-react';
+
+interface UnsplashPhoto {
+  id: string;
+  alt_description?: string;
+  urls: {
+    small: string;
+    regular: string;
+  };
+}
 
 interface CourtImageUploadProps {
   value: string;
@@ -10,7 +19,11 @@ interface CourtImageUploadProps {
   onFileSelect?: (file: File) => void;
   onRemove: () => void;
   hasLocalFile?: boolean;
+  label?: string;
+  defaultQuery?: string;
 }
+
+const UNSPLASH_SUGGESTIONS = ['fútbol', 'cancha', 'quincho', 'piscina', 'parrilla', 'evento'];
 
 export const CourtImageUpload: React.FC<CourtImageUploadProps> = ({ 
   value, 
@@ -19,19 +32,58 @@ export const CourtImageUpload: React.FC<CourtImageUploadProps> = ({
   onUrlChange,
   onFileSelect,
   onRemove,
-  hasLocalFile
+  hasLocalFile,
+  label = 'Imagen de la Cancha',
+  defaultQuery = ''
 }) => {
-  const [activeTab, setActiveTab] = useState<'upload' | 'url'>('upload');
+  const [activeTab, setActiveTab] = useState<'upload' | 'url' | 'unsplash'>('upload');
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [currentYPosition, setCurrentYPosition] = useState(yPosition);
   const [isDragging, setIsDragging] = useState(false);
   const [startY, setStartY] = useState(0);
   const [startPosition, setStartPosition] = useState(0);
   
+  const [searchQuery, setSearchQuery] = useState(defaultQuery);
+  const [unsplashResults, setUnsplashResults] = useState<UnsplashPhoto[]>([]);
+  const [unsplashLoading, setUnsplashLoading] = useState(false);
+  const [unsplashError, setUnsplashError] = useState<string | null>(null);
+  const [unsplashSelectedId, setUnsplashSelectedId] = useState<string | null>(null);
+  const [unsplashSearched, setUnsplashSearched] = useState(false);
+  
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const displayImage = localPreview || value;
+
+  const searchUnsplash = useCallback(async (query: string) => {
+    if (!query.trim()) return;
+    setUnsplashLoading(true);
+    setUnsplashError(null);
+    setUnsplashSearched(true);
+    try {
+      const res = await fetch(`/api/unsplash/search?query=${encodeURIComponent(query.trim())}&per_page=9`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || 'Error al buscar imágenes');
+      }
+      const data = await res.json();
+      setUnsplashResults(data.results || []);
+    } catch (err: any) {
+      console.error(err);
+      setUnsplashError(err?.message || 'Error al buscar imágenes');
+      setUnsplashResults([]);
+    } finally {
+      setUnsplashLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'unsplash' && !unsplashSearched) {
+      const initial = defaultQuery || 'deporte';
+      setSearchQuery(initial);
+      searchUnsplash(initial);
+    }
+  }, [activeTab, defaultQuery, unsplashSearched, searchUnsplash]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -58,6 +110,16 @@ export const CourtImageUpload: React.FC<CourtImageUploadProps> = ({
   const handleUrlChange = (url: string) => {
     onUrlChange(url, currentYPosition);
     setUploadError(null);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    searchUnsplash(searchQuery);
+  };
+
+  const selectUnsplashImage = (photo: UnsplashPhoto) => {
+    setUnsplashSelectedId(photo.id);
+    onUrlChange(photo.urls.regular, currentYPosition);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -88,7 +150,7 @@ export const CourtImageUpload: React.FC<CourtImageUploadProps> = ({
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
@@ -102,15 +164,46 @@ export const CourtImageUpload: React.FC<CourtImageUploadProps> = ({
     };
   }, [isDragging, startY, startPosition, currentYPosition, displayImage]);
 
+  const renderPreview = () => (
+    <div 
+      ref={imageContainerRef}
+      className="relative w-full h-40 overflow-hidden rounded-lg bg-slate-100 cursor-move select-none"
+      onMouseDown={handleMouseDown}
+    >
+      <img 
+        src={displayImage} 
+        alt="Preview" 
+        className="w-full h-full object-cover pointer-events-none"
+        style={{ transform: `translateY(${currentYPosition}px)` }}
+        onError={(e) => {
+          (e.target as HTMLImageElement).src = 'https://placehold.co/800x600/e2e8f0/64748b?text=Imagen+no+disponible';
+        }}
+      />
+      {isDragging && (
+        <div className="absolute inset-0 bg-emerald-500/20 pointer-events-none" />
+      )}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
+      >
+        <X className="w-4 h-4" />
+      </button>
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full text-xs text-white">
+        Arrastra para ajustar
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-medium text-slate-700">Imagen de la Cancha</label>
+      <label className="block text-sm font-medium text-slate-700">{label}</label>
       
-      <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
+      <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
         <button
           type="button"
           onClick={() => setActiveTab('upload')}
-          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2 px-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'upload' 
               ? 'bg-white text-slate-900 shadow-sm' 
               : 'text-slate-500 hover:text-slate-700'
@@ -122,7 +215,7 @@ export const CourtImageUpload: React.FC<CourtImageUploadProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('url')}
-          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2 px-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'url' 
               ? 'bg-white text-slate-900 shadow-sm' 
               : 'text-slate-500 hover:text-slate-700'
@@ -130,6 +223,18 @@ export const CourtImageUpload: React.FC<CourtImageUploadProps> = ({
         >
           <LinkIcon className="w-4 h-4" />
           URL
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('unsplash')}
+          className={`flex-1 py-2 px-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
+            activeTab === 'unsplash' 
+              ? 'bg-white text-slate-900 shadow-sm' 
+              : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <Search className="w-4 h-4" />
+          Unsplash
         </button>
       </div>
 
@@ -142,36 +247,93 @@ export const CourtImageUpload: React.FC<CourtImageUploadProps> = ({
             onChange={(e) => handleUrlChange(e.target.value)}
             placeholder="https://ejemplo.com/imagen.jpg"
           />
-          {displayImage && (
-            <div 
-              ref={imageContainerRef}
-              className="relative mt-2 w-full h-40 overflow-hidden rounded-lg bg-slate-100 cursor-move select-none"
-              onMouseDown={handleMouseDown}
+          {displayImage && renderPreview()}
+        </div>
+      ) : activeTab === 'unsplash' ? (
+        <div className="space-y-3">
+          <form onSubmit={handleSearchSubmit} className="flex gap-2">
+            <input
+              type="text"
+              className="flex-1 px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-emerald-200 outline-none"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar imágenes en Unsplash..."
+            />
+            <button
+              type="submit"
+              disabled={unsplashLoading}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition-colors disabled:opacity-50"
             >
-              <img 
-                src={displayImage} 
-                alt="Preview" 
-                className="w-full h-full object-cover pointer-events-none"
-                style={{ transform: `translateY(${currentYPosition}px)` }}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://placehold.co/800x600/e2e8f0/64748b?text=Imagen+no+disponible';
-                }}
-              />
-              {isDragging && (
-                <div className="absolute inset-0 bg-emerald-500/20 pointer-events-none" />
-              )}
+              {unsplashLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              Buscar
+            </button>
+          </form>
+
+          <div className="flex flex-wrap gap-1.5">
+            {UNSPLASH_SUGGESTIONS.map((s) => (
               <button
+                key={s}
                 type="button"
-                onClick={onRemove}
-                className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
+                onClick={() => { setSearchQuery(s); searchUnsplash(s); }}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                  searchQuery === s
+                    ? 'border-slate-900 bg-slate-900 text-white'
+                    : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                }`}
               >
-                <X className="w-4 h-4" />
+                {s}
               </button>
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full text-xs text-white">
-                Arrastra para ajustar
-              </div>
+            ))}
+          </div>
+
+          {unsplashLoading ? (
+            <div className="flex items-center justify-center h-40 bg-slate-50 rounded-lg">
+              <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
             </div>
-          )}
+          ) : unsplashError ? (
+            <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600">
+              {unsplashError}
+            </div>
+          ) : unsplashResults.length > 0 ? (
+            <div className="grid grid-cols-3 gap-2">
+              {unsplashResults.map((photo) => (
+                <button
+                  key={photo.id}
+                  type="button"
+                  onClick={() => selectUnsplashImage(photo)}
+                  className={`relative aspect-[4/3] rounded-lg overflow-hidden group transition-all ${
+                    unsplashSelectedId === photo.id
+                      ? 'ring-2 ring-emerald-500'
+                      : 'hover:ring-2 hover:ring-slate-300'
+                  }`}
+                >
+                  <img
+                    src={photo.urls.small}
+                    alt={photo.alt_description || 'Foto de Unsplash'}
+                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  />
+                  {unsplashSelectedId === photo.id && (
+                    <div className="absolute inset-0 bg-emerald-500/20 flex items-center justify-center">
+                      <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow">
+                        <svg viewBox="0 0 20 20" className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="3">
+                          <path d="M4 10l4 4 8-8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          ) : unsplashSearched ? (
+            <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-500 text-center">
+              Sin resultados para tu búsqueda. Intenta con otro término.
+            </div>
+          ) : null}
+
+          {displayImage && renderPreview()}
+
+          <p className="text-xs text-slate-400">Fotos de <a href="https://unsplash.com" target="_blank" rel="noreferrer" className="underline">Unsplash</a></p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -194,31 +356,7 @@ export const CourtImageUpload: React.FC<CourtImageUploadProps> = ({
               <span className="text-xs text-slate-400 mt-1">PNG, JPG hasta 5MB</span>
             </label>
           ) : (
-            <div 
-              ref={imageContainerRef}
-              className="relative w-full h-40 overflow-hidden rounded-lg bg-slate-100 cursor-move select-none"
-              onMouseDown={handleMouseDown}
-            >
-              <img 
-                src={displayImage} 
-                alt="Preview" 
-                className="w-full h-full object-cover pointer-events-none"
-                style={{ transform: `translateY(${currentYPosition}px)` }}
-              />
-              {isDragging && (
-                <div className="absolute inset-0 bg-emerald-500/20 pointer-events-none" />
-              )}
-              <button
-                type="button"
-                onClick={onRemove}
-                className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
-              >
-                <X className="w-4 h-4" />
-              </button>
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full text-xs text-white">
-                Arrastra para ajustar
-              </div>
-            </div>
+            renderPreview()
           )}
 
           {hasLocalFile && (

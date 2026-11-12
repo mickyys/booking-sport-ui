@@ -21,8 +21,7 @@ export default function BookingViewWrapper({ slug }: Props) {
     courts,
     selectedCenterId,
     setSelectedCenterId,
-    fetchSportCenterBySlug,
-    initialize
+    fetchSportCenterBySlug
   } = useBookingStore();
 
   const {
@@ -33,14 +32,7 @@ export default function BookingViewWrapper({ slug }: Props) {
     setSelectedSlot
   } = useBookingActions(user);
 
-  const initialized = React.useRef(false);
-
-  useEffect(() => {
-    if (!initialized.current) {
-      initialized.current = true;
-      initialize();
-    }
-  }, [initialize]);
+  // initialize() ya corre en app/providers.tsx para toda la app: no duplicar.
 
   const initializedSlug = React.useRef<string | null>(null);
 

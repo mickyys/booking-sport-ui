@@ -21,16 +21,14 @@ interface AdminPanelContextType {
     setDashboardDateFilter: (date: string) => void;
     onSaveCourt: (court: any) => void;
     onDeleteCourt: (id: any) => Promise<void>;
-    schedules: any[];
-    onUpdateSchedule: (schedule: any) => Promise<void>;
-    onUpdateScheduleSlot: (courtId: string, slot: any) => Promise<void>;
+    spaces: any[];
+    onSaveSpace: (space: any) => void;
+    onDeleteSpace: (id: any) => Promise<void>;
     currentSportCenter: any;
+    refreshSportCenter: () => Promise<void>;
     isRefreshing: boolean;
     setIsRefreshing: (val: boolean) => void;
     fetchAdminDashboard: any;
-    centerDefaultSchedule: any;
-    centerScheduleOverrides: any;
-    centerActiveDays: number[];
 }
 
 const AdminPanelContext = createContext<AdminPanelContextType | undefined>(undefined);
@@ -50,9 +48,10 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
     // Use selectors to avoid unnecessary re-renders when other parts of the store change
     const fetchAdminCourts = useBookingStore(state => state.fetchAdminCourts);
     const adminCourts = useBookingStore(state => state.adminCourts);
+    const adminSpaces = useBookingStore(state => state.adminSpaces);
+    const fetchAdminSpaces = useBookingStore(state => state.fetchAdminSpaces);
     const deleteAdminCourt = useBookingStore(state => state.deleteAdminCourt);
-    const updateAdminSchedule = useBookingStore(state => state.updateAdminSchedule);
-    const updateAdminScheduleSlot = useBookingStore(state => state.updateAdminScheduleSlot);
+    const deleteAdminSpace = useBookingStore(state => state.deleteAdminSpace);
     const fetchAdminDashboard = useBookingStore(state => state.fetchAdminDashboard);
     const adminDashboardData = useBookingStore(state => state.adminDashboardData);
     const storeCancelBooking = useBookingStore(state => state.cancelBooking);
@@ -71,7 +70,15 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
         if (!adminCourts || adminCourts.length === 0) {
             fetchAdminCourts(getAccessTokenSilently);
         }
+        if (!adminSpaces || adminSpaces.length === 0) {
+            fetchAdminSpaces(getAccessTokenSilently);
+        }
     }, []);
+
+    const refreshSportCenter = React.useCallback(async () => {
+        const center = await fetchSportCenterByID('my', getAccessTokenSilently);
+        if (center) setLoadedSportCenter(center);
+    }, [fetchSportCenterByID, getAccessTokenSilently]);
 
     const backendCourts = React.useMemo(() => adminCourts ? adminCourts.flatMap((ac: any) => ac.courts?.map((c: any) => ({
         ...c,
@@ -81,30 +88,24 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
         centerId: ac.sport_center?.id || ac.sport_center?._id,
     })) || []) : [], [adminCourts]);
 
+    const spaces = React.useMemo(() => adminSpaces ? adminSpaces.map((s: any) => ({
+        ...s,
+        id: s.id || s._id,
+        image: s.image_url || s.image || (s.category === 'cancha' ? '/images/cancha1.jpeg' : ''),
+    })) : [], [adminSpaces]);
+
+    const courts = React.useMemo(() => {
+        if (spaces && spaces.length > 0) {
+            return spaces.filter((s: any) => s.category === 'cancha' || !s.category);
+        }
+        return backendCourts;
+    }, [spaces, backendCourts]);
+
     const currentSportCenter = React.useMemo(() => {
         if (loadedSportCenter) return loadedSportCenter;
         if (adminCourts && adminCourts.length > 0) return adminCourts[0].sport_center;
         return null;
     }, [loadedSportCenter, adminCourts]);
-    const courts = backendCourts;
-
-    const centerDefaultSchedule = React.useMemo(() => currentSportCenter?.default_schedule || { start_time: '19:00', end_time: '20:00' }, [currentSportCenter]);
-    const centerScheduleOverrides = React.useMemo(() => currentSportCenter?.schedule_overrides || {}, [currentSportCenter]);
-    const centerActiveDays = React.useMemo(() => currentSportCenter?.active_days || [1, 2, 3, 4, 5, 6], [currentSportCenter]);
-
-    const schedules = React.useMemo(() => backendCourts.map(c => ({
-        courtId: c.id,
-        slots: c.schedule?.map((s: any) => ({
-            hour: s.hour,
-            minutes: s.minutes || 0,
-            price: s.price || 0,
-            enabled: s.status === 'available',
-            paymentRequired: s.payment_required,
-            paymentOptional: s.payment_optional || false,
-            partialPaymentEnabled: s.partial_payment_enabled ?? false,
-            dayOfWeek: s.day_of_week
-        })) || []
-    })), [backendCourts]);
 
     const onSaveCourt = React.useCallback((court: any) => fetchAdminCourts(getAccessTokenSilently), [fetchAdminCourts, getAccessTokenSilently]);
 
@@ -118,23 +119,19 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
         }
     }, [deleteAdminCourt, fetchAdminCourts, getAccessTokenSilently]);
 
-    const onUpdateSchedule = React.useCallback(async (schedule: any) => {
-        try {
-            await updateAdminSchedule(schedule.courtId, schedule.slots, getAccessTokenSilently);
-            toast.success("Horario actualizado con éxito");
-        } catch (error) {
-            toast.error("Error al actualizar horario");
-        }
-    }, [updateAdminSchedule, getAccessTokenSilently]);
+    const onSaveSpace = React.useCallback((space: any) => {
+        fetchAdminSpaces(getAccessTokenSilently);
+    }, [fetchAdminSpaces, getAccessTokenSilently]);
 
-    const onUpdateScheduleSlot = React.useCallback(async (courtId: string, slot: any) => {
+    const onDeleteSpace = React.useCallback(async (id: any) => {
         try {
-            await updateAdminScheduleSlot(courtId, slot, getAccessTokenSilently);
-            toast.success("Horario actualizado con éxito");
+            await deleteAdminSpace(id, getAccessTokenSilently);
+            await fetchAdminSpaces(getAccessTokenSilently);
+            toast.success("Espacio eliminado con éxito");
         } catch (error) {
-            toast.error("Error al actualizar horario");
+            toast.error("Hubo un error al eliminar el espacio");
         }
-    }, [updateAdminScheduleSlot, getAccessTokenSilently]);
+    }, [deleteAdminSpace, fetchAdminSpaces, getAccessTokenSilently]);
 
     const handleDashboardCancel = React.useCallback(async (booking: any) => {
         try {
@@ -162,16 +159,14 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
         setDashboardDateFilter,
         onSaveCourt,
         onDeleteCourt,
-        schedules,
-        onUpdateSchedule,
-        onUpdateScheduleSlot,
+        spaces,
+        onSaveSpace,
+        onDeleteSpace,
         currentSportCenter,
+        refreshSportCenter,
         isRefreshing,
         setIsRefreshing,
-        fetchAdminDashboard,
-        centerDefaultSchedule,
-        centerScheduleOverrides,
-        centerActiveDays
+        fetchAdminDashboard
     }), [
         adminDashboardData,
         handleDashboardCancel,
@@ -183,15 +178,13 @@ export const AdminPanelProvider: React.FC<{ children: ReactNode }> = ({ children
         dashboardDateFilter,
         onSaveCourt,
         onDeleteCourt,
-        schedules,
-        onUpdateSchedule,
-        onUpdateScheduleSlot,
+        spaces,
+        onSaveSpace,
+        onDeleteSpace,
         currentSportCenter,
+        refreshSportCenter,
         isRefreshing,
-        fetchAdminDashboard,
-        centerDefaultSchedule,
-        centerScheduleOverrides,
-        centerActiveDays
+        fetchAdminDashboard
     ]);
 
     return (

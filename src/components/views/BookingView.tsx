@@ -30,7 +30,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
   sportCenters,
   courts
 }) => {
-  const { schedules, isLoading, fetchSchedules, fetchSportCenterBySlug } = useBookingStore();
+  const { schedules, isLoading, error, fetchSchedules, fetchCourts, fetchSportCenterBySlug } = useBookingStore();
   const params = useParams(); const slug = params?.slug as string | undefined;
   const [selectedDay, setSelectedDay] = useState<string>(() => todaySantiagoKey());
   const isMobile = useIsMobile();
@@ -56,15 +56,11 @@ export const BookingView: React.FC<BookingViewProps> = ({
     }
   }, []);
 
-  const lastFetch = React.useRef<{ center: string; date: string } | null>(null);
-
-  // Efecto para recargar horarios cuando cambia el día o el centro
+  // Efecto para recargar horarios cuando cambia el día o el centro.
+  // Sin guard local: cada cambio dispara la petición y el store descarta
+  // las respuestas obsoletas (última petición gana), así nunca se queda pegado.
   useEffect(() => {
     if (selectedCenter) {
-      if (lastFetch.current?.center === selectedCenter && lastFetch.current?.date === selectedDay) {
-        return;
-      }
-      lastFetch.current = { center: selectedCenter, date: selectedDay };
       fetchSchedules(selectedCenter, selectedDay);
     }
   }, [selectedDay, selectedCenter, fetchSchedules]);
@@ -84,6 +80,13 @@ export const BookingView: React.FC<BookingViewProps> = ({
     }
   }, [courtsForCenter, selectedCourtId]);
 
+  // Ref con el centro actual: el efecto slug es async y no puede confiar en
+  // el `selectedCenter` capturado al montar (queda stale tras el await).
+  const selectedCenterRef = React.useRef(selectedCenter);
+  useEffect(() => {
+    selectedCenterRef.current = selectedCenter;
+  }, [selectedCenter]);
+
   // Auto-seleccionar center si la ruta trae un `slug`
   useEffect(() => {
     if (!slug) return;
@@ -100,7 +103,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
     (async () => {
       const center = await fetchSportCenterBySlug(slug);
       if (center) {
-        if (selectedCenter !== center.id) onCenterChange(center.id);
+        if (selectedCenterRef.current !== center.id) onCenterChange(center.id);
         const newCourts = courts.filter(c => c.centerId === center.id);
         if (newCourts.length > 0) setSelectedCourtId(newCourts[0].id);
       }
@@ -166,6 +169,39 @@ export const BookingView: React.FC<BookingViewProps> = ({
     onBookSlot(slot);
   };
 
+  // Estado vacío diferenciado: error de red ≠ sin canchas ≠ sin horarios
+  const emptyState = (
+    <div className="text-center py-12 text-slate-400">
+      {error ? (
+        <div className="flex flex-col items-center gap-4">
+          <p className="text-slate-500 font-medium">
+            No pudimos cargar los horarios. Inténtalo de nuevo.
+          </p>
+          <button
+            onClick={() => selectedCenter && fetchSchedules(selectedCenter, selectedDay)}
+            className="px-6 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
+      ) : courtsForCenter.length === 0 ? (
+        <div className="flex flex-col items-center gap-4">
+          <p className="text-slate-500 font-medium">
+            {courts.length === 0 ? 'Cargando canchas...' : 'Este centro todavía no tiene canchas disponibles.'}
+          </p>
+          <button
+            onClick={() => fetchCourts()}
+            className="px-6 py-2 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-700 transition-colors"
+          >
+            Recargar canchas
+          </button>
+        </div>
+      ) : (
+        'No hay horarios disponibles para este día.'
+      )}
+    </div>
+  );
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
       <div className="text-center mb-8">
@@ -211,10 +247,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
           return (
             <button
               key={day}
-              onClick={() => {
-                console.log('Selected day:', day);
-                setSelectedDay(day)
-              }}
+              onClick={() => setSelectedDay(day)}
               className={`flex-shrink-0 flex flex-col items-center justify-center min-w-[80px] h-20 rounded-2xl border transition-all ${isSelected
                   ? 'bg-slate-900 border-slate-900 text-white shadow-lg scale-105'
                   : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-400 hover:bg-slate-50'
@@ -327,11 +360,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
                   );
                 })}
               </div>
-              {filteredSlots.length === 0 && (
-                <div className="text-center py-12 text-slate-400">
-                  No hay horarios disponibles para este día.
-                </div>
-              )}
+              {filteredSlots.length === 0 && emptyState}
             </>
           )}
         </>
@@ -342,6 +371,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
             <p className="text-slate-500 font-medium animate-pulse">Buscando horarios disponibles...</p>
           </div>
         ) : (
+          apiSlots.length === 0 ? emptyState : (
           <div className="overflow-x-auto bg-white rounded-2xl border border-slate-200 shadow-sm">
             <table className="w-full text-center">
               <thead className="bg-slate-50 border-b border-slate-200">
@@ -391,6 +421,7 @@ export const BookingView: React.FC<BookingViewProps> = ({
               </tbody>
             </table>
           </div>
+          )
         )
       )}
     </div>

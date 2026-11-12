@@ -1,206 +1,251 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { Users, Trash2, UserPlus, X, Loader2 } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Search, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth0 } from '@auth0/auth0-react';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { UsersList } from './users/UsersList';
+import { UserInviteDialog } from './users/UserInviteDialog';
+import { UserDetailDialog } from './users/UserDetailDialog';
+import { CenterUser, filterUsers, getDisplayName } from './users/usersUtils';
 
-interface Auth0User {
-    user_id: string;
-    name: string;
-    email: string;
-    picture: string;
-    last_login?: string;
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const AdminUsers: React.FC = () => {
-    const [users, setUsers] = useState<Auth0User[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [removing, setRemoving] = useState<string | null>(null);
-    const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
-    const hasFetchedRef = React.useRef(false);
     const { user: auth0User, getAccessTokenSilently } = useAuth0();
-
-    const currentUserName = auth0User?.name || auth0User?.nickname || 'Usuario';
-    const currentUserEmail = auth0User?.email || '';
-    const currentUserPicture = auth0User?.picture || '';
     const currentUserId = auth0User?.sub || '';
 
-    const fetchUsers = React.useCallback(async () => {
-        if (hasFetchedRef.current) return;
-        hasFetchedRef.current = true;
+    const [users, setUsers] = useState<CenterUser[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [query, setQuery] = useState('');
+    const [selected, setSelected] = useState<CenterUser | null>(null);
+    const [detailOpen, setDetailOpen] = useState(false);
+    const [inviteOpen, setInviteOpen] = useState(false);
+    const [inviting, setInviting] = useState(false);
+    const [inviteError, setInviteError] = useState('');
+    const [toRemove, setToRemove] = useState<CenterUser | null>(null);
+    const [removing, setRemoving] = useState(false);
+    const [resending, setResending] = useState(false);
 
+    const authHeaders = useCallback(async () => {
+        const token = await getAccessTokenSilently();
+        return { Authorization: `Bearer ${token}` };
+    }, [getAccessTokenSilently]);
+
+    const loadUsers = useCallback(async () => {
         try {
-            const token = await getAccessTokenSilently();
-            const response = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/admin/users`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch users');
-            }
-
+            const response = await fetch(`${API_URL}/admin/users`, { headers: await authHeaders() });
+            if (!response.ok) throw new Error('Failed to fetch users');
             const data = await response.json();
-            console.log('AdminUsers - Status:', response.status, 'Data:', JSON.stringify(data, null, 2));
-            let userList: Auth0User[] = data.users || [];
-
-            if (userList.length === 0) {
-                userList = [{
-                    user_id: currentUserId,
-                    name: currentUserName,
-                    email: currentUserEmail,
-                    picture: currentUserPicture,
-                }];
-            } else {
-                userList = userList.map((u: Auth0User) => {
-                    if (u.user_id === currentUserId) {
-                        return {
-                            user_id: currentUserId,
-                            name: currentUserName || u.name,
-                            email: currentUserEmail || u.email,
-                            picture: currentUserPicture || u.picture,
-                            last_login: u.last_login,
-                        };
-                    }
-                    return u;
-                });
-            }
-
-            setUsers(userList);
+            const list = (data.users || []) as CenterUser[];
+            setUsers(
+                list.map((u) =>
+                    u.user_id === currentUserId
+                        ? {
+                              ...u,
+                              name: auth0User?.name || auth0User?.nickname || u.name,
+                              email: auth0User?.email || u.email,
+                              picture: auth0User?.picture || u.picture,
+                          }
+                        : u,
+                ),
+            );
         } catch (error) {
             console.error('Error fetching users:', error);
-            setUsers([{
-                user_id: currentUserId,
-                name: currentUserName,
-                email: currentUserEmail,
-                picture: currentUserPicture,
-                last_login: undefined,
-            }]);
+            toast.error('No se pudieron cargar los usuarios');
         } finally {
             setLoading(false);
         }
-    }, [getAccessTokenSilently, currentUserId, currentUserName, currentUserEmail, currentUserPicture]);
+    }, [authHeaders, currentUserId, auth0User]);
 
     useEffect(() => {
-        fetchUsers();
-    }, [fetchUsers]);
+        loadUsers();
+    }, [loadUsers]);
 
-    const handleRemoveUser = async (userId: string) => {
-        if (!confirm('¿Estás seguro de que deseas eliminar el acceso de este usuario?')) {
-            return;
-        }
+    const visibleUsers = useMemo(() => filterUsers(users, query), [users, query]);
 
-        setRemoving(userId);
+    const handleInvite = async (data: { email: string; nombre: string }) => {
+        setInviting(true);
+        setInviteError('');
         try {
-            const token = await getAccessTokenSilently();
-            const response = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/admin/users/${userId}`,
-                {
-                    method: 'DELETE',
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-
+            const response = await fetch(`${API_URL}/admin/users`, {
+                method: 'POST',
+                headers: { ...(await authHeaders()), 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            const body = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error('Failed to remove user');
+                setInviteError(body.error || 'No se pudo agregar al administrador');
+                return;
             }
-
-            setUsers(users.filter(u => u.user_id !== userId));
-            toast.success('Usuario eliminado correctamente');
+            setInviteOpen(false);
+            if (body.email_sent === false) {
+                toast.warning('Administrador agregado, pero no se pudo enviar el correo de invitación');
+            } else {
+                toast.success('Administrador agregado. Le enviamos un correo de invitación');
+            }
+            await loadUsers();
         } catch (error) {
-            console.error('Error removing user:', error);
-            toast.error('Error al eliminar usuario');
+            console.error('Error inviting user:', error);
+            setInviteError('No se pudo agregar al administrador');
         } finally {
-            setRemoving(null);
+            setInviting(false);
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-64">
-                <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-            </div>
-        );
-    }
+    const handleResend = async (user: CenterUser) => {
+        setResending(true);
+        try {
+            const response = await fetch(`${API_URL}/admin/users`, {
+                method: 'POST',
+                headers: { ...(await authHeaders()), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: user.email, nombre: user.name, resend: true }),
+            });
+            const body = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                toast.error(body.error || 'No se pudo reenviar la invitación');
+                return;
+            }
+            if (body.email_sent === false) {
+                toast.warning('Rol confirmado, pero no se pudo enviar el correo');
+            } else {
+                toast.success('Invitación reenviada y rol de administrador confirmado');
+            }
+        } catch (error) {
+            console.error('Error resending invitation:', error);
+            toast.error('No se pudo reenviar la invitación');
+        } finally {
+            setResending(false);
+        }
+    };
+
+    const handleConfirmRemove = async () => {
+        if (!toRemove) return;
+        setRemoving(true);
+        try {
+            const response = await fetch(`${API_URL}/admin/users/${encodeURIComponent(toRemove.user_id)}`, {
+                method: 'DELETE',
+                headers: await authHeaders(),
+            });
+            if (!response.ok) {
+                const body = await response.json().catch(() => ({}));
+                throw new Error(body.error || 'Failed to remove user');
+            }
+            toast.success('Acceso eliminado');
+            setToRemove(null);
+            await loadUsers();
+        } catch (error) {
+            console.error('Error removing user:', error);
+            toast.error('No se pudo quitar el acceso');
+        } finally {
+            setRemoving(false);
+        }
+    };
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="p-3 bg-slate-100 rounded-xl">
-                        <Users className="w-6 h-6 text-slate-600" />
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-900">Usuarios</h2>
-                        <p className="text-slate-500 text-sm">
-                            Gestiona el acceso de usuarios al centro deportivo
-                        </p>
-                    </div>
-                </div>
+        <div className="space-y-5 pb-6 sm:space-y-6">
+            <div className="flex items-center justify-between gap-3">
+                <h1 className="min-w-0 truncate text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+                    Usuarios
+                </h1>
+                <button
+                    type="button"
+                    onClick={() => {
+                        setInviteError('');
+                        setInviteOpen(true);
+                    }}
+                    className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-black text-white transition-colors hover:bg-emerald-600"
+                >
+                    <UserPlus size={16} />
+                    <span className="max-sm:hidden">Agregar administrador</span>
+                    <span className="sm:hidden">Agregar</span>
+                </button>
             </div>
 
-            {users.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-                    <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                    <p className="text-slate-500">No hay usuarios con acceso a este centro</p>
-                </div>
-            ) : (
-                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                    <table className="w-full">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
-                                <th className="text-left px-6 py-4 text-sm font-semibold text-slate-600">Usuario</th>
-                                <th className="text-left px-6 py-4 text-sm font-semibold text-slate-600">Email</th>
-                                <th className="text-left px-6 py-4 text-sm font-semibold text-slate-600">Último ingreso</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {users.map((user) => (
-                                <tr key={user.user_id} className="hover:bg-slate-50">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            {user.picture && !imageErrors[user.user_id] ? (
-                                                <img
-                                                    src={user.picture}
-                                                    alt={user.name}
-                                                    className="w-10 h-10 rounded-full"
-                                                    onError={() => setImageErrors(prev => ({ ...prev, [user.user_id]: true }))}
-                                                />
-                                            ) : (
-                                                <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
-                                                    <Users className="w-5 h-5 text-slate-400" />
-                                                </div>
-                                            )}
-                                            <span className="font-medium text-slate-900">
-                                                {user.name || 'Sin nombre'}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-slate-600">
-                                        {user.email || '-'}
-                                    </td>
-                                    <td className="px-6 py-4 text-slate-600 text-sm">
-                                        {user.last_login ? new Date(user.last_login).toLocaleDateString('es-CL', {
-                                            day: '2-digit',
-                                            month: '2-digit',
-                                            year: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        }) : '-'}
-                                    </td>
-                                   
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+            <div className="relative">
+                <Search
+                    size={16}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Buscar por nombre o correo"
+                    aria-label="Buscar usuarios por nombre o correo"
+                    className="min-h-11 w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
+                />
+            </div>
+
+            {!loading && (
+                <p aria-live="polite" className="px-1 text-xs font-medium text-slate-500">
+                    {users.length} {users.length === 1 ? 'administrador' : 'administradores'} con acceso a este centro
+                </p>
             )}
+
+            <UsersList
+                users={visibleUsers}
+                currentUserId={currentUserId}
+                loading={loading}
+                hasQuery={query.trim() !== ''}
+                onSelect={(user) => {
+                    setSelected(user);
+                    setDetailOpen(true);
+                }}
+                onInvite={() => setInviteOpen(true)}
+                onClearQuery={() => setQuery('')}
+            />
+
+            <UserInviteDialog
+                open={inviteOpen}
+                submitting={inviting}
+                error={inviteError}
+                onOpenChange={setInviteOpen}
+                onSubmit={handleInvite}
+            />
+
+            <UserDetailDialog
+                user={selected}
+                isSelf={!!selected && selected.user_id === currentUserId}
+                isLastAdmin={users.length <= 1}
+                open={detailOpen}
+                onOpenChange={setDetailOpen}
+                resending={resending}
+                onRemove={setToRemove}
+                onResend={handleResend}
+            />
+
+            <AlertDialog open={!!toRemove} onOpenChange={(open) => !open && !removing && setToRemove(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Quitar el acceso de {toRemove && getDisplayName(toRemove)}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta persona dejará de ver este centro en el panel. Podrás volver a agregarla después.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={removing}>No, mantener</AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={removing}
+                            onClick={(event) => {
+                                event.preventDefault();
+                                handleConfirmRemove();
+                            }}
+                            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                        >
+                            {removing ? 'Quitando…' : 'Sí, quitar acceso'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };

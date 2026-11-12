@@ -41,7 +41,31 @@ export default function BookingStatusPage() {
     return () => clearTimeout(timer);
   }, [code, fetchBookingByCode, resetCurrentBooking]);
 
-  const showLoading = (isLoading || isInitialLoad) && !isTimedOut && !hasError;
+  // Mientras el pago siga pendiente se vuelve a consultar: el backend verifica
+  // el pago en Mercado Pago por booking_code y confirma la reserva si ya fue aprobado.
+  useEffect(() => {
+    if (!code || currentBooking?.status !== 'pending') return;
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts += 1;
+      if (attempts > 12) {
+        clearInterval(interval);
+        return;
+      }
+      fetchBookingByCode(code).catch(() => {});
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [code, currentBooking?.status, fetchBookingByCode]);
+
+  const mpStatus = (currentBooking as any)?.mp_status as string | undefined;
+  const pendingMessage =
+    mpStatus === 'in_process' || mpStatus === 'authorized'
+      ? 'Mercado Pago está revisando tu pago. Te confirmaremos la reserva apenas se apruebe.'
+      : mpStatus === 'rejected' || mpStatus === 'cancelled'
+        ? 'Mercado Pago rechazó el pago. Puedes reintentar con otro medio de pago antes de que expire el bloque.'
+        : 'Estamos esperando la confirmación de tu pago. Esto puede tardar unos segundos.';
+
+  const showLoading = (isLoading || isInitialLoad) && !currentBooking && !isTimedOut && !hasError;
 
   if (showLoading) {
     return (
@@ -68,7 +92,7 @@ export default function BookingStatusPage() {
           <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent animate-spin rounded-full" />
         </div>
         <h2 className="text-2xl font-bold mb-2">Pago en proceso</h2>
-        <p className="text-slate-500 mb-8">Estamos esperando la confirmación de tu pago. Esto puede tardar unos segundos.</p>
+        <p className="text-slate-500 mb-8">{pendingMessage}</p>
         <button
           onClick={() => window.location.reload()}
           className="bg-emerald-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-emerald-700 transition-colors w-full"
