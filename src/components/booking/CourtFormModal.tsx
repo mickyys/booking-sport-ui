@@ -15,7 +15,7 @@ interface CourtFormModalProps {
 }
 
 const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave, currentSportCenter: centerFromProps }) => {
-  const { adminCourts, createAdminCourt, updateAdminCourt, selectedCenterId } = useBookingStore();
+  const { adminCourts, createAdminCourt, updateAdminCourt } = useBookingStore();
   const { getAccessTokenSilently } = useAuth0();
   const [isSaving, setIsSaving] = useState(false);
   const [localImageFile, setLocalImageFile] = useState<File | null>(null);
@@ -28,7 +28,6 @@ const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave,
     if (adminCourts && adminCourts.length > 0) {
       return adminCourts[0].sport_center?.id || adminCourts[0].sport_center?._id || '';
     }
-    if (selectedCenterId) return selectedCenterId;
     return '';
   };
 
@@ -199,6 +198,7 @@ const CourtFormModal: React.FC<CourtFormModalProps> = ({ court, onClose, onSave,
             onFileSelect={handleFileSelect}
             onRemove={handleRemoveImage}
             hasLocalFile={!!localImageFile}
+            defaultQuery={formData.name ? `cancha ${formData.name}` : 'cancha'}
           />
           <div className="flex gap-3 pt-4">
             <button

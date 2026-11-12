@@ -16,6 +16,8 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { CancellationModal } from '@/components/booking/CancellationModal';
 import { AnimatePresence, motion } from 'motion/react';
 import { useAuth } from '@/hooks/useAuth';
+import { claimGuestBookings } from '@/api/bookingApi';
+import { toast } from 'sonner';
 
 
 interface ClientDashboardProps {
@@ -31,9 +33,35 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user: userProp
     const [isPastLoading, setIsPastLoading] = useState(false);
     const [pastBookings, setPastBookings] = useState<any[]>([]);
     const [confirmedCount, setConfirmedCount] = useState(0);
+    const [claimDone, setClaimDone] = useState(false);
 
+    // Al entrar con la cuenta, se vinculan las reservas de invitado hechas con el mismo correo.
     useEffect(() => {
         if (!user) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const token = await getAccessTokenSilently({
+                    authorizationParams: {
+                        audience: process.env.NEXT_PUBLIC_APP_AUTH0_AUDIENCE,
+                        scope: "openid profile email"
+                    }
+                });
+                const claimed = await claimGuestBookings(token);
+                if (claimed > 0 && !cancelled) {
+                    toast.success(claimed === 1 ? 'Vinculamos 1 reserva a tu cuenta' : `Vinculamos ${claimed} reservas a tu cuenta`);
+                }
+            } catch (err) {
+                console.error("Error claiming guest bookings:", err);
+            } finally {
+                if (!cancelled) setClaimDone(true);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [user?.name, getAccessTokenSilently]);
+
+    useEffect(() => {
+        if (!user || !claimDone) return;
         fetchMyBookings(getAccessTokenSilently);
 
         // Fetch confirmed count
@@ -75,7 +103,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ user: userProp
 
         // Fetch cancelled bookings (store maneja el estado)
         fetchCancelledBookings(getAccessTokenSilently, 1, 5);
-    }, [fetchMyBookings, fetchCancelledBookings, getAccessTokenSilently, user?.name]);
+    }, [fetchMyBookings, fetchCancelledBookings, getAccessTokenSilently, user?.name, claimDone]);
 
     // Simplification: just show future bookings
     const futureBookings = myBookings

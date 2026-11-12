@@ -1,9 +1,9 @@
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { toastApiError } from '@/utils/apiErrorToast';
 import { useBookingStore } from '../store/useBookingStore';
 import { useBooking } from './useBooking';
 import { UserProfile } from '../types';
-import axios from 'axios';
 
 export const useBookingActions = (user: UserProfile | null) => {
   const router = useRouter();
@@ -19,17 +19,15 @@ export const useBookingActions = (user: UserProfile | null) => {
     setSelectedSlot,
   } = useBooking(user);
 
-  const handleConfirmBooking = async (method: 'mercadopago' | 'venue' | 'presential' | 'cash', guestDetails?: any, partial: boolean = false) => {
-    const getErrorMessage = (error: unknown, fallback: string): string => {
-      if (axios.isAxiosError(error) && error.response?.data?.error) {
-        return error.response.data.error;
-      }
-      return fallback;
-    };
-
+  const handleConfirmBooking = async (
+    method: 'mercadopago' | 'venue' | 'presential' | 'cash',
+    guestDetails?: any,
+    partial: boolean = false,
+    benefits?: { discountCode?: string; memberToken?: string },
+  ) => {
     if (method === 'mercadopago' && selectedSlot) {
       try {
-        const { init_point } = await createMercadoPagoPayment({
+        const { init_point, booking_code } = await createMercadoPagoPayment({
           court_id: selectedSlot.courtId,
           date: selectedSlot.date.toISOString(),
           hour: selectedSlot.hour,
@@ -37,13 +35,22 @@ export const useBookingActions = (user: UserProfile | null) => {
           guest_details: guestDetails,
           user_id: user?.id,
           partial,
+          discount_code: benefits?.discountCode || undefined,
+          member_token: benefits?.memberToken || undefined,
         });
+
+        if (!init_point) {
+          toast.success("¡Reserva confirmada exitosamente!");
+          setSelectedSlot(null);
+          router.push(`/booking/success?code=${booking_code ?? 'N/A'}`);
+          return true;
+        }
 
         // Redirigir a MercadoPago Checkout
         window.location.href = init_point;
         return true;
       } catch (error) {
-        toast.error(getErrorMessage(error, "Error al iniciar el pago con MercadoPago."));
+        toastApiError(error, "Error al iniciar el pago con MercadoPago.");
         throw error;
       }
     }
@@ -58,6 +65,8 @@ export const useBookingActions = (user: UserProfile | null) => {
           guest_details: guestDetails,
           user_id: user?.id,
           partial: partial,
+          discount_code: benefits?.discountCode || undefined,
+          member_token: benefits?.memberToken || undefined,
         });
 
         toast.success("¡Reserva confirmada exitosamente!");
@@ -65,7 +74,7 @@ export const useBookingActions = (user: UserProfile | null) => {
         router.push(`/booking/success?code=${booking?.booking_code ?? 'N/A'}`);
         return true;
       } catch (error) {
-        toast.error(getErrorMessage(error, "Error al confirmar la reserva."));
+        toastApiError(error, "Error al confirmar la reserva.");
         throw error;
       }
     }
