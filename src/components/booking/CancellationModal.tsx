@@ -8,6 +8,7 @@ import { BookingDetailResponse } from '../../types';
 import { toast } from 'sonner';
 import { useBookingStore } from '../../store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
+import { toastApiError } from '../../utils/apiErrorToast';
 
 interface CancellationModalProps {
     bookingId?: string;
@@ -95,10 +96,7 @@ export const CancellationModal: React.FC<CancellationModalProps> = ({
             onClose();
         } catch (error: any) {
             console.error('Error al cancelar reserva:', error);
-            const errorMessage = error.response?.data?.error || 'No se pudo procesar la cancelación. Intenta más tarde.';
-            toast.error('Error al cancelar', {
-                description: errorMessage
-            });
+            toastApiError(error, 'No se pudo procesar la cancelación. Intenta más tarde.', 'Error al cancelar');
         } finally {
             setProcessing(false);
         }

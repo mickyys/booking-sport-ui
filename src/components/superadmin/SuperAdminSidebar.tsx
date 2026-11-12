@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Building2, CalendarCheck, History, LayoutDashboard, ShieldCheck, UserCheck } from 'lucide-react';
+import { ArrowLeft, Building2, AlertTriangle, CalendarCheck, History, LayoutDashboard, ShieldCheck, UserCheck } from 'lucide-react';
 import { PanelSidebar, type PanelNavItem } from '@/components/layout/PanelSidebar';
 
 const navItems: PanelNavItem[] = [
@@ -9,6 +9,7 @@ const navItems: PanelNavItem[] = [
   { to: '/superadmin/centers', icon: Building2, label: 'Centros deportivos' },
   { to: '/superadmin/onboarding', icon: UserCheck, label: 'Onboarding' },
   { to: '/superadmin/bookings', icon: CalendarCheck, label: 'Reservas' },
+  { to: '/superadmin/errors', icon: AlertTriangle, label: 'Errores de pago' },
   { to: '/superadmin/audit', icon: History, label: 'Auditoría' },
 ];
 

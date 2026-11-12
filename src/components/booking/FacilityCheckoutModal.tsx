@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { X, CheckCircle, Users, CreditCard, Store, Loader2, Minus, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { toastApiError } from '@/utils/apiErrorToast';
 import { useSavedPhone } from '@/hooks/useSavedPhone';
 import { formatChileanPhone, isValidChileanPhone } from '@/utils/phone';
 import {
@@ -113,7 +114,7 @@ export const FacilityCheckoutModal: React.FC<FacilityCheckoutModalProps> = ({
       onBooked?.();
       toast.success('¡Reserva confirmada!');
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'No se pudo realizar la reserva');
+      toastApiError(err, 'No se pudo realizar la reserva');
     } finally {
       setSubmitting(false);
     }

@@ -57,6 +57,34 @@ export interface CenterStats {
   pay_online: number;
 }
 
+export interface BookingErrorLog {
+  id: string;
+  tracking_id: string;
+  trace_id?: string;
+  operation: string;
+  message: string;
+  http_status: number;
+  user_id?: string;
+  user_email?: string;
+  user_name?: string;
+  user_phone?: string;
+  booking_id?: string;
+  booking_code?: string;
+  sport_center_id?: string;
+  court_id?: string;
+  mp_payment_id?: string;
+  method?: string;
+  path?: string;
+  user_agent?: string;
+  ip?: string;
+  client?: string;
+  provider_response?: string;
+  resolved: boolean;
+  resolved_by?: string;
+  resolved_at?: string;
+  created_at: string;
+}
+
 export interface SuperadminBooking {
   id: string;
   booking_code?: string;
@@ -180,6 +208,12 @@ export const sa = {
 
   exportBookings: async (t: GetToken, params: Record<string, unknown>): Promise<Blob> =>
     (await api.get('/superadmin/bookings/export', await cfg(t, { params: clean(params), responseType: 'blob' }))).data,
+
+  listErrorLogs: async (t: GetToken, params: Record<string, unknown>): Promise<Paged<BookingErrorLog>> =>
+    (await api.get('/superadmin/error-logs', await cfg(t, { params: clean(params) }))).data,
+
+  resolveErrorLog: async (t: GetToken, id: string, resolved: boolean) =>
+    (await api.patch(`/superadmin/error-logs/${id}/resolve`, { resolved }, await cfg(t))).data as { resolved: boolean },
 
   listAudit: async (t: GetToken, params: Record<string, unknown>): Promise<Paged<AuditLog>> =>
     (await api.get('/superadmin/audit', await cfg(t, { params: clean(params) }))).data,
