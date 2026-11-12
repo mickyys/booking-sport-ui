@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { useAuth0 } from '@auth0/auth0-react';
 import { ArrowLeft, Ban, CheckCircle2, ExternalLink, PauseCircle, Star } from 'lucide-react';
 import { toast } from 'sonner';
-import { apiError, CenterStatus, SuperadminCenter, sa } from '@/api/superadminApi';
+import { apiError, CenterStatus, CommercialView, SuperadminCenter, sa } from '@/api/superadminApi';
 import { Field, PageHeader, PaymentModeBadge, StatusBadge, fieldCls, formatDateTime } from '@/components/superadmin/ui';
 import { FeaturedDialog, StatusDialog } from '@/components/superadmin/CenterDialogs';
 
@@ -21,12 +21,19 @@ export default function CenterDetailPage() {
   const [statusTarget, setStatusTarget] = useState<CenterStatus | null>(null);
   const [featuredOpen, setFeaturedOpen] = useState(false);
   const [error, setError] = useState('');
+  const [commercial, setCommercial] = useState<CommercialView | null>(null);
+  const [freeMonthBusy, setFreeMonthBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const { center: c, admin_count } = await sa.getCenter(getAccessTokenSilently, id);
       setCenter(c);
       setAdminCount(admin_count);
+      try {
+        setCommercial(await sa.commercial(getAccessTokenSilently, id));
+      } catch {
+        setCommercial(null);
+      }
       setForm({
         slug: c.slug || '', address: c.address || '', city: c.city || '', image_url: '',
         payment_mode: c.payment_mode || '',
@@ -65,9 +72,33 @@ export default function CenterDetailPage() {
     setBusy(true);
     try {
       await sa.updateSettings(getAccessTokenSilently, id, body);
+      // Con el modelo comercial activo la comisión efectiva sale de
+      // `commercial.online_payment.commission`: se mantiene alineada con el
+      // porcentaje guardado arriba.
+      const online = (form.payment_mode || center?.payment_mode) === 'pay_online';
+      if (commercial?.enforced && online) {
+        await sa.setCommission(getAccessTokenSilently, id, pct('marketplace_fee_percent'));
+      }
       toast.success('Cambios guardados');
       load();
     } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
+  };
+
+  const toggleFirstMonthFree = async () => {
+    if (!center) return;
+    const next = !center.first_month_free;
+    const ok = window.confirm(
+      next
+        ? 'Se activará el primer mes gratis de la suscripción de este centro. El primer cobro será al mes siguiente de activarla. ¿Continuar?'
+        : 'Se desactivará el primer mes gratis. Si el centro aún no activó su suscripción, se le cobrará desde el primer mes. ¿Continuar?',
+    );
+    if (!ok) return;
+    setFreeMonthBusy(true);
+    try {
+      await sa.setFirstMonthFree(getAccessTokenSilently, id, next);
+      toast.success(next ? 'Primer mes gratis activado' : 'Primer mes gratis desactivado');
+      await load();
+    } catch (err) { toast.error(apiError(err)); } finally { setFreeMonthBusy(false); }
   };
 
   if (error) return <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>;
@@ -110,7 +141,36 @@ export default function CenterDetailPage() {
               </dd>
             </div>
             <div className="flex justify-between"><dt className="text-slate-600">Canchas</dt><dd className="font-semibold text-slate-800">{center.courts ?? 0}</dd></div>
+            {commercial?.commission && (
+              <div className="flex justify-between">
+                <dt className="text-slate-600">Comisión efectiva</dt>
+                <dd className="font-semibold text-slate-800">
+                  {commercial.commission.billed_in_split ? `${commercial.commission.effective}%` : 'Se factura aparte'}
+                </dd>
+              </div>
+            )}
           </dl>
+          <div className="rounded-lg border border-slate-200 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Primer mes de suscripción gratis</p>
+                <p className="mt-0.5 text-xs text-slate-600">
+                  Cobro de ReservaloYA al centro. El primer cobro de la suscripción será al mes siguiente de activarla.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!!center.first_month_free}
+                aria-label="Primer mes de suscripción gratis"
+                disabled={freeMonthBusy}
+                onClick={toggleFirstMonthFree}
+                className={`relative h-7 w-12 shrink-0 cursor-pointer rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 ${center.first_month_free ? 'bg-emerald-600' : 'bg-slate-300'}`}
+              >
+                <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${center.first_month_free ? 'left-[1.4rem]' : 'left-0.5'}`} />
+              </button>
+            </div>
+          </div>
           {center.payment_mode === 'pay_online' && !mpConnected && (
             <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Este centro cobra online pero no tiene Mercado Pago conectado: no podrá recibir pagos.</p>
           )}
@@ -148,7 +208,7 @@ export default function CenterDetailPage() {
                   <option value="pay_online">Pago online</option>
                 </select>
               </Field>
-              <Field label="Comisión marketplace (%)" htmlFor="fee" hint="Aplica solo con pago online."><input id="fee" type="number" min={0} max={100} step={1} value={String(form.marketplace_fee_percent)} onChange={set('marketplace_fee_percent')} className={fieldCls} /></Field>
+              <Field label="Comisión marketplace (%)" htmlFor="fee" hint="Cobro de ReservaloYA por reserva pagada online. Solo la define la plataforma."><input id="fee" type="number" min={0} max={100} step={1} value={String(form.marketplace_fee_percent)} onChange={set('marketplace_fee_percent')} className={fieldCls} /></Field>
             </div>
           </fieldset>
 

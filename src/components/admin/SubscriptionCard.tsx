@@ -134,6 +134,11 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ onChange }) 
             <p className="mt-2 text-sm text-slate-700">
               Estado: <span className="font-semibold">{STATUS_LABEL[status] ?? status}</span>
             </p>
+            {sub?.first_month_free && (
+              <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
+                Tu primer mes es gratis: el primer cobro será al mes siguiente de activarla.
+              </p>
+            )}
           </div>
         </div>
       </div>

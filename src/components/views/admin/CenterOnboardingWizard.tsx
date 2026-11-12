@@ -44,7 +44,7 @@ const STEPS = [
     { n: 1, label: 'Contacto' },
     { n: 2, label: 'Espacios' },
     { n: 3, label: 'Modelo de cobro' },
-    { n: 4, label: 'Imagen y oferta' },
+    { n: 4, label: 'Imagen' },
     { n: 5, label: 'Finalizar' },
 ] as const;
 
@@ -111,9 +111,8 @@ export const CenterOnboardingWizard: React.FC = () => {
     const [templates, setTemplates] = useState<SpaceTemplate[]>([]);
     // Etapa 3 - Modelo de cobro
     const [paymentMode, setPaymentMode] = useState('');
-    // Etapa 4 - Imagen y oferta
+    // Etapa 4 - Imagen
     const [imageUrl, setImageUrl] = useState('');
-    const [firstMonthFree, setFirstMonthFree] = useState(false);
     const [unsplashResults, setUnsplashResults] = useState<UnsplashPhoto[]>([]);
     const [unsplashLoading, setUnsplashLoading] = useState(false);
     const [unsplashQuery, setUnsplashQuery] = useState('');
@@ -145,7 +144,6 @@ export const CenterOnboardingWizard: React.FC = () => {
         }
         setPaymentMode(center.payment_mode || '');
         setImageUrl(center.image_url || '');
-        setFirstMonthFree(center.first_month_free || false);
 
         if (center.onboarding_status === 'completed') {
             setCompleted(true);
@@ -263,7 +261,7 @@ export const CenterOnboardingWizard: React.FC = () => {
                 );
             } else if (step === 4) {
                 await updateSportCenterOnboarding(
-                    { step: 4, image_url: imageUrl, first_month_free: firstMonthFree },
+                    { step: 4, image_url: imageUrl },
                     getToken,
                 );
             }
@@ -525,7 +523,7 @@ export const CenterOnboardingWizard: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Etapa 4: Imagen y oferta */}
+                    {/* Etapa 4: Imagen */}
                     {step === 4 && (
                         <div className="space-y-5">
                             <div className="space-y-2">
@@ -607,24 +605,6 @@ export const CenterOnboardingWizard: React.FC = () => {
                                     />
                                 )}
                             </div>
-
-                            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                <input
-                                    type="checkbox"
-                                    checked={firstMonthFree}
-                                    onChange={(e) => setFirstMonthFree(e.target.checked)}
-                                    className="mt-1 h-4 w-4 accent-emerald-600"
-                                />
-                                <span>
-                                    <span className="block text-sm font-semibold text-slate-800">
-                                        Ofrecer primer mes gratis
-                                    </span>
-                                    <span className="block text-xs text-slate-500">
-                                        Nuevos clientes que reserven en este periodo no pagan su
-                                        primera reserva o mensualidad.
-                                    </span>
-                                </span>
-                            </label>
                         </div>
                     )}
 
@@ -647,10 +627,6 @@ export const CenterOnboardingWizard: React.FC = () => {
                                               ? 'Solo reservas'
                                               : '—'
                                     }
-                                />
-                                <SummaryRow
-                                    label="Oferta primer mes"
-                                    value={firstMonthFree ? 'Activada' : 'No'}
                                 />
                             </div>
 

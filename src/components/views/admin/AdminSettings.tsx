@@ -8,6 +8,7 @@ import { uploadImageToCloudinary } from '@/components/booking/CourtImageUpload';
 import { LocationMapPicker } from '@/components/admin/LocationMapPicker';
 import { MPOnlinePaymentCard } from '@/components/admin/MPOnlinePaymentCard';
 import { SubscriptionCard } from '@/components/admin/SubscriptionCard';
+import { PlatformCommissionCard } from '@/components/admin/PlatformCommissionCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     AlertDialog,
@@ -34,7 +35,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
     const [retentionPercent, setRetentionPercent] = useState<number>(10);
     const [partialPaymentEnabled, setPartialPaymentEnabled] = useState<boolean>(false);
     const [partialPaymentPercent, setPartialPaymentPercent] = useState<number>(50);
-    const [marketplaceFeePercent, setMarketplaceFeePercent] = useState<number>(7);
     const [imageUrl, setImageUrl] = useState<string>('');
     const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
     const [localImageFile, setLocalImageFile] = useState<File | null>(null);
@@ -214,7 +214,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                     setRetentionPercent(center.retention_percent ?? 10);
                     setPartialPaymentEnabled(center.partialPaymentEnabled ?? false);
                     setPartialPaymentPercent(center.partialPaymentPercent ?? 50);
-                    setMarketplaceFeePercent(center.marketplace_fee_percent ?? 7);
                     setImageUrl(center.image_url || '');
                     if (center.default_schedule) setDefaultSchedule(center.default_schedule);
                     if (center.schedule_overrides) setScheduleOverrides(center.schedule_overrides);
@@ -278,7 +277,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                 retention_percent: retentionPercent,
                 partialPaymentEnabled: partialPaymentEnabled,
                 partialPaymentPercent: partialPaymentPercent,
-                marketplace_fee_percent: marketplaceFeePercent,
                 address,
                 city,
                 coordinates,
@@ -720,36 +718,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                     {/* Mercado Pago / Cobro online */}
                     <MPOnlinePaymentCard />
 
-                    {/* Mercado Pago Marketplace Fee */}
-                    <div className="border-t border-slate-200 pt-6">
-                        <div className="flex items-center gap-2 mb-4">
-                            <Percent className="w-5 h-5 text-emerald-500" />
-                            <h4 className="text-base font-bold text-slate-900">Comisión de Mercado Pago</h4>
-                        </div>
-                        <div className="space-y-5">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    <Percent className="w-4 h-4 inline mr-1.5 text-slate-400" />
-                                    Porcentaje de comisión por reserva
-                                </label>
-                                <div className="flex items-center gap-3">
-                                    <input
-                                        type="number"
-                                        min={0}
-                                        max={100}
-                                        value={marketplaceFeePercent}
-                                        onChange={(e) => setMarketplaceFeePercent(Math.max(0, Math.min(100, Number(e.target.value))))}
-                                        className="w-28 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-center text-lg font-bold"
-                                    />
-                                    <span className="text-sm text-slate-600">% del pago</span>
-                                </div>
-                                <p className="mt-1.5 text-xs text-slate-500">
-                                    Comisión que recibe la plataforma por cada pago procesado. Si no se configura, se usa el <strong>7%</strong> por defecto.
-                                    Solo aplica cuando el cobro online con Mercado Pago está activo.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    {/* Comisión de la plataforma (solo lectura) */}
+                    {currentPaymentMode === 'pay_online' && <PlatformCommissionCard />}
 
                     {/* Partial Payment */}
                     <div className="border-t border-slate-200 pt-6">

@@ -45,7 +45,7 @@ export interface CommercialView {
   publish: { can_publish: boolean; status: string; missing: string[] };
   subscription?: { status: string; plan?: string; amount: number; next_charge_at?: string };
   mercadopago_status?: string;
-  commission?: { effective: number; source: string; configured?: number };
+  commission?: { effective: number; source: string; configured?: number; billed_in_split: boolean };
 }
 
 export interface CenterStats {
@@ -149,6 +149,16 @@ export const sa = {
     (await api.post(`/superadmin/sport-centers/${id}/onboarding/complete`, { reason }, await cfg(t))).data as {
       message: string;
     },
+
+  /** Primer mes de la suscripción sin cobro. Es un cobro de la plataforma: solo el superadmin lo define. */
+  setFirstMonthFree: async (t: GetToken, id: string, enabled: boolean) =>
+    (await api.put(`/superadmin/sport-centers/${id}/first-month-free`, { enabled }, await cfg(t))).data as {
+      first_month_free: boolean;
+    },
+
+  /** Comisión por reserva online (modelo comercial). `null` restablece la comisión por defecto. */
+  setCommission: async (t: GetToken, id: string, value: number | null): Promise<CommercialView> =>
+    (await api.put(`/superadmin/sport-centers/${id}/commercial/commission`, { value }, await cfg(t))).data,
 
   commercial: async (t: GetToken, id: string): Promise<CommercialView> =>
     (await api.get(`/superadmin/sport-centers/${id}/commercial`, await cfg(t))).data,

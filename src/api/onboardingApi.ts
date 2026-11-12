@@ -29,6 +29,23 @@ export interface SubscriptionInfo {
   plan?: string;
   amount: number;
   next_charge_at?: string;
+  /** El primer mes de la suscripción va sin cobro (lo activa la plataforma). */
+  first_month_free?: boolean;
+}
+
+/** Comisión de la plataforma por reserva online. La define ReservaloYA, no el centro. */
+export interface PlatformCommission {
+  effective: number;
+  source: string;
+  configured?: number;
+  billed_in_split: boolean;
+}
+
+export interface CommercialView {
+  payment_mode: string;
+  enforced: boolean;
+  commission?: PlatformCommission;
+  subscription?: SubscriptionInfo;
 }
 
 export interface SubscriptionResponse {
@@ -46,6 +63,9 @@ export const getOnboardingStatus = async (token: string): Promise<OnboardingStat
 export const completeOnboarding = async (token: string): Promise<void> => {
   await api.post('/admin/my-sport-center/onboarding/complete', {}, auth(token));
 };
+
+export const getCommercial = async (token: string): Promise<CommercialView> =>
+  (await api.get('/admin/commercial', auth(token))).data;
 
 export const getSubscription = async (token: string): Promise<SubscriptionResponse> =>
   (await api.get('/admin/commercial/subscription', auth(token))).data;

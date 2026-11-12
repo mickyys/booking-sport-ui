@@ -180,7 +180,7 @@ export default function CenterOnboardingPage() {
                 <dd><PaymentModeBadge mode={center.payment_mode} /></dd>
               </div>
               <Row label="Mercado Pago" value={mpConnected ? 'Conectado' : 'No conectado'} />
-              <Row label="Primer mes gratis" value={center.first_month_free ? 'Activado' : 'No'} />
+              <Row label="Primer mes de suscripción gratis" value={center.first_month_free ? 'Activado' : 'No'} />
               <Row label="Paso guardado" value={step > 0 ? `${step} de ${STEPS.length}` : 'Sin empezar'} />
             </dl>
           </section>

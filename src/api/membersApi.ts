@@ -108,6 +108,7 @@ export interface VerificationRequestResult {
   verification_id: string;
   expires_at: string;
   resend_in_seconds: number;
+  masked_email: string;
 }
 
 export interface VerificationConfirmResult {
@@ -157,7 +158,6 @@ export function requestMemberVerification(payload: {
   center_id?: string;
   center_slug?: string;
   document: string;
-  email: string;
 }): Promise<VerificationRequestResult> {
   return request<VerificationRequestResult>('/members/verify/request', {
     method: 'POST',

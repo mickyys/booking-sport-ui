@@ -53,7 +53,7 @@ export const DiscountPicker: React.FC<DiscountPickerProps> = ({
   const [loading, setLoading] = useState(false);
 
   const [document, setDocument] = useState('');
-  const [memberEmail, setMemberEmail] = useState(email || '');
+  const [maskedEmail, setMaskedEmail] = useState('');
   const [verificationId, setVerificationId] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [sending, setSending] = useState(false);
@@ -61,10 +61,6 @@ export const DiscountPicker: React.FC<DiscountPickerProps> = ({
 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
-
-  useEffect(() => {
-    if (email) setMemberEmail((current) => current || email);
-  }, [email]);
 
   const refreshQuote = useCallback(async () => {
     if (!courtId) {
@@ -86,7 +82,7 @@ export const DiscountPicker: React.FC<DiscountPickerProps> = ({
         duration_minutes: durationMinutes,
         discount_code: appliedCode || undefined,
         member_token: memberToken || undefined,
-        email: memberEmail || email || undefined,
+        email: email || undefined,
       });
       setQuote(result);
       onChangeRef.current({ discountCode: appliedCode, memberToken, quote: result, quoting: false });
@@ -97,7 +93,7 @@ export const DiscountPicker: React.FC<DiscountPickerProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [courtId, date, hour, minutes, durationMinutes, appliedCode, memberToken, memberEmail, email]);
+  }, [courtId, date, hour, minutes, durationMinutes, appliedCode, memberToken, email]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -118,8 +114,8 @@ export const DiscountPicker: React.FC<DiscountPickerProps> = ({
   };
 
   const requestCode = async () => {
-    if (!document.trim() || !memberEmail.trim()) {
-      toast.error('Ingresa tu RUT y el correo de tu membresía');
+    if (!document.trim()) {
+      toast.error('Ingresa tu RUT');
       return;
     }
     setSending(true);
@@ -128,10 +124,10 @@ export const DiscountPicker: React.FC<DiscountPickerProps> = ({
         center_id: centerId,
         center_slug: centerId ? undefined : centerSlug,
         document: document.trim(),
-        email: memberEmail.trim(),
       });
       setVerificationId(result.verification_id);
-      toast.success('Si los datos coinciden, enviamos un código a tu correo');
+      setMaskedEmail(result.masked_email || '');
+      toast.success(result.masked_email ? `Enviamos un código a ${result.masked_email}` : 'Enviamos un código a tu correo');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No pudimos enviar el código');
     } finally {
@@ -253,7 +249,7 @@ export const DiscountPicker: React.FC<DiscountPickerProps> = ({
             ) : verificationId ? (
               <div className="space-y-2">
                 <p className="text-xs text-slate-500">
-                  Ingresa el código de 6 dígitos que enviamos a <strong>{memberEmail}</strong>.
+                  Ingresa el código de 6 dígitos que enviamos a <strong>{maskedEmail || 'tu correo registrado'}</strong>.
                 </p>
                 <div className="flex gap-2">
                   <input
@@ -278,28 +274,18 @@ export const DiscountPicker: React.FC<DiscountPickerProps> = ({
                   onClick={() => setVerificationId('')}
                   className="text-xs text-slate-500 underline"
                 >
-                  Usar otro RUT o correo
+                  Usar otro RUT
                 </button>
               </div>
             ) : (
               <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    value={document}
-                    onChange={(event) => setDocument(event.target.value)}
-                    placeholder="RUT"
-                    className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
-                    disabled={disabled}
-                  />
-                  <input
-                    value={memberEmail}
-                    onChange={(event) => setMemberEmail(event.target.value)}
-                    placeholder="Correo registrado"
-                    type="email"
-                    className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
-                    disabled={disabled}
-                  />
-                </div>
+                <input
+                  value={document}
+                  onChange={(event) => setDocument(event.target.value)}
+                  placeholder="RUT"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
+                  disabled={disabled}
+                />
                 <button
                   type="button"
                   onClick={requestCode}
