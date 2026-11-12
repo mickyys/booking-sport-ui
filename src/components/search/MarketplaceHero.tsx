@@ -42,7 +42,7 @@ const MarketplaceHero: React.FC<MarketplaceHeroProps> = ({
           className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-full text-emerald-400 text-sm font-semibold mb-6"
         >
           <Trophy className="w-4 h-4" />
-          La plataforma de reservas de canchas más grande
+          Reserva tu cancha de forma fácil y rápida
         </motion.div>
 
         <motion.h1
