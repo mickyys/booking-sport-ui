@@ -35,7 +35,11 @@ export const TenantCard: React.FC<TenantCardProps> = ({ center, index }) => {
       className="group bg-white rounded-3xl overflow-hidden border border-slate-200 hover:border-slate-300 hover:shadow-xl transition-all duration-300 flex flex-col"
     >
       {/* Hero image */}
-      <div className="relative h-52 overflow-hidden">
+      <Link
+        href={`/${center.slug}`}
+        aria-label={`Ver ${center.name}`}
+        className="relative block h-52 overflow-hidden no-underline cursor-pointer"
+      >
         <img
           src={center.image}
           alt={center.name}
@@ -63,7 +67,7 @@ export const TenantCard: React.FC<TenantCardProps> = ({ center, index }) => {
             {center.city}
           </div>
         )}
-      </div>
+      </Link>
 
       {/* Content */}
       <div className="p-6 flex flex-col flex-1">

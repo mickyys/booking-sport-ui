@@ -18,9 +18,11 @@ export const StatusBadge: React.FC<{ status?: string }> = ({ status }) => {
 };
 
 export const PaymentModeBadge: React.FC<{ mode?: string }> = ({ mode }) => {
-  if (mode === 'pay_online')
+  if (!mode) return <span className="text-xs text-slate-500">Sin definir</span>;
+  const m = mode.toLowerCase();
+  if (m === 'pay_online')
     return <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-600/20">Pago online</span>;
-  if (mode === 'pay_at_center')
+  if (m === 'pay_at_center')
     return <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-500/20">Paga en el centro</span>;
   return <span className="text-xs text-slate-500">Sin definir</span>;
 };
