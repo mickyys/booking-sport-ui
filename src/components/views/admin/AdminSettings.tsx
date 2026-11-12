@@ -7,6 +7,7 @@ import { useAuth0 } from '@auth0/auth0-react';
 import { uploadImageToCloudinary } from '@/components/booking/CourtImageUpload';
 import { LocationMapPicker } from '@/components/admin/LocationMapPicker';
 import { MPOnlinePaymentCard } from '@/components/admin/MPOnlinePaymentCard';
+import { SubscriptionCard } from '@/components/admin/SubscriptionCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     AlertDialog,
@@ -713,6 +714,9 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                             </TabsContent>
 
                             <TabsContent value="pagos" className="space-y-6 [&>div:first-child]:border-t-0 [&>div:first-child]:pt-0">
+                    {/* Suscripción mensual (solo reservas) */}
+                    {currentPaymentMode === 'pay_at_center' && <SubscriptionCard />}
+
                     {/* Mercado Pago / Cobro online */}
                     <MPOnlinePaymentCard />
 

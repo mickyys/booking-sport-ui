@@ -23,6 +23,9 @@ export default function CenterOnboardingPage() {
   const [resending, setResending] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [origin, setOrigin] = useState('');
+  const [forceOpen, setForceOpen] = useState(false);
+  const [forceReason, setForceReason] = useState('');
+  const [forcing, setForcing] = useState(false);
 
   useEffect(() => { setOrigin(window.location.origin); }, []);
 
@@ -88,6 +91,23 @@ export default function CenterOnboardingPage() {
       toast.error(apiError(e, 'No se pudo publicar el centro'));
     } finally {
       setPublishing(false);
+    }
+  };
+
+  const forceComplete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forceReason.trim()) return;
+    setForcing(true);
+    try {
+      await sa.completeOnboarding(getAccessTokenSilently, id, forceReason.trim());
+      toast.success('Onboarding marcado como completo');
+      setForceOpen(false);
+      setForceReason('');
+      await load();
+    } catch (err) {
+      toast.error(apiError(err, 'No se pudo completar el onboarding'));
+    } finally {
+      setForcing(false);
     }
   };
 
@@ -173,6 +193,49 @@ export default function CenterOnboardingPage() {
                 El administrador todavía no terminó el wizard: al entrar a <span className="font-mono text-xs">/admin</span> se le
                 redirige automáticamente a <span className="font-mono text-xs">/admin/onboarding</span>.
               </p>
+            )}
+            {pending && (
+              <div className="mt-3">
+                {!forceOpen ? (
+                  <button type="button" onClick={() => setForceOpen(true)} className={actionBtn}>
+                    <CheckCircle2 size={16} aria-hidden="true" /> Marcar onboarding completo
+                  </button>
+                ) : (
+                  <form onSubmit={forceComplete} className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <label htmlFor="force-reason" className="block text-sm font-semibold text-amber-900">
+                      Motivo (queda en la auditoría)
+                    </label>
+                    <textarea
+                      id="force-reason"
+                      required
+                      rows={2}
+                      value={forceReason}
+                      onChange={(e) => setForceReason(e.target.value)}
+                      placeholder="Ej: el administrador configuró el centro desde la app mobile"
+                      className="w-full rounded-lg border border-amber-300 bg-white p-2 text-sm text-slate-900 focus-visible:outline-2 focus-visible:outline-amber-600"
+                    />
+                    <p className="text-xs text-amber-900">
+                      Cierra el onboarding aunque falten datos. El administrador entrará directo al panel.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={forcing || !forceReason.trim()}
+                        className="h-10 cursor-pointer rounded-lg bg-amber-700 px-4 text-sm font-semibold text-white hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {forcing ? 'Guardando…' : 'Confirmar'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setForceOpen(false); setForceReason(''); }}
+                        className="h-10 cursor-pointer rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             )}
             {missing.length === 0 && !pending ? (
               <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-emerald-700">

@@ -27,7 +27,7 @@ export const MPStatusBanner: React.FC<MPStatusBannerProps> = ({ hideOnOnboarding
   }
 
   const center = currentSportCenter as any;
-  const onboardingPending = center?.onboarding_status !== 'completed';
+  const onboardingPending = center?.onboarding_status === 'pending';
   const onlinePaymentsEnabled = center?.payment_mode === 'pay_online';
 
   // Solo se insiste con Mercado Pago mientras el onboarding esté pendiente o

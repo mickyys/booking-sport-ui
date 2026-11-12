@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -26,6 +26,14 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/components/ui/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MPConnectCard } from '@/components/admin/MPConnectCard';
+import { SubscriptionCard } from '@/components/admin/SubscriptionCard';
+import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
+import {
+    apiErrorMessage,
+    completeOnboarding,
+    ONBOARDING_LABELS,
+    setCommercialMode,
+} from '@/api/onboardingApi';
 import { formatChileanPhone, isValidChileanPhone } from '@/utils/phone';
 import {
     SpaceTemplatesEditor,
@@ -82,18 +90,20 @@ const templatesPayload = (templates: SpaceTemplate[]) =>
         }));
 
 export const CenterOnboardingWizard: React.FC = () => {
-    const { currentSportCenter, refreshSportCenter } = useAdminPanel();
+    const { currentSportCenter, refreshSportCenter, spaces } = useAdminPanel();
     const { getAccessTokenSilently } = useAuth0();
     const router = useRouter();
     const updateSportCenterOnboarding = useBookingStore(
         (state) => state.updateSportCenterOnboarding,
     );
+    const { status: ob, isLoading: obLoading, refresh: refreshStatus } = useOnboardingStatus();
 
     const center = currentSportCenter as any;
 
     const [step, setStep] = useState(1);
     const [completed, setCompleted] = useState(false);
     const [saving, setSaving] = useState(false);
+    const initializedRef = useRef(false);
 
     // Etapa 1 - Contacto
     const [phone, setPhone] = useState('');
@@ -108,7 +118,14 @@ export const CenterOnboardingWizard: React.FC = () => {
     const [unsplashLoading, setUnsplashLoading] = useState(false);
     const [unsplashQuery, setUnsplashQuery] = useState('');
 
-    // Inicializar desde el centro cargado (retomar por etapa).
+    // Espacios reales (creados desde la app mobile o el panel). Si ya existen,
+    // el wizard no pide plantillas ni las materializa: duplicaría las canchas.
+    const hasRealSpaces = (ob?.spaces_count ?? 0) > 0;
+    const stepDone = (key: string) => !!ob?.steps.find((s) => s.key === key)?.done;
+    const missingLabels = (ob?.missing ?? []).map((k) => ONBOARDING_LABELS[k] ?? k);
+    const courtsWithoutSchedule = hasRealSpaces && !stepDone('schedules');
+
+    // Inicializar desde el centro cargado.
     useEffect(() => {
         if (!center?.id) return;
         setPhone(center.contact?.phone || '');
@@ -132,12 +149,42 @@ export const CenterOnboardingWizard: React.FC = () => {
 
         if (center.onboarding_status === 'completed') {
             setCompleted(true);
-        } else {
-            const resume = Math.min(Math.max((center.onboarding_step || 0) + 1, 1), 5);
-            setStep(resume);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [center?.id]);
+
+    // Retomar en la primera etapa obligatoria incompleta según los datos reales
+    // del centro (no solo según la última etapa guardada por el wizard).
+    useEffect(() => {
+        if (initializedRef.current || !center?.id || obLoading) return;
+        initializedRef.current = true;
+        if (center.onboarding_status === 'completed') return;
+
+        const hasDraft = (center.space_templates?.length ?? 0) > 0;
+        if (ob) {
+            if (!stepDone('contact')) setStep(1);
+            else if (!stepDone('spaces') && !hasDraft) setStep(2);
+            else if (!stepDone('payment_mode')) setStep(3);
+            else setStep(Math.min(Math.max((center.onboarding_step || 0) + 1, 4), 5));
+        } else {
+            setStep(Math.min(Math.max((center.onboarding_step || 0) + 1, 1), 5));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [center?.id, obLoading, ob]);
+
+    // Resultado de volver de Mercado Pago (conexión o suscripción).
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const result = params.get('status');
+        const sub = params.get('subscription');
+        if (!result && !sub) return;
+        if (result === 'success') toast.success('Mercado Pago conectado correctamente');
+        if (result === 'error') toast.error('No se pudo conectar Mercado Pago. Inténtalo nuevamente.');
+        if (sub === 'return') toast.info('Estamos confirmando tu suscripción. Puede tardar unos minutos.');
+        window.history.replaceState({}, '', window.location.pathname);
+        refreshStatus();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const getToken = useCallback(
         (options?: any) =>
@@ -156,7 +203,7 @@ export const CenterOnboardingWizard: React.FC = () => {
         () => templates.reduce((acc, p) => acc + (p.cantidad ?? 0), 0),
         [templates],
     );
-    const hasValidEspacios = totalEspacios >= 1;
+    const hasValidEspacios = hasRealSpaces || totalEspacios >= 1;
 
     const canContinue = useMemo(() => {
         switch (step) {
@@ -197,14 +244,22 @@ export const CenterOnboardingWizard: React.FC = () => {
             if (step === 1) {
                 await updateSportCenterOnboarding({ step: 1, telefono: phone }, getToken);
             } else if (step === 2) {
-                await updateSportCenterOnboarding(
-                    { step: 2, templates: templatesPayload(templates) },
-                    getToken,
-                );
+                // Con espacios reales no se guardan plantillas: ya existen.
+                if (!hasRealSpaces) {
+                    await updateSportCenterOnboarding(
+                        { step: 2, templates: templatesPayload(templates) },
+                        getToken,
+                    );
+                }
             } else if (step === 3) {
                 await updateSportCenterOnboarding(
                     { step: 3, payment_mode: paymentMode },
                     getToken,
+                );
+                // Mantiene alineado el modelo comercial (suscripción / comisión).
+                await setCommercialMode(
+                    await getToken(),
+                    paymentMode === 'pay_online' ? 'PAY_ONLINE' : 'PAY_AT_CENTER',
                 );
             } else if (step === 4) {
                 await updateSportCenterOnboarding(
@@ -213,9 +268,12 @@ export const CenterOnboardingWizard: React.FC = () => {
                 );
             }
             toast.success('Progreso guardado');
+            await refreshStatus();
             setStep((s) => Math.min(s + 1, STEPS.length));
-        } catch {
-            toast.error('No se pudo guardar tu progreso, intenta nuevamente');
+        } catch (err: any) {
+            toast.error(
+                apiErrorMessage(err, 'No se pudo guardar tu progreso, intenta nuevamente'),
+            );
         } finally {
             setSaving(false);
         }
@@ -224,17 +282,24 @@ export const CenterOnboardingWizard: React.FC = () => {
     const finalize = async () => {
         setSaving(true);
         try {
-            await updateSportCenterOnboarding(
-                { step: 5, finalize: true, templates: templatesPayload(templates) },
-                getToken,
-            );
+            if (hasRealSpaces) {
+                // Espacios y horarios ya existen: solo se valida y se cierra.
+                await completeOnboarding(await getToken());
+            } else {
+                await updateSportCenterOnboarding(
+                    { step: 5, finalize: true, templates: templatesPayload(templates) },
+                    getToken,
+                );
+            }
             await refreshSportCenter();
+            await refreshStatus();
             setCompleted(true);
             toast.success('¡Tu centro está listo!');
         } catch (err: any) {
             toast.error(
-                err?.response?.data?.error || 'No se pudo completar el onboarding',
+                apiErrorMessage(err, 'No se pudo completar el onboarding'),
             );
+            await refreshStatus();
         } finally {
             setSaving(false);
         }
@@ -258,11 +323,19 @@ export const CenterOnboardingWizard: React.FC = () => {
                             puedes gestionar espacios, horarios y reservas.
                         </p>
                         {paymentMode === 'pay_online' && (
-                            <div className="w-full space-y-2">
+                            <div className="w-full space-y-2 text-left">
                                 <p className="text-sm font-semibold text-slate-700">
                                     Conecta Mercado Pago para recibir pagos online
                                 </p>
                                 <MPConnectCard />
+                            </div>
+                        )}
+                        {paymentMode === 'pay_at_center' && (
+                            <div className="w-full space-y-2 text-left">
+                                <p className="text-sm font-semibold text-slate-700">
+                                    Activa tu suscripción mensual
+                                </p>
+                                <SubscriptionCard onChange={refreshStatus} />
                             </div>
                         )}
                         <Button
@@ -277,7 +350,7 @@ export const CenterOnboardingWizard: React.FC = () => {
         );
     }
 
-    if (!center) {
+    if (!center || (obLoading && !initializedRef.current && center.onboarding_status !== 'completed')) {
         return (
             <div className="flex items-center justify-center py-24">
                 <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
@@ -370,7 +443,47 @@ export const CenterOnboardingWizard: React.FC = () => {
                     )}
 
                     {/* Etapa 2: Espacios */}
-                    {step === 2 && (
+                    {step === 2 && hasRealSpaces && (
+                        <div className="space-y-4">
+                            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                                <p className="flex items-center gap-2 font-semibold text-emerald-900">
+                                    <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+                                    Ya tienes {ob?.spaces_count} espacio{ob?.spaces_count === 1 ? '' : 's'} creado
+                                    {ob?.spaces_count === 1 ? '' : 's'}
+                                </p>
+                                <p className="mt-1 text-sm text-emerald-800">
+                                    Los creaste desde la app o el panel, así que no hace falta volver a
+                                    configurarlos aquí.
+                                </p>
+                            </div>
+                            {courtsWithoutSchedule && (
+                                <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                                    <p className="font-semibold">
+                                        {ob?.courts_with_schedule} de {ob?.courts_count} canchas tienen horario.
+                                    </p>
+                                    <p className="mt-1">
+                                        Una cancha sin horario no aparece en la agenda y no te dejará finalizar.
+                                        Define el horario de cada una:
+                                    </p>
+                                    <ul className="mt-2 space-y-1">
+                                        {spaces
+                                            .filter((s: any) => s.category === 'cancha' || !s.category)
+                                            .map((s: any) => (
+                                                <li key={s.id}>
+                                                    <a
+                                                        href={`/admin/spaces/${s.id}/schedule`}
+                                                        className="font-semibold text-amber-900 underline underline-offset-2"
+                                                    >
+                                                        {s.name} · definir horario
+                                                    </a>
+                                                </li>
+                                            ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {step === 2 && !hasRealSpaces && (
                         <SpaceTemplatesEditor value={templates} onChange={setTemplates} />
                     )}
 
@@ -523,7 +636,7 @@ export const CenterOnboardingWizard: React.FC = () => {
                                 <SummaryRow label="Teléfono" value={phone || '—'} />
                                 <SummaryRow
                                     label="Espacios"
-                                    value={`${totalEspacios} espacio${totalEspacios === 1 ? '' : 's'}`}
+                                    value={`${hasRealSpaces ? ob?.spaces_count : totalEspacios} espacio${(hasRealSpaces ? ob?.spaces_count : totalEspacios) === 1 ? '' : 's'}`}
                                 />
                                 <SummaryRow
                                     label="Modalidad de cobro"
@@ -541,12 +654,28 @@ export const CenterOnboardingWizard: React.FC = () => {
                                 />
                             </div>
 
+                            {hasRealSpaces && ob && !ob.can_complete && (
+                                <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                                    <p className="font-semibold">Aún no puedes finalizar</p>
+                                    <p className="mt-1">Te falta: {missingLabels.join(', ')}.</p>
+                                </div>
+                            )}
+
                             {paymentMode === 'pay_online' && (
                                 <div className="space-y-2">
                                     <p className="text-sm font-semibold text-slate-700">
                                         Conecta Mercado Pago para recibir pagos online
                                     </p>
                                     <MPConnectCard />
+                                </div>
+                            )}
+
+                            {paymentMode === 'pay_at_center' && (
+                                <div className="space-y-2">
+                                    <p className="text-sm font-semibold text-slate-700">
+                                        Activa tu suscripción mensual
+                                    </p>
+                                    <SubscriptionCard onChange={refreshStatus} />
                                 </div>
                             )}
 
@@ -593,7 +722,7 @@ export const CenterOnboardingWizard: React.FC = () => {
                             <Button
                                 type="button"
                                 onClick={() => void finalize()}
-                                disabled={saving}
+                                disabled={saving || (hasRealSpaces && !!ob && !ob.can_complete)}
                                 className="h-11 bg-slate-900 text-white hover:bg-slate-800"
                             >
                                 {saving ? (

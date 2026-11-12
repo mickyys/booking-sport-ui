@@ -144,6 +144,12 @@ export const sa = {
       trace_id?: string;
     },
 
+  /** Cierra el onboarding aunque falten datos; el motivo queda en la auditoría. */
+  completeOnboarding: async (t: GetToken, id: string, reason: string) =>
+    (await api.post(`/superadmin/sport-centers/${id}/onboarding/complete`, { reason }, await cfg(t))).data as {
+      message: string;
+    },
+
   commercial: async (t: GetToken, id: string): Promise<CommercialView> =>
     (await api.get(`/superadmin/sport-centers/${id}/commercial`, await cfg(t))).data,
 
