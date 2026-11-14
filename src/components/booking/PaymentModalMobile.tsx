@@ -272,7 +272,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
             <Info className="w-4 h-4 shrink-0 mt-0.5" />
             <p>
               {slot.paymentRequired
-                ? 'Serás redirigido a la pasarela de pago segura. No almacenamos tus datos bancarios.'
+                ? 'Tendrás 15 minutos para completar el pago en la pasarela segura. Si no lo completas, el horario se libera para otros. No almacenamos tus datos bancarios.'
                 : 'Esta reserva no requiere pago previo. El pago se realiza directamente en el recinto.'
               }
             </p>

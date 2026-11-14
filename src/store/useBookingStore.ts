@@ -41,7 +41,12 @@ interface BookingState {
   fetchBookingDetail: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<any>;
   fetchBookingByCode: (code: string) => Promise<any>;
   resetCurrentBooking: () => void;
-  createMercadoPagoPayment: (bookingData: any) => Promise<{ init_point: string; booking_code: string }>;
+  createMercadoPagoPayment: (bookingData: any) => Promise<{
+    init_point: string;
+    booking_code: string;
+    pay_until?: string | null;
+    lock_expires_at?: string | null;
+  }>;
   mockConfirmPayment: (code: string, status: string) => Promise<any>;
   cancelBooking: (bookingId: string, getToken: (options?: any) => Promise<string>) => Promise<void>;
   setSelectedCenterId: (id: string | null) => void;

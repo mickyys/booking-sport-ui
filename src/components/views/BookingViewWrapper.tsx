@@ -8,6 +8,7 @@ import { useBookingActions } from '@/hooks/useBookingActions';
 import { useAuth } from '@/hooks/useAuth';
 import BookingView from '@/components/views/BookingView';
 import { PaymentModal } from '@/components/booking/PaymentModal';
+import { PaymentPendingOverlay } from '@/components/booking/PaymentPendingOverlay';
 import { AnimatePresence } from 'framer-motion';
 
 interface Props {
@@ -30,7 +31,9 @@ export default function BookingViewWrapper({ slug }: Props) {
     handleBookSlot,
     handleConfirmBooking,
     selectedSlot,
-    setSelectedSlot
+    setSelectedSlot,
+    paymentWindow,
+    closePaymentWindow,
   } = useBookingActions(user);
 
   const initialized = React.useRef(false);
@@ -72,6 +75,12 @@ export default function BookingViewWrapper({ slug }: Props) {
             onConfirm={handleConfirmBooking}
             user={user}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {paymentWindow && (
+          <PaymentPendingOverlay payment={paymentWindow} onClose={closePaymentWindow} />
         )}
       </AnimatePresence>
     </>

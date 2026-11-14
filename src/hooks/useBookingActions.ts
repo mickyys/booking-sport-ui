@@ -1,9 +1,12 @@
 import { useRouter } from 'next/navigation';
+import React, { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { useBookingStore } from '../store/useBookingStore';
 import { useBooking } from './useBooking';
 import { UserProfile } from '../types';
 import axios from 'axios';
+import { SlotLockedNotice } from '../components/booking/SlotLockedNotice';
+import { buildPaymentWindow, PaymentWindowInfo } from '../lib/paymentWindow';
 
 export const useBookingActions = (user: UserProfile | null) => {
   const router = useRouter();
@@ -19,6 +22,30 @@ export const useBookingActions = (user: UserProfile | null) => {
     setSelectedSlot,
   } = useBooking(user);
 
+  // Ventana de pago activa: se muestra mientras el cliente paga en Mercado Pago.
+  const [paymentWindow, setPaymentWindow] = useState<PaymentWindowInfo | null>(null);
+
+  const closePaymentWindow = useCallback(() => setPaymentWindow(null), []);
+
+  const showSlotLockedNotice = (error: unknown): boolean => {
+    if (!axios.isAxiosError(error)) return false;
+    const data = error.response?.data as
+      | { error?: string; retry_after_seconds?: number; code?: string }
+      | undefined;
+    if (data?.code !== 'slot_in_payment') return false;
+    const retryAfter = Number(data.retry_after_seconds ?? 0);
+    if (retryAfter <= 0) return false;
+    // Se queda visible mientras dura el bloqueo del otro usuario.
+    toast.error(
+      React.createElement(SlotLockedNotice, {
+        message: data.error || 'Otro usuario está pagando este horario.',
+        retryAfterSeconds: retryAfter,
+      }),
+      { duration: Math.min(retryAfter, 3600) * 1000 + 4000 }
+    );
+    return true;
+  };
+
   const handleConfirmBooking = async (method: 'mercadopago' | 'venue' | 'presential' | 'cash', guestDetails?: any, partial: boolean = false) => {
     const getErrorMessage = (error: unknown, fallback: string): string => {
       if (axios.isAxiosError(error) && error.response?.data?.error) {
@@ -28,8 +55,13 @@ export const useBookingActions = (user: UserProfile | null) => {
     };
 
     if (method === 'mercadopago' && selectedSlot) {
+      // La pestaña se abre antes del request: si se abre después de un await,
+      // los navegadores la bloquean como popup. Se navega cuando llega el
+      // init_point y, si está bloqueada, se usa la misma pestaña.
+      const paymentTab = typeof window !== 'undefined' ? window.open('', '_blank') : null;
+
       try {
-        const { init_point } = await createMercadoPagoPayment({
+        const data = await createMercadoPagoPayment({
           court_id: selectedSlot.courtId,
           date: selectedSlot.date.toISOString(),
           hour: selectedSlot.hour,
@@ -39,12 +71,35 @@ export const useBookingActions = (user: UserProfile | null) => {
           partial,
         });
 
-        // Redirigir a MercadoPago Checkout
-        window.location.href = init_point;
+        // Total cubierto por un beneficio: la reserva nace confirmada y no hay
+        // pasarela de pago.
+        if (!data.init_point) {
+          paymentTab?.close();
+          toast.success('¡Reserva confirmada exitosamente!');
+          setSelectedSlot(null);
+          router.push(`/booking/success?code=${encodeURIComponent(data.booking_code ?? '')}`);
+          return true;
+        }
+
+        if (paymentTab) {
+          paymentTab.location.href = data.init_point;
+          try {
+            paymentTab.opener = null;
+          } catch {
+            /* cross-origin: el navegador ya la aisló */
+          }
+        } else {
+          window.location.href = data.init_point;
+        }
+
+        setPaymentWindow(buildPaymentWindow(data));
+        setSelectedSlot(null);
         return true;
       } catch (error) {
-        toast.error(getErrorMessage(error, "Error al iniciar el pago con MercadoPago."));
-        throw error;
+        paymentTab?.close();
+        if (!showSlotLockedNotice(error)) {
+          toast.error(getErrorMessage(error, "Error al iniciar el pago con MercadoPago."));
+        }        throw error;
       }
     }
 
@@ -65,7 +120,9 @@ export const useBookingActions = (user: UserProfile | null) => {
         router.push(`/booking/success?code=${booking?.booking_code ?? 'N/A'}`);
         return true;
       } catch (error) {
-        toast.error(getErrorMessage(error, "Error al confirmar la reserva."));
+        if (!showSlotLockedNotice(error)) {
+          toast.error(getErrorMessage(error, "Error al confirmar la reserva."));
+        }
         throw error;
       }
     }
@@ -92,5 +149,7 @@ export const useBookingActions = (user: UserProfile | null) => {
     cancelBooking,
     blockSlot,
     setSelectedSlot,
+    paymentWindow,
+    closePaymentWindow,
   };
 };
