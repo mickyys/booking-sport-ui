@@ -1,12 +1,12 @@
 import { useRouter } from 'next/navigation';
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { useBookingStore } from '../store/useBookingStore';
 import { useBooking } from './useBooking';
 import { UserProfile } from '../types';
 import axios from 'axios';
-import { SlotLockedNotice } from '../components/booking/SlotLockedNotice';
 import { buildPaymentWindow, PaymentWindowInfo } from '../lib/paymentWindow';
+import { showSlotLockToast } from '../components/booking/showSlotLockToast';
 
 export const useBookingActions = (user: UserProfile | null) => {
   const router = useRouter();
@@ -27,24 +27,7 @@ export const useBookingActions = (user: UserProfile | null) => {
 
   const closePaymentWindow = useCallback(() => setPaymentWindow(null), []);
 
-  const showSlotLockedNotice = (error: unknown): boolean => {
-    if (!axios.isAxiosError(error)) return false;
-    const data = error.response?.data as
-      | { error?: string; retry_after_seconds?: number; code?: string }
-      | undefined;
-    if (data?.code !== 'slot_in_payment') return false;
-    const retryAfter = Number(data.retry_after_seconds ?? 0);
-    if (retryAfter <= 0) return false;
-    // Se queda visible mientras dura el bloqueo del otro usuario.
-    toast.error(
-      React.createElement(SlotLockedNotice, {
-        message: data.error || 'Otro usuario está pagando este horario.',
-        retryAfterSeconds: retryAfter,
-      }),
-      { duration: Math.min(retryAfter, 3600) * 1000 + 4000 }
-    );
-    return true;
-  };
+  const showSlotLockedNotice = (error: unknown): boolean => showSlotLockToast(error);
 
   const handleConfirmBooking = async (
     method: 'mercadopago' | 'venue' | 'presential' | 'cash',

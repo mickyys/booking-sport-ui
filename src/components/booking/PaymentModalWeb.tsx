@@ -13,6 +13,7 @@ import MockMPModal from './MockMPModal';
 import { DiscountPicker, CheckoutBenefits } from './DiscountPicker';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { showSlotLockToast } from './showSlotLockToast';
 
 interface PaymentModalWebProps {
   slot: TimeSlot;
@@ -105,7 +106,7 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
         setShowMockModal(true);
       } catch (error) {
         console.error("Mock payment init failed:", error);
-        toast.error("Error al iniciar el pago");
+        if (!showSlotLockToast(error)) toast.error("Error al iniciar el pago");
       } finally {
         setProcessing(null);
       }

@@ -76,3 +76,45 @@ export function humanRemaining(totalSeconds: number): string {
   const minutes = Math.ceil(totalSeconds / 60);
   return minutes === 1 ? '1 minuto' : `${minutes} minutos`;
 }
+
+export interface SlotLockInfo {
+  message: string;
+  /** Segundos hasta que se libera el horario; null si el backend no lo informó. */
+  retryAfterSeconds: number | null;
+}
+
+/**
+ * Interpreta un 409 por horario en pago o ventana vencida. Usa los datos
+ * estructurados del backend y, si faltan (backend antiguo), deduce el tiempo
+ * del texto ("en 8 minutos").
+ */
+export function parseSlotLock(error: unknown): SlotLockInfo | null {
+  const response = (error as { response?: { status?: number; data?: unknown } })?.response;
+  if (!response || response.status !== 409) return null;
+  const data = (response.data ?? {}) as {
+    error?: string;
+    code?: string;
+    retry_after_seconds?: number;
+    lock_expires_at?: string;
+  };
+  const message = data.error ?? '';
+  const isLock =
+    data.code === 'slot_in_payment' ||
+    data.code === 'payment_window_expired' ||
+    /en proceso de pago|tiempo para pagar/i.test(message);
+  if (!isLock) return null;
+
+  let seconds: number | null = null;
+  if (Number(data.retry_after_seconds) > 0) {
+    seconds = Number(data.retry_after_seconds);
+  } else if (data.lock_expires_at) {
+    seconds = secondsUntil(data.lock_expires_at);
+  } else {
+    const m = message.match(/en (\d+) minutos?/i);
+    if (m) seconds = Number(m[1]) * 60;
+  }
+  return {
+    message: message || 'Otro usuario está pagando este horario.',
+    retryAfterSeconds: seconds && seconds > 0 ? seconds : null,
+  };
+}
