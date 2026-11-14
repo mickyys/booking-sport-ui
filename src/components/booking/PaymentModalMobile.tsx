@@ -1,12 +1,15 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { X, MapPin, CreditCard, ChevronRight, Info, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { X, MapPin, CreditCard, ChevronRight, Info, ShieldAlert, AlertTriangle, Loader2 } from 'lucide-react';
 import { differenceInHours } from 'date-fns';
-import { santiagoDateKey, santiagoLongDate } from '../../lib/santiago';
+import { DEFAULT_TIMEZONE, santiagoDateKey, santiagoLongDate } from '../../lib/santiago';
 import { TimeSlot, Court, UserProfile, GuestDetails } from '../../types';
 import { useBookingStore } from '../../store/useBookingStore';
+import { useSavedPhone } from '../../hooks/useSavedPhone';
+import { formatChileanPhone, normalizeChileanPhone } from '../../utils/phone';
 import CancellationPolicyModal from '../search/CancellationPolicyModal';
+import { DiscountPicker, CheckoutBenefits } from './DiscountPicker';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -14,7 +17,7 @@ interface PaymentModalMobileProps {
   slot: TimeSlot;
   court: Court;
   onClose: () => void;
-  onConfirm: (method: 'mercadopago' | 'venue' | 'presential', guestDetails?: GuestDetails, partial?: boolean) => Promise<boolean | void>;
+  onConfirm: (method: 'mercadopago' | 'venue' | 'presential', guestDetails?: GuestDetails, partial?: boolean, benefits?: CheckoutBenefits) => Promise<boolean | void>;
   user: UserProfile | null;
 }
 
@@ -27,6 +30,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
 }) => {
   const { sportCenters, fetchSchedules } = useBookingStore();
   const center = sportCenters.find(c => c.id === slot.centerId);
+  const timeZone = center?.timezone || DEFAULT_TIMEZONE;
   const [processing, setProcessing] = useState<null | 'mercadopago' | 'venue' | 'presential'>(null);
   const [showPolicies, setShowPolicies] = useState(false);
   const hoursUntilBooking = differenceInHours(slot.date, new Date());
@@ -38,6 +42,15 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
   });
   const [errors, setErrors] = useState<Partial<GuestDetails>>({});
   const [payPartial, setPayPartial] = useState(false);
+  const { phone: savedPhone, loaded: phoneLoaded, savePhone } = useSavedPhone(!!user);
+  const loadingPhone = !!user && !phoneLoaded;
+  const [benefits, setBenefits] = useState<CheckoutBenefits>({ discountCode: '', memberToken: '', quote: null });
+  const effectivePrice = benefits.quote?.final_price ?? slot.price;
+
+  useEffect(() => {
+    if (!savedPhone) return;
+    setGuestDetails(prev => (prev.phone ? prev : { ...prev, phone: formatChileanPhone(savedPhone) }));
+  }, [savedPhone]);
 
   const isPartialAvailable = (() => {
     if (!center) return false;
@@ -47,9 +60,10 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
   })();
 
   const isPaymentRequired = slot.paymentRequired || (payPartial && isPartialAvailable);
+  const isFreeWithBenefit = !!benefits.quote && benefits.quote.discount_total > 0 && effectivePrice <= 0;
 
   const partialAmount = isPartialAvailable && center?.partialPaymentPercent
-    ? Math.round(slot.price * ((center.partialPaymentPercent || 0) / 100))
+    ? Math.round(effectivePrice * ((center.partialPaymentPercent || 0) / 100))
     : 0;
 
   const validate = () => {
@@ -64,17 +78,19 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
 
   const handlePayment = async (method: 'mercadopago' | 'venue' | 'presential') => {
     if (!validate()) return;
+    if (benefits.quoting) return;
 
     setProcessing(method);
+    if (normalizeChileanPhone(guestDetails.phone) !== savedPhone) await savePhone(guestDetails.phone);
     try {
-      await onConfirm(method, guestDetails, payPartial);
+      await onConfirm(method, guestDetails, payPartial, benefits);
     } catch (error) {
       console.error("Booking failed:", error);
       setProcessing(null);
 
       if (axios.isAxiosError(error) && error.response?.status === 409) {
         if (slot.centerId) {
-          fetchSchedules(slot.centerId, santiagoDateKey(slot.date));
+          fetchSchedules(slot.centerId, santiagoDateKey(slot.date, timeZone));
         }
       }
     }
@@ -104,11 +120,18 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
                 {center?.name || 'Centro Deportivo'}
               </p>
               <p className="text-sm text-slate-500 uppercase font-semibold">{court.name}</p>
-              <p className="font-bold text-slate-800">{santiagoLongDate(slot.date)}</p>
+              <p className="font-bold text-slate-800">{santiagoLongDate(slot.date, timeZone)}</p>
               <p className="text-emerald-600 font-medium">
                 {String(slot.hour).padStart(2, '0')}:{String(slot.minutes || 0).padStart(2, '0')} hrs
               </p>
-              <p className="text-slate-900 font-bold text-lg mt-1">${slot.price.toLocaleString('es-CL')}</p>
+              {benefits.quote && benefits.quote.discount_total > 0 ? (
+                <p className="mt-1 flex items-baseline gap-2">
+                  <span className="text-slate-400 text-sm line-through">${slot.price.toLocaleString('es-CL')}</span>
+                  <span className="text-slate-900 font-bold text-lg">${effectivePrice.toLocaleString('es-CL')}</span>
+                </p>
+              ) : (
+                <p className="text-slate-900 font-bold text-lg mt-1">${slot.price.toLocaleString('es-CL')}</p>
+              )}
             </div>
           </div>
 
@@ -163,17 +186,40 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
             )}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
+              <div className="relative">
               <input
                 type="tel"
                 className={`w-full px-4 py-2 rounded-lg border ${errors.phone ? 'border-red-500' : 'border-slate-200'} focus:ring-2 focus:ring-emerald-200 outline-none`}
                 value={guestDetails.phone}
-                onChange={e => setGuestDetails({ ...guestDetails, phone: e.target.value.replace(/\D/g, '') })}
-                placeholder="912345678"
-                disabled={processing !== null}
-                maxLength={12}
+                onChange={e => setGuestDetails({ ...guestDetails, phone: formatChileanPhone(e.target.value) })}
+                placeholder="+56 9 1234 5678"
+                autoComplete="tel"
+                disabled={processing !== null || loadingPhone}
+                aria-busy={loadingPhone}
+                maxLength={18}
               />
+              {loadingPhone && (
+                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center gap-1.5 text-xs text-slate-500" role="status">
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    Buscando teléfono…
+                  </span>
+                )}
+              </div>
               {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
             </div>
+
+            <DiscountPicker
+              courtId={slot.courtId}
+              centerId={center?.id || slot.centerId}
+              centerSlug={center?.slug}
+              date={slot.date}
+              hour={slot.hour ?? slot.date.getHours()}
+              minutes={slot.minutes ?? 0}
+              durationMinutes={60}
+              email={guestDetails.email || user?.email}
+              disabled={processing !== null}
+              onChange={setBenefits}
+            />
 
             {(slot.paymentRequired || slot.paymentOptional) && center && (
               <div className="pt-2">
@@ -212,13 +258,13 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
                 </div>
                 <p className="text-xs text-slate-500 mb-3">
                   {payPartial
-                    ? `Pagarás $${partialAmount.toLocaleString('es-CL')} ahora y $${(slot.price - partialAmount).toLocaleString('es-CL')} en el club.`
+                    ? `Pagarás $${partialAmount.toLocaleString('es-CL')} ahora y $${(effectivePrice - partialAmount).toLocaleString('es-CL')} en el club.`
                     : 'Pagarás el total de la reserva ahora.'}
                 </p>
                 <div className="flex justify-between items-center pt-2 border-t border-blue-100/50">
                   <span className="text-xs font-medium text-slate-600 uppercase tracking-wider">Monto a pagar:</span>
                   <span className="text-lg font-black text-blue-700">
-                    ${(payPartial ? partialAmount : slot.price).toLocaleString('es-CL')}
+                    ${(payPartial ? partialAmount : effectivePrice).toLocaleString('es-CL')}
                   </span>
                 </div>
               </div>
@@ -227,7 +273,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
             {slot.paymentOptional && !slot.paymentRequired && (
               <div className="space-y-3">
                 <button
-                  disabled={processing !== null}
+                  disabled={processing !== null || benefits.quoting}
                   onClick={() => handlePayment('mercadopago')}
                   className={`w-full group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all ${processing === 'mercadopago'
                     ? 'border-blue-500 bg-blue-50'
@@ -251,7 +297,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
                 </button>
 
                 <button
-                  disabled={processing !== null}
+                  disabled={processing !== null || benefits.quoting}
                   onClick={() => handlePayment('venue')}
                   className={`w-full group relative flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white ${processing === 'venue' ? 'opacity-70' : ''
                     }`}
@@ -280,9 +326,25 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
         </div>
 
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-safe">          
-          {(isPaymentRequired || slot.paymentOptional) && (
+          {isFreeWithBenefit && (
             <button
-              disabled={processing !== null}
+              disabled={processing !== null || benefits.quoting}
+              onClick={() => handlePayment('mercadopago')}
+              className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-emerald-500 text-white bg-emerald-500 hover:bg-emerald-600 transition-all disabled:opacity-80"
+            >
+              {processing === 'mercadopago' ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span className="font-bold">Confirmando...</span>
+                </>
+              ) : (
+                <span className="font-bold">Confirmar Reserva</span>
+              )}
+            </button>
+          )}
+          {!isFreeWithBenefit && (isPaymentRequired || slot.paymentOptional) && (
+            <button
+              disabled={processing !== null || benefits.quoting}
               onClick={() => handlePayment('mercadopago')}
               className={`w-full group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all ${processing === 'mercadopago'
                 ? 'border-blue-500 bg-blue-50'
@@ -307,7 +369,7 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
           )}
           {!slot.paymentRequired && !slot.paymentOptional && (
             <button
-              disabled={processing !== null}
+              disabled={processing !== null || benefits.quoting}
               onClick={() => handlePayment('venue')}
               className={`w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-emerald-500 text-white transition-all ${processing !== null ? 'bg-emerald-600 opacity-80' : 'bg-emerald-500 hover:bg-emerald-600'
                 }`}

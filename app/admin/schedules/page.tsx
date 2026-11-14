@@ -1,8 +1,5 @@
-"use client";
-'use client';
-
-import { AdminSchedulesSubPage } from '@/components/views/AdminPanel';
+import { redirect } from 'next/navigation';
 
 export default function SchedulesPage() {
-  return <AdminSchedulesSubPage />;
+  redirect('/admin/spaces');
 }

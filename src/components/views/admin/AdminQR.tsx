@@ -6,6 +6,7 @@ import { Download, Copy, Share2, Globe, ExternalLink, Info } from 'lucide-react'
 import { toast } from 'sonner';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
+import { platformDomain } from '@/utils/host';
 
 interface AdminQRProps {
     sportCenter: any;
@@ -53,7 +54,10 @@ export const AdminQR: React.FC<AdminQRProps> = ({ sportCenter: initialSportCente
     }
 
     const slug = sportCenter.slug || '';
-    const bookingUrl = `https://reservaloya.cl/${slug}/reservar`;
+    const subdomain = sportCenter.subdomain;
+    const bookingUrl = subdomain
+      ? `https://${subdomain}.${platformDomain()}`
+      : `https://${platformDomain()}/${slug}/reservar`;
 
     const downloadQR = () => {
         const canvas = document.getElementById('qr-canvas') as HTMLCanvasElement;

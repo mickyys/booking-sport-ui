@@ -1,19 +1,22 @@
 "use client";
 import React from 'react';
+import Link from 'next/link';
+import { LogOut } from 'lucide-react';
 import { useAuth0 } from '@auth0/auth0-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useBookingStore } from '@/store/useBookingStore';
+import { useAuth } from '@/hooks/useAuth';
 
 import { AdminDashboard } from './admin/AdminDashboard';
 import { AdminCourts } from './admin/AdminCourts';
-import { AdminSchedules } from './admin/AdminSchedules';
-import { AdminCalendar } from './admin/AdminCalendar';
 import { AdminAgenda } from './admin/AdminAgenda';
 import { AdminSettings } from './admin/AdminSettings';
 import { AdminQR } from './admin/AdminQR';
 import { AdminUsers } from './admin/AdminUsers';
+import { AdminSpaces } from './admin/AdminSpaces';
 import { AdminSidebar } from '@/components/layout/AdminSidebar';
 import { AdminPanelProvider, useAdminPanel } from '@/context/AdminPanelContext';
+import { MPStatusBanner } from '@/components/admin/MPStatusBanner';
 
 interface AdminPanelProps {
     children?: React.ReactNode;
@@ -29,16 +32,83 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ children }) => {
 
 const AdminPanelContent: React.FC<AdminPanelProps> = ({ children }) => {
     const { currentSportCenter } = useAdminPanel();
+    const { logout } = useAuth();
+    const router = useRouter();
+    const pathname = usePathname();
+
+    const onboardingPending = (currentSportCenter as any)?.onboarding_status === 'pending';
+    const onOnboardingRoute = pathname?.startsWith('/admin/onboarding') ?? false;
+    // Mientras el onboarding está pendiente solo se permite el wizard y los
+    // espacios (para definir los horarios de las canchas ya creadas).
+    const allowedWhilePending =
+        onOnboardingRoute || (pathname?.startsWith('/admin/spaces') ?? false);
+
+    // Wizard post-login: mientras el centro esté en "pending", el admin debe
+    // completar la configuración antes de usar el resto del panel.
+    React.useEffect(() => {
+        if (!currentSportCenter) return;
+        if (onboardingPending && !allowedWhilePending) {
+            router.replace('/admin/onboarding');
+        }
+    }, [currentSportCenter, onboardingPending, allowedWhilePending, router]);
+
+    // Pantalla dedicada: sin menú lateral ni accesos al resto del panel.
+    if (onboardingPending && onOnboardingRoute) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex flex-col">
+                <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+                    <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4">
+                        <div className="min-w-0">
+                            <p className="truncate text-sm font-extrabold text-slate-900">ReservaloYA</p>
+                            <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                                Configuración inicial
+                                {currentSportCenter?.name ? ` · ${currentSportCenter.name}` : ''}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={logout}
+                            className="inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                        >
+                            <LogOut size={16} aria-hidden="true" />
+                            Cerrar sesión
+                        </button>
+                    </div>
+                </header>
+                <main className="flex-1 px-4 py-6 lg:py-10">
+                    <div className="mx-auto max-w-5xl">{children}</div>
+                </main>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
-            <AdminSidebar sportCenterName={currentSportCenter?.name} />
-            
-            <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
-                <div className="max-w-7xl mx-auto pt-16 lg:pt-0">
-                    {children}
-                </div>
-            </main>
+            <AdminSidebar sportCenterName={currentSportCenter?.name} isFeatured={!!currentSportCenter?.is_featured} />
+
+            <div className="flex-1 flex flex-col min-w-0 pt-14 lg:pt-0">
+                {onboardingPending && (
+                    <div className="border-b border-amber-200 bg-amber-50">
+                        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-sm font-semibold text-amber-800">
+                                Estás configurando tu centro. Cuando termines, vuelve al onboarding para finalizar.
+                            </p>
+                            <Link
+                                href="/admin/onboarding"
+                                className="inline-flex items-center justify-center rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white transition-all hover:bg-amber-700"
+                            >
+                                Volver al onboarding
+                            </Link>
+                        </div>
+                    </div>
+                )}
+                <MPStatusBanner />
+                <main className="flex-1 p-4 pb-24 lg:p-8 lg:pb-8 lg:overflow-y-auto">
+                    <div className="max-w-7xl mx-auto">
+                        {children}
+                    </div>
+                </main>
+            </div>
         </div>
     );
 };
@@ -102,7 +172,7 @@ export const AdminDashboardSubPage: React.FC = () => {
         <AdminDashboard
             dashboardData={adminDashboardData}
             onCancelBooking={handleDashboardCancel}
-            onNewBooking={() => router.push('/admin/calendar')}
+            onNewBooking={() => router.push('/admin')}
             courts={courts}
             filters={{
                 page: dashboardPage,
@@ -148,26 +218,6 @@ export const AdminCourtsSubPage: React.FC = () => {
     return <AdminCourts courts={courts} onSaveCourt={onSaveCourt} onDeleteCourt={onDeleteCourt} currentSportCenter={currentSportCenter} />;
 };
 
-export const AdminSchedulesSubPage: React.FC = () => {
-    const { courts, schedules, onUpdateSchedule, onUpdateScheduleSlot, centerDefaultSchedule, centerScheduleOverrides, centerActiveDays } = useAdminPanel();
-    return (
-        <AdminSchedules 
-            courts={courts} 
-            schedules={schedules} 
-            onUpdateSchedule={onUpdateSchedule} 
-            onUpdateScheduleSlot={onUpdateScheduleSlot}
-            centerDefaultSchedule={centerDefaultSchedule}
-            centerScheduleOverrides={centerScheduleOverrides}
-            centerActiveDays={centerActiveDays}
-        />
-    );
-};
-
-export const AdminCalendarSubPage: React.FC = () => {
-    const { courts } = useAdminPanel();
-    return <AdminCalendar courts={courts} />;
-};
-
 export const AdminAgendaSubPage: React.FC = () => {
     return <AdminAgenda />;
 };
@@ -184,4 +234,9 @@ export const AdminQRSubPage: React.FC = () => {
 
 export const AdminUsersSubPage: React.FC = () => {
     return <AdminUsers />;
+};
+
+export const AdminSpacesSubPage: React.FC = () => {
+    const { currentSportCenter } = useAdminPanel();
+    return <AdminSpaces sportCenter={currentSportCenter} />;
 };

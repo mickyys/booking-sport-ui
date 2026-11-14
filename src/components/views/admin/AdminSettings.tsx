@@ -1,11 +1,28 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Save, Globe, Clock, Percent, AlertTriangle, CheckCircle, Info, CreditCard, Image as ImageIcon, X } from 'lucide-react';
+import { Settings, Save, Globe, Clock, Percent, AlertTriangle, CheckCircle, CreditCard, Image as ImageIcon, X, Palette, MapPin, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth0 } from '@auth0/auth0-react';
 import { uploadImageToCloudinary } from '@/components/booking/CourtImageUpload';
+import { LocationMapPicker } from '@/components/admin/LocationMapPicker';
+import { MPOnlinePaymentCard } from '@/components/admin/MPOnlinePaymentCard';
+import { SubscriptionCard } from '@/components/admin/SubscriptionCard';
+import { PlatformCommissionCard } from '@/components/admin/PlatformCommissionCard';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useAdminPanel } from '@/context/AdminPanelContext';
 import { CenterTimeSlot } from '@/types';
+import { platformDomain } from '@/utils/host';
 
 interface AdminSettingsProps {
     sportCenter: any;
@@ -26,10 +43,64 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
     const [defaultSchedule, setDefaultSchedule] = useState<CenterTimeSlot | null>(null);
     const [scheduleOverrides, setScheduleOverrides] = useState<Record<number, CenterTimeSlot>>({});
     const [activeDays, setActiveDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+    const [activeTab, setActiveTab] = useState('general');
+
+    // Branding
+    const [brandingName, setBrandingName] = useState('');
+    const [brandingLogoUrl, setBrandingLogoUrl] = useState('');
+    const [primaryColor, setPrimaryColor] = useState('#10b981');
+    const [primaryDark, setPrimaryDark] = useState('#059669');
+    const [accentColor, setAccentColor] = useState('#6366f1');
+    const [navBg, setNavBg] = useState('#0f172a');
+    const [heroGradient, setHeroGradient] = useState('');
+
+    // Ubicación
+    const [address, setAddress] = useState('');
+    const [city, setCity] = useState('');
+    const [googlePlaceId, setGooglePlaceId] = useState('');
+    const [coordinates, setCoordinates] = useState<{ lat: number; lng: number }>({ lat: 0, lng: 0 });
+    const [isGeocoding, setIsGeocoding] = useState(false);
+    const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+    const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+    const suggestionsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const { updateSportCenterSettings, fetchSportCenterByID, isLoading } = useBookingStore();
     const { getAccessTokenSilently } = useAuth0();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { currentSportCenter, refreshSportCenter } = useAdminPanel();
+    const [confirmOnlineOpen, setConfirmOnlineOpen] = useState(false);
+    const [switchingMode, setSwitchingMode] = useState(false);
+
+    const currentPaymentMode: string | undefined =
+        (currentSportCenter as any)?.payment_mode ?? sportCenter?.payment_mode;
+
+    // El abono solo funciona con cobro online: si el centro está en
+    // "pay_at_center" hay que pedir confirmación para cambiar la modalidad.
+    const handleTogglePartialPayment = () => {
+        if (!partialPaymentEnabled && currentPaymentMode !== 'pay_online') {
+            setConfirmOnlineOpen(true);
+            return;
+        }
+        setPartialPaymentEnabled(!partialPaymentEnabled);
+    };
+
+    const handleConfirmOnlineAndPartial = async () => {
+        const id = sportCenter?.id || sportCenter?._id;
+        if (!id) return;
+        setSwitchingMode(true);
+        try {
+            await updateSportCenterSettings(id, { payment_mode: 'pay_online' }, getAccessTokenSilently);
+            await refreshSportCenter();
+            setPartialPaymentEnabled(true);
+            setConfirmOnlineOpen(false);
+            toast.success('Cobro online activado. Guarda los cambios para aplicar los abonos y conecta Mercado Pago para recibir pagos.');
+        } catch (error) {
+            console.error('Error activando cobro online:', error);
+            toast.error('No se pudo activar el cobro online');
+        } finally {
+            setSwitchingMode(false);
+        }
+    };
 
     const handleImageSelect = (file: File) => {
         if (!file.type.startsWith('image/')) {
@@ -51,6 +122,85 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
         setLocalImagePreview(null);
     };
 
+    const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+
+    const handleGeocode = async () => {
+        if (!address.trim()) {
+            toast.error('Ingresa una dirección primero');
+            return;
+        }
+        if (!MAPBOX_TOKEN) {
+            toast.error('NEXT_PUBLIC_MAPBOX_TOKEN no está configurado');
+            return;
+        }
+        setIsGeocoding(true);
+        try {
+            const query = encodeURIComponent([address, city].filter(Boolean).join(', '));
+            const res = await fetch(
+                `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?limit=1&country=cl&access_token=${MAPBOX_TOKEN}`
+            );
+            const data = await res.json();
+            const feature = data?.features?.[0];
+            if (!feature) {
+                toast.error('No se encontraron coordenadas para esa dirección');
+                return;
+            }
+            const [lng, lat] = feature.center;
+            setCoordinates({ lat, lng });
+            toast.success('Coordenadas actualizadas');
+        } catch (err) {
+            console.error('Error geocoding address:', err);
+            toast.error('Error al buscar coordenadas');
+        } finally {
+            setIsGeocoding(false);
+        }
+    };
+
+    const fetchAddressSuggestions = async (query: string) => {
+        try {
+            const res = await fetch(
+                `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?autocomplete=true&limit=5&country=cl&language=es&access_token=${MAPBOX_TOKEN}`
+            );
+            const data = await res.json();
+            const features = data?.features || [];
+            setAddressSuggestions(features);
+            setShowAddressSuggestions(features.length > 0);
+        } catch (err) {
+            console.error('Error fetching address suggestions:', err);
+        }
+    };
+
+    const handleAddressChange = (value: string) => {
+        setAddress(value);
+        if (suggestionsDebounceRef.current) clearTimeout(suggestionsDebounceRef.current);
+        if (!MAPBOX_TOKEN || value.trim().length < 4) {
+            setAddressSuggestions([]);
+            setShowAddressSuggestions(false);
+            return;
+        }
+        suggestionsDebounceRef.current = setTimeout(() => fetchAddressSuggestions(value.trim()), 300);
+    };
+
+    const handleSelectSuggestion = (feature: any) => {
+        if (feature.place_name) setAddress(feature.place_name);
+        const center = feature.center;
+        if (Array.isArray(center) && center.length === 2) {
+            setCoordinates({ lng: Number(center[0]) || 0, lat: Number(center[1]) || 0 });
+        }
+        const cityCtx = (feature.context || []).find((c: any) => String(c.id).startsWith('place.'));
+        if (cityCtx?.text) setCity(cityCtx.text);
+        setAddressSuggestions([]);
+        setShowAddressSuggestions(false);
+        toast.success('Dirección seleccionada: coordenadas y ciudad actualizadas');
+    };
+
+    // Limpia el debounce de sugerencias al desmontar
+    useEffect(() => {
+        return () => {
+            if (suggestionsDebounceRef.current) clearTimeout(suggestionsDebounceRef.current);
+        };
+    }, []);
+
     useEffect(() => {
         const loadSportCenter = async () => {
             const id = sportCenter?.id || sportCenter?._id;
@@ -68,6 +218,27 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                     if (center.default_schedule) setDefaultSchedule(center.default_schedule);
                     if (center.schedule_overrides) setScheduleOverrides(center.schedule_overrides);
                     if (center.active_days) setActiveDays(center.active_days);
+
+                    // Ubicación
+                    setAddress(center.address || '');
+                    setCity(center.city || '');
+                    setGooglePlaceId(center.google_place_id || '');
+                    const c = center.coordinates;
+                    if (Array.isArray(c)) {
+                        setCoordinates({ lng: Number(c[0]) || 0, lat: Number(c[1]) || 0 });
+                    } else if (c && typeof c === 'object') {
+                        setCoordinates({ lat: Number(c.lat) || 0, lng: Number(c.lng) || 0 });
+                    }
+
+                    if (center.branding) {
+                        setBrandingName(center.branding.name || '');
+                        setBrandingLogoUrl(center.branding.logo_url || '');
+                        setPrimaryColor(center.branding.primary_color || '#10b981');
+                        setPrimaryDark(center.branding.primary_dark || '#059669');
+                        setAccentColor(center.branding.accent || '#6366f1');
+                        setNavBg(center.branding.nav_bg || '#0f172a');
+                        setHeroGradient(center.branding.hero_gradient || '');
+                    }
                 }
             } finally {
                 setLoadingData(false);
@@ -79,6 +250,15 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!sportCenter?.id && !sportCenter?._id) return;
+
+        // Los campos de pestañas inactivas se desmontan, así que la validación
+        // nativa `required` no se ejecuta. Validamos el slug explícitamente y
+        // volvemos a la pestaña General para que el usuario pueda corregirlo.
+        if (!slug.trim()) {
+            toast.error('El subdominio (slug) es obligatorio');
+            setActiveTab('general');
+            return;
+        }
 
         try {
             const id = sportCenter.id || sportCenter._id;
@@ -97,6 +277,19 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                 retention_percent: retentionPercent,
                 partialPaymentEnabled: partialPaymentEnabled,
                 partialPaymentPercent: partialPaymentPercent,
+                address,
+                city,
+                coordinates,
+                google_place_id: googlePlaceId.trim(),
+                branding: {
+                    name: brandingName,
+                    logo_url: brandingLogoUrl,
+                    primary_color: primaryColor,
+                    primary_dark: primaryDark,
+                    accent: accentColor,
+                    nav_bg: navBg,
+                    hero_gradient: heroGradient,
+                },
             }, getAccessTokenSilently);
 
             setLocalImageFile(null);
@@ -133,6 +326,16 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
         );
     };
 
+    const settingsTabs = [
+        { value: 'general', label: 'General', icon: Settings, description: 'Información pública y visibilidad del club.' },
+        { value: 'ubicacion', label: 'Ubicación', icon: MapPin, description: 'Dirección, ciudad y ubicación en el mapa.' },
+        { value: 'marca', label: 'Marca', icon: Palette, description: 'Logo, colores y apariencia de tu club.' },
+        { value: 'reservas', label: 'Reservas', icon: Clock, description: 'Política de cancelación y devoluciones.' },
+        { value: 'pagos', label: 'Pagos', icon: CreditCard, description: 'Mercado Pago, comisiones y abonos.' },
+    ];
+
+    const activeTabDescription = settingsTabs.find((tab) => tab.value === activeTab)?.description;
+
     return (
         <div className="max-w-2xl mx-auto space-y-6 pb-12">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -143,7 +346,27 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                     <h3 className="text-lg font-bold text-slate-900">Configuración General del Club</h3>
                 </div>
 
-                <form onSubmit={handleSave} className="p-8 space-y-6">
+                <form onSubmit={handleSave}>
+                    <Tabs value={activeTab} onValueChange={setActiveTab}>
+                        <div className="border-b border-slate-100 px-4 pt-4 sm:px-6">
+                            <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                {settingsTabs.map(({ value, label, icon: Icon }) => (
+                                    <TabsTrigger
+                                        key={value}
+                                        value={value}
+                                        className="h-auto flex-none gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm sm:text-sm"
+                                    >
+                                        <Icon className="h-4 w-4" />
+                                        {label}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                        </div>
+
+                        <div className="px-5 py-6 sm:px-8">
+                            <p className="mb-5 text-xs font-medium text-slate-500">{activeTabDescription}</p>
+
+                            <TabsContent value="general" className="space-y-6 [&>div:first-child]:border-t-0 [&>div:first-child]:pt-0">
                     {/* Image Upload */}
                     <div className="space-y-2">
                         <label className="block text-sm font-medium text-slate-700">Imagen del Club</label>
@@ -187,10 +410,255 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                             />
                         </div>
                         <p className="text-xs text-slate-500">
-                            Esto se usará para acceder directamente via <span className="font-bold">{slug || 'tu-club'}.reservaloya.cl</span>
+                            Esto se usará para acceder directamente via <span className="font-bold">{slug || 'tu-club'}.{platformDomain()}</span>
                         </p>
                     </div>
+                            </TabsContent>
 
+                            <TabsContent value="ubicacion" className="space-y-6 [&>div:first-child]:border-t-0 [&>div:first-child]:pt-0">
+                    {/* Ubicación */}
+                    <div className="border-t border-slate-200 pt-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <MapPin className="w-5 h-5 text-emerald-500" />
+                            <h4 className="text-base font-bold text-slate-900">Ubicación</h4>
+                        </div>
+                        <div className="space-y-5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="relative">
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Dirección</label>
+                                    <input
+                                        type="text"
+                                        value={address}
+                                        onChange={(e) => handleAddressChange(e.target.value)}
+                                        onFocus={() => { if (addressSuggestions.length > 0) setShowAddressSuggestions(true); }}
+                                        onBlur={() => setTimeout(() => setShowAddressSuggestions(false), 150)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && showAddressSuggestions && addressSuggestions.length > 0) {
+                                                e.preventDefault();
+                                                handleSelectSuggestion(addressSuggestions[0]);
+                                            } else if (e.key === 'Escape') {
+                                                setShowAddressSuggestions(false);
+                                            }
+                                        }}
+                                        autoComplete="off"
+                                        placeholder="Av. Providencia 1234"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm"
+                                    />
+                                    {showAddressSuggestions && addressSuggestions.length > 0 && (
+                                        <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                                            {addressSuggestions.map((f, i) => (
+                                                <button
+                                                    key={f.id || i}
+                                                    type="button"
+                                                    onMouseDown={(e) => { e.preventDefault(); handleSelectSuggestion(f); }}
+                                                    className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition-colors"
+                                                >
+                                                    <span className="block text-sm font-medium text-slate-800 truncate">{f.text}</span>
+                                                    <span className="block text-xs text-slate-500 truncate">{f.place_name}</span>
+                                                </button>
+                                            ))}
+                                            <p className="px-4 py-1.5 text-[10px] text-slate-400 bg-slate-50 border-t border-slate-100">
+                                                Sugerencias de Mapbox · Enter selecciona la primera
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Ciudad</label>
+                                    <input
+                                        type="text"
+                                        value={city}
+                                        onChange={(e) => setCity(e.target.value)}
+                                        placeholder="Santiago"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label htmlFor="google-place-id" className="block text-sm font-medium text-slate-700 mb-1">
+                                    Google Place ID (reseñas)
+                                </label>
+                                <input
+                                    id="google-place-id"
+                                    type="text"
+                                    value={googlePlaceId}
+                                    onChange={(e) => setGooglePlaceId(e.target.value)}
+                                    placeholder="ChIJ..."
+                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm font-mono"
+                                />
+                                <p className="mt-1.5 text-xs text-slate-500">
+                                    Muestra la calificación y reseñas de Google en tu página. Búscalo en el{' '}
+                                    <a
+                                        href="https://developers.google.com/maps/documentation/places/web-service/place-id"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="underline"
+                                    >
+                                        buscador de Place ID
+                                    </a>
+                                    . Déjalo vacío para ocultar las reseñas.
+                                </p>
+                            </div>
+
+                            <div>
+                                <button
+                                    type="button"
+                                    onClick={handleGeocode}
+                                    disabled={isGeocoding || !address.trim()}
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isGeocoding ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <MapPin className="w-4 h-4" />
+                                    )}
+                                    {isGeocoding ? 'Buscando...' : 'Buscar coordenadas'}
+                                </button>
+                                <p className="mt-1.5 text-xs text-slate-500">
+                                    Autocompleta latitud y longitud a partir de la dirección usando Mapbox.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Latitud</label>
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        value={coordinates.lat || ''}
+                                        onChange={(e) => setCoordinates((prev) => ({ ...prev, lat: Number(e.target.value) || 0 }))}
+                                        placeholder="-33.5922"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm font-mono"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Longitud</label>
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        value={coordinates.lng || ''}
+                                        onChange={(e) => setCoordinates((prev) => ({ ...prev, lng: Number(e.target.value) || 0 }))}
+                                        placeholder="-71.6127"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm font-mono"
+                                    />
+                                </div>
+                            </div>
+
+                            <LocationMapPicker
+                                value={coordinates}
+                                onChange={(coords) => setCoordinates(coords)}
+                            />
+
+                            <p className="text-xs text-slate-500">
+                                Las coordenadas se usan para mostrar el centro en el mapa y ordenar los resultados por cercanía.
+                            </p>
+                        </div>
+                    </div>
+                            </TabsContent>
+
+                            <TabsContent value="marca" className="space-y-6 [&>div:first-child]:border-t-0 [&>div:first-child]:pt-0">
+                    {/* Identidad de Marca */}
+                    <div className="border-t border-slate-200 pt-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Palette className="w-5 h-5 text-indigo-500" />
+                            <h4 className="text-base font-bold text-slate-900">Identidad de Marca</h4>
+                        </div>
+                        <div className="space-y-5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Nombre de marca</label>
+                                    <input
+                                        type="text"
+                                        value={brandingName}
+                                        onChange={(e) => setBrandingName(e.target.value)}
+                                        placeholder="Mi Centro Deportivo"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">URL del logo</label>
+                                    <input
+                                        type="url"
+                                        value={brandingLogoUrl}
+                                        onChange={(e) => setBrandingLogoUrl(e.target.value)}
+                                        placeholder="https://..."
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {[
+                                    { label: 'Color primario', value: primaryColor, set: setPrimaryColor },
+                                    { label: 'Primario oscuro', value: primaryDark, set: setPrimaryDark },
+                                    { label: 'Acento', value: accentColor, set: setAccentColor },
+                                    { label: 'Navbar / Fondo', value: navBg, set: setNavBg },
+                                ].map(({ label, value, set }) => (
+                                    <div key={label}>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="color"
+                                                value={value}
+                                                onChange={(e) => set(e.target.value)}
+                                                className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer bg-white"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={value}
+                                                onChange={(e) => set(e.target.value)}
+                                                className="w-full px-2 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-xs font-mono"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">
+                                    Gradiente del hero (opcional)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={heroGradient}
+                                    onChange={(e) => setHeroGradient(e.target.value)}
+                                    placeholder="linear-gradient(to bottom, rgba(15,23,42,0.5), rgba(15,23,42,0.85))"
+                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none transition-all text-xs font-mono"
+                                />
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Se usa sobre la imagen del hero. Si se deja vacío se usa el gradiente por defecto.
+                                </p>
+                            </div>
+
+                            {/* Preview */}
+                            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                                <p className="text-xs font-bold text-slate-500 uppercase mb-3">Vista previa</p>
+                                <div className="flex items-center gap-3">
+                                    {[
+                                        { label: 'Primario', color: primaryColor },
+                                        { label: 'Oscuro', color: primaryDark },
+                                        { label: 'Acento', color: accentColor },
+                                        { label: 'Navbar', color: navBg },
+                                    ].map(({ label, color }) => (
+                                        <div key={label} className="flex flex-col items-center gap-1">
+                                            <div className="w-12 h-12 rounded-xl shadow-sm border border-slate-200" style={{ backgroundColor: color }} />
+                                            <span className="text-[10px] text-slate-500">{label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div
+                                    className="mt-3 rounded-xl px-4 py-3 text-white text-xs font-bold"
+                                    style={{ backgroundColor: primaryColor }}
+                                >
+                                    {brandingName || 'Mi Centro Deportivo'} — botón principal
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                            </TabsContent>
+
+                            <TabsContent value="reservas" className="space-y-6 [&>div:first-child]:border-t-0 [&>div:first-child]:pt-0">
                     {/* Cancellation Policy */}
                     <div className="border-t border-slate-200 pt-6">
                         <div className="flex items-center gap-2 mb-4">
@@ -241,6 +709,17 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                             </div>
                         </div>
                     </div>
+                            </TabsContent>
+
+                            <TabsContent value="pagos" className="space-y-6 [&>div:first-child]:border-t-0 [&>div:first-child]:pt-0">
+                    {/* Suscripción mensual (solo reservas) */}
+                    {currentPaymentMode === 'pay_at_center' && <SubscriptionCard />}
+
+                    {/* Mercado Pago / Cobro online */}
+                    <MPOnlinePaymentCard />
+
+                    {/* Comisión de la plataforma (solo lectura) */}
+                    {currentPaymentMode === 'pay_online' && <PlatformCommissionCard />}
 
                     {/* Partial Payment */}
                     <div className="border-t border-slate-200 pt-6">
@@ -256,7 +735,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                                 </div>
                                 <button
                                     type="button"
-                                    onClick={() => setPartialPaymentEnabled(!partialPaymentEnabled)}
+                                    onClick={handleTogglePartialPayment}
                                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${partialPaymentEnabled ? 'bg-slate-900' : 'bg-slate-200'}`}
                                 >
                                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${partialPaymentEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -285,15 +764,48 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ sportCenter, onSav
                         </div>
                     </div>
 
-                    <div className="pt-4">
-                        <button
-                            type="submit"
-                            disabled={isLoading || isUploading}
-                            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-50"
-                        >
-                            <Save className="w-5 h-5" />
-                            {isLoading || isUploading ? 'Guardando...' : 'Guardar Cambios'}
-                        </button>
+                    <AlertDialog open={confirmOnlineOpen} onOpenChange={(open) => { if (!switchingMode) setConfirmOnlineOpen(open); }}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>¿Activar cobro online?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Tu centro está en modalidad «solo reservas» (pago en el club). Los abonos requieren cobro online con Mercado Pago.
+                                    ¿Quieres cambiar a pago online y activar los abonos?
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel disabled={switchingMode}>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                    disabled={switchingMode}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        void handleConfirmOnlineAndPartial();
+                                    }}
+                                >
+                                    {switchingMode ? 'Activando...' : 'Cambiar y activar'}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
+                            </TabsContent>
+                        </div>
+                    </Tabs>
+
+                    <div className="border-t border-slate-100 px-5 py-4 sm:px-8">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-xs text-slate-500">
+                                Se guardan los cambios de todas las pestañas. Mercado Pago se guarda al instante.
+                            </p>
+                            <button
+                                type="submit"
+                                disabled={isLoading || isUploading}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 font-bold text-white transition-all hover:bg-slate-800 shadow-lg shadow-slate-200 disabled:opacity-50 sm:w-auto sm:min-w-[190px]"
+                            >
+                                <Save className="w-5 h-5" />
+                                {isLoading || isUploading ? 'Guardando...' : 'Guardar Cambios'}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

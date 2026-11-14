@@ -4,58 +4,38 @@ import { loginAsAdmin } from '../fixtures/auth';
 test.describe('Admin Internal Booking', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto('/admin/calendar');
+    await page.goto('/admin');
   });
 
-  test('IB-01: Crear reserva manual en calendario', async ({ page }) => {
-    await page.waitForTimeout(2000);
+  test('IB-01: Crear reserva manual desde la agenda', async ({ page }) => {
+    await page.getByRole('button', { name: /Nueva reserva/i }).click();
 
-    const emptySlot = page.locator('div.cursor-pointer').first();
-    await expect(emptySlot).toBeVisible({ timeout: 10000 });
-    await emptySlot.click();
+    const modal = page.getByRole('heading', { name: /Nueva reserva|Bloquear horario/i });
+    await expect(modal).toBeVisible({ timeout: 5000 });
 
-    await page.waitForTimeout(1000);
+    const nameInput = page.getByPlaceholder(/Ej\. Juan Pérez/i);
+    const phoneInput = page.getByPlaceholder(/Ej\. \+569/i);
+    const confirmButton = page.getByRole('button', {
+      name: /Confirmar reserva|Crear \d+ semanas/i,
+    });
 
-    const modal = page.getByText(/Nueva Reserva|Reserva Interna|Crear Reserva/i);
-    if (await modal.isVisible({ timeout: 3000 }).catch(() => false)) {
-      const nameInput = page.getByPlaceholder(/Nombre/i).or(page.locator('input').first());
-      await nameInput.fill('Test Internal Booking');
+    await nameInput.fill('Test Internal Booking');
+    await phoneInput.fill('987654321');
 
-      const phoneInput = page.getByPlaceholder(/Teléfono/i).or(page.locator('input[type="tel"]').first());
-      if (await phoneInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await phoneInput.fill('987654321');
-      }
-
-      const saveButton = page.getByRole('button', { name: /Guardar|Crear|Confirmar/i }).last();
-      await saveButton.click();
-
-      await expect(page.getByText(/Reserva creada|Creado exitosamente/i).or(page.getByText(/actualizado/i))).toBeVisible({ timeout: 5000 });
+    // Si no quedan horarios disponibles hoy, el botón sigue deshabilitado.
+    if (await confirmButton.isEnabled().catch(() => false)) {
+      await confirmButton.click();
+      await expect(
+        page.getByText(/Reserva creada con éxito|Se crearon \d+ reservas con éxito/i)
+      ).toBeVisible({ timeout: 8000 });
     }
   });
 
-  test('IB-02: Reserva interna con método de pago', async ({ page }) => {
-    await page.waitForTimeout(2000);
+  test('IB-02: Abrir formulario de bloqueo', async ({ page }) => {
+    await page.getByRole('button', { name: /Nueva reserva/i }).click();
+    await page.getByRole('button', { name: /^Bloqueo$/i }).click();
 
-    const emptySlot = page.locator('div.cursor-pointer').first();
-    await expect(emptySlot).toBeVisible({ timeout: 10000 });
-    await emptySlot.click();
-
-    await page.waitForTimeout(1000);
-
-    const modal = page.getByText(/Nueva Reserva|Reserva Interna|Crear Reserva/i);
-    if (await modal.isVisible({ timeout: 3000 }).catch(() => false)) {
-      const nameInput = page.getByPlaceholder(/Nombre/i).or(page.locator('input').first());
-      await nameInput.fill('Test Internal Payment');
-
-      const paymentSelect = page.locator('select').or(page.getByRole('combobox')).first();
-      if (await paymentSelect.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await paymentSelect.selectOption({ index: 1 });
-      }
-
-      const saveButton = page.getByRole('button', { name: /Guardar|Crear|Confirmar/i }).last();
-      await saveButton.click();
-
-      await expect(page.getByText(/Reserva creada|Creado exitosamente/i).or(page.getByText(/actualizado/i))).toBeVisible({ timeout: 5000 });
-    }
+    await expect(page.getByRole('heading', { name: 'Bloquear horario' })).toBeVisible();
+    await expect(page.getByText(/quedará no disponible para los clientes/i)).toBeVisible();
   });
 });

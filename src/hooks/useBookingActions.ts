@@ -46,14 +46,18 @@ export const useBookingActions = (user: UserProfile | null) => {
     return true;
   };
 
-  const handleConfirmBooking = async (method: 'mercadopago' | 'venue' | 'presential' | 'cash', guestDetails?: any, partial: boolean = false) => {
+  const handleConfirmBooking = async (
+    method: 'mercadopago' | 'venue' | 'presential' | 'cash',
+    guestDetails?: any,
+    partial: boolean = false,
+    benefits?: { discountCode?: string; memberToken?: string },
+  ) => {
     const getErrorMessage = (error: unknown, fallback: string): string => {
       if (axios.isAxiosError(error) && error.response?.data?.error) {
         return error.response.data.error;
       }
       return fallback;
     };
-
     if (method === 'mercadopago' && selectedSlot) {
       // La pestaña se abre antes del request: si se abre después de un await,
       // los navegadores la bloquean como popup. Se navega cuando llega el
@@ -69,6 +73,8 @@ export const useBookingActions = (user: UserProfile | null) => {
           guest_details: guestDetails,
           user_id: user?.id,
           partial,
+          discount_code: benefits?.discountCode || undefined,
+          member_token: benefits?.memberToken || undefined,
         });
 
         // Total cubierto por un beneficio: la reserva nace confirmada y no hay
@@ -99,7 +105,8 @@ export const useBookingActions = (user: UserProfile | null) => {
         paymentTab?.close();
         if (!showSlotLockedNotice(error)) {
           toast.error(getErrorMessage(error, "Error al iniciar el pago con MercadoPago."));
-        }        throw error;
+        }
+        throw error;
       }
     }
 
@@ -113,6 +120,8 @@ export const useBookingActions = (user: UserProfile | null) => {
           guest_details: guestDetails,
           user_id: user?.id,
           partial: partial,
+          discount_code: benefits?.discountCode || undefined,
+          member_token: benefits?.memberToken || undefined,
         });
 
         toast.success("¡Reserva confirmada exitosamente!");

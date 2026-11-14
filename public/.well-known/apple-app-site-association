@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["ZP8L46Q7JJ.cl.reservaloya.clients"],
+        "components": [
+          { "/": "/booking/failure*" },
+          { "/": "/booking/status*" }
+        ]
+      }
+    ]
+  }
+}

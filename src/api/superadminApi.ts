@@ -1,0 +1,225 @@
+import api from './axiosInstance';
+
+export type CenterStatus = 'active' | 'suspended' | 'blocked';
+export type GetToken = () => Promise<string>;
+
+export interface SuperadminCenter {
+  id: string;
+  slug: string;
+  name: string;
+  city: string;
+  address: string;
+  rut?: string;
+  admin_email?: string;
+  status?: CenterStatus | '';
+  status_reason?: string;
+  status_changed_at?: string;
+  is_featured: boolean;
+  featured_priority?: number;
+  featured_until?: string;
+  payment_mode?: 'pay_online' | 'pay_at_center' | '';
+  marketplace_fee_percent?: number;
+  cancellation_hours?: number;
+  retention_percent?: number;
+  partial_payment_enabled?: boolean;
+  partial_payment_percent?: number;
+  mp_user_id?: { mp_user_id?: string } | null;
+  onboarding_status?: string;
+  onboarding_step?: number;
+  contact?: { phone?: string; email?: string };
+  space_templates?: { tipo: string; cantidad: number }[];
+  image_url?: string;
+  first_month_free?: boolean;
+  timezone?: string;
+  courts?: number;
+  created_at?: string;
+}
+
+export interface CommercialView {
+  center_id: string;
+  payment_mode: string;
+  lifecycle_status: string;
+  published: boolean;
+  enforced: boolean;
+  review: boolean;
+  publish: { can_publish: boolean; status: string; missing: string[] };
+  subscription?: { status: string; plan?: string; amount: number; next_charge_at?: string };
+  mercadopago_status?: string;
+  commission?: { effective: number; source: string; configured?: number; billed_in_split: boolean };
+}
+
+export interface CenterStats {
+  total: number;
+  active: number;
+  suspended: number;
+  blocked: number;
+  featured: number;
+  pay_online: number;
+}
+
+export interface BookingErrorLog {
+  id: string;
+  tracking_id: string;
+  trace_id?: string;
+  operation: string;
+  message: string;
+  http_status: number;
+  user_id?: string;
+  user_email?: string;
+  user_name?: string;
+  user_phone?: string;
+  booking_id?: string;
+  booking_code?: string;
+  sport_center_id?: string;
+  court_id?: string;
+  mp_payment_id?: string;
+  method?: string;
+  path?: string;
+  user_agent?: string;
+  ip?: string;
+  client?: string;
+  provider_response?: string;
+  resolved: boolean;
+  resolved_by?: string;
+  resolved_at?: string;
+  created_at: string;
+}
+
+export interface SuperadminBooking {
+  id: string;
+  booking_code?: string;
+  sport_center_id: string;
+  sport_center_name?: string;
+  court_name?: string;
+  date: string;
+  local_date?: string;
+  hour: number;
+  minutes: number;
+  status: string;
+  payment_method?: string;
+  final_price: number;
+  paid_amount: number;
+  pending_amount: number;
+  guest_details?: { name: string; email: string; phone: string };
+  user_id?: string;
+}
+
+export interface AuditLog {
+  id: string;
+  actor_id: string;
+  actor_email?: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  reason?: string;
+  details?: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface Paged<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+async function cfg(getToken: GetToken, extra: object = {}) {
+  const token = await getToken();
+  // DEPURACIÓN: el backend valida el ACCESS token, no el ID token.
+  // Decodificamos su payload para ver si trae el claim de roles.
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    const roleKeys = Object.keys(payload).filter((k) => k.endsWith('/roles') || k === 'roles');
+    const roles = roleKeys.flatMap((k) => (Array.isArray(payload[k]) ? payload[k] : [payload[k]]));
+    console.log('[superadminApi] access token', {
+      sub: payload.sub,
+      roles,
+      roleClaims: roleKeys,
+    });
+  } catch {
+    console.log('[superadminApi] no se pudo decodificar el access token');
+  }
+  return { headers: { Authorization: `Bearer ${token}` }, ...extra };
+}
+
+const clean = (p: Record<string, unknown>) =>
+  Object.fromEntries(Object.entries(p).filter(([, v]) => v !== '' && v !== undefined && v !== null));
+
+export const sa = {
+  stats: async (t: GetToken): Promise<CenterStats> =>
+    (await api.get('/superadmin/sport-centers/stats', await cfg(t))).data,
+
+  listCenters: async (t: GetToken, params: Record<string, unknown>): Promise<Paged<SuperadminCenter>> =>
+    (await api.get('/superadmin/sport-centers', await cfg(t, { params: clean(params) }))).data,
+
+  getCenter: async (t: GetToken, id: string): Promise<{ center: SuperadminCenter; admin_count: number }> =>
+    (await api.get(`/superadmin/sport-centers/${id}`, await cfg(t))).data,
+
+  createCenter: async (t: GetToken, body: Record<string, unknown>) =>
+    (await api.post('/superadmin/sport-centers', body, await cfg(t))).data as {
+      id: string;
+      slug: string;
+      name: string;
+      city?: string;
+      admin_user_id?: string;
+      email_sent?: boolean;
+    },
+
+  resendAdminInvite: async (t: GetToken, id: string) =>
+    (await api.post(`/superadmin/sport-centers/${id}/admin-invite/resend`, {}, await cfg(t))).data as {
+      message: string;
+      email_sent: boolean;
+      trace_id?: string;
+    },
+
+  /** Cierra el onboarding aunque falten datos; el motivo queda en la auditoría. */
+  completeOnboarding: async (t: GetToken, id: string, reason: string) =>
+    (await api.post(`/superadmin/sport-centers/${id}/onboarding/complete`, { reason }, await cfg(t))).data as {
+      message: string;
+    },
+
+  /** Primer mes de la suscripción sin cobro. Es un cobro de la plataforma: solo el superadmin lo define. */
+  setFirstMonthFree: async (t: GetToken, id: string, enabled: boolean) =>
+    (await api.put(`/superadmin/sport-centers/${id}/first-month-free`, { enabled }, await cfg(t))).data as {
+      first_month_free: boolean;
+    },
+
+  /** Comisión por reserva online (modelo comercial). `null` restablece la comisión por defecto. */
+  setCommission: async (t: GetToken, id: string, value: number | null): Promise<CommercialView> =>
+    (await api.put(`/superadmin/sport-centers/${id}/commercial/commission`, { value }, await cfg(t))).data,
+
+  commercial: async (t: GetToken, id: string): Promise<CommercialView> =>
+    (await api.get(`/superadmin/sport-centers/${id}/commercial`, await cfg(t))).data,
+
+  publishCenter: async (t: GetToken, id: string): Promise<CommercialView> =>
+    (await api.post(`/superadmin/sport-centers/${id}/commercial/publish`, {}, await cfg(t))).data,
+
+  updateSettings: async (t: GetToken, id: string, body: Record<string, unknown>) =>
+    (await api.patch(`/superadmin/sport-centers/${id}/settings`, body, await cfg(t))).data,
+
+  setStatus: async (t: GetToken, id: string, status: CenterStatus, reason: string) =>
+    (await api.put(`/superadmin/sport-centers/${id}/status`, { status, reason }, await cfg(t))).data,
+
+  setFeatured: async (t: GetToken, id: string, body: { is_featured: boolean; priority: number; until?: string | null }) =>
+    (await api.put(`/superadmin/sport-centers/${id}/featured`, body, await cfg(t))).data,
+
+  listBookings: async (t: GetToken, params: Record<string, unknown>): Promise<Paged<SuperadminBooking>> =>
+    (await api.get('/superadmin/bookings', await cfg(t, { params: clean(params) }))).data,
+
+  exportBookings: async (t: GetToken, params: Record<string, unknown>): Promise<Blob> =>
+    (await api.get('/superadmin/bookings/export', await cfg(t, { params: clean(params), responseType: 'blob' }))).data,
+
+  listErrorLogs: async (t: GetToken, params: Record<string, unknown>): Promise<Paged<BookingErrorLog>> =>
+    (await api.get('/superadmin/error-logs', await cfg(t, { params: clean(params) }))).data,
+
+  resolveErrorLog: async (t: GetToken, id: string, resolved: boolean) =>
+    (await api.patch(`/superadmin/error-logs/${id}/resolve`, { resolved }, await cfg(t))).data as { resolved: boolean },
+
+  listAudit: async (t: GetToken, params: Record<string, unknown>): Promise<Paged<AuditLog>> =>
+    (await api.get('/superadmin/audit', await cfg(t, { params: clean(params) }))).data,
+};
+
+export const apiError = (e: unknown, fallback = 'Ocurrió un error'): string => {
+  const err = e as { response?: { data?: { error?: string } }; message?: string };
+  return err?.response?.data?.error || err?.message || fallback;
+};
