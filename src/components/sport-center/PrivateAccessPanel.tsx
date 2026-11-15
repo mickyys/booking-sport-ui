@@ -2,11 +2,14 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Turnstile } from '@marsidev/react-turnstile';
-import { CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, MailCheck, ShieldCheck, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import {
   AccessApiError,
   clearAccessToken,
@@ -61,8 +64,57 @@ export function useCenterAccess(center: SportCenter | null) {
   return { isPrivate, hasAccess: !isPrivate || hasAccess, checking, refresh };
 }
 
-const overlay = 'fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4';
-const card = 'max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl';
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Hoja inferior en móvil y modal centrado en escritorio, con foco atrapado y cierre con Esc. */
+const ModalShell: React.FC<{
+  onClose: () => void;
+  icon: React.ReactNode;
+  title: string;
+  description?: React.ReactNode;
+  children: React.ReactNode;
+}> = ({ onClose, icon, title, description, children }) => (
+  <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+    <DialogContent
+      className="top-auto bottom-0 max-h-[92dvh] w-full max-w-full translate-y-0 gap-0 overflow-y-auto rounded-b-none rounded-t-2xl p-0 sm:top-1/2 sm:bottom-auto sm:max-w-md sm:-translate-y-1/2 sm:rounded-2xl"
+    >
+      <div className="border-b border-emerald-100 bg-emerald-50/60 p-5 pr-14">
+        <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700" aria-hidden="true">{icon}</span>
+        <DialogTitle className="text-lg font-bold leading-snug text-slate-900">{title}</DialogTitle>
+        {description && <DialogDescription className="mt-1 text-sm text-slate-600">{description}</DialogDescription>}
+      </div>
+      {children}
+    </DialogContent>
+  </Dialog>
+);
+
+const FieldRow: React.FC<{
+  id: string;
+  label: string;
+  required?: boolean;
+  error?: string;
+  help?: string;
+  valid?: boolean;
+  children: React.ReactNode;
+}> = ({ id, label, required, error, help, valid, children }) => (
+  <div className="space-y-1.5">
+    <Label htmlFor={id} className="text-sm font-medium text-slate-800">
+      {label}{required && <span className="text-rose-600" aria-hidden="true"> *</span>}
+      {valid && !error && <CheckCircle2 className="ml-1.5 inline h-4 w-4 text-emerald-600" aria-label="Válido" />}
+    </Label>
+    {children}
+    {error ? (
+      <p id={`${id}-error`} role="alert" className="flex items-center gap-1 text-sm text-rose-700">
+        <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />{error}
+      </p>
+    ) : help ? (
+      <p id={`${id}-help`} className="text-sm text-slate-600">{help}</p>
+    ) : null}
+  </div>
+);
+
+const inputCls = 'h-11 text-base sm:text-sm';
+const invalidCls = 'border-rose-400 focus-visible:ring-rose-300';
 
 /** Modal con el formulario de solicitud de acceso ("Registrarse"). */
 export const RegisterModal: React.FC<{ center: SportCenter; onClose: () => void }> = ({ center, onClose }) => {
@@ -72,26 +124,54 @@ export const RegisterModal: React.FC<{ center: SportCenter; onClose: () => void 
   const [rut, setRut] = useState('');
   const [email, setEmail] = useState('');
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [turnstile, setTurnstile] = useState<string | null>(null);
+  const [turnstileError, setTurnstileError] = useState('');
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
+
+  const fields = form?.fields || [];
+  const system = fields.filter((f) => f.locked || f.key === 'rut' || f.key === 'email');
+  const custom = fields.filter((f) => !system.includes(f));
+
+  const valueOf = (f: AccessField) => (f.key === 'rut' ? rut : f.key === 'email' ? email : answers[f.key] || '');
+
+  const check = (f: AccessField, value: string): string => {
+    const v = value.trim();
+    if (!v) return f.required ? 'Este campo es obligatorio' : '';
+    if (f.key === 'rut' && !validateRUT(v)) return 'RUT inválido. Revisa el número y el dígito verificador';
+    if ((f.key === 'email' || f.type === 'email') && !EMAIL_RE.test(v)) return 'Ingresa un correo válido, por ejemplo nombre@correo.cl';
+    return '';
+  };
+
+  const setError = (key: string, msg: string) => setErrors((e) => {
+    const next = { ...e };
+    if (msg) next[key] = msg; else delete next[key];
+    return next;
+  });
+
+  const onBlur = (f: AccessField) => setError(f.key, check(f, valueOf(f)));
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateRUT(rut)) {
-      toast.error('RUT inválido');
+    const found: Record<string, string> = {};
+    fields.forEach((f) => { const m = check(f, valueOf(f)); if (m) found[f.key] = m; });
+    setErrors(found);
+    const firstKey = fields.find((f) => found[f.key])?.key;
+    if (firstKey) {
+      document.getElementById(`access-${firstKey}`)?.focus();
       return;
     }
     if (siteKey && !turnstile) {
-      toast.error('Completa la verificación de seguridad');
+      setTurnstileError('Completa la verificación de seguridad para continuar');
       return;
     }
     setBusy(true);
     try {
-      const custom: Record<string, string> = {};
-      (form?.fields || []).forEach((f) => {
-        if (f.key !== 'rut' && f.key !== 'email') custom[f.key] = answers[f.key] || '';
+      const extra: Record<string, string> = {};
+      fields.forEach((f) => {
+        if (f.key !== 'rut' && f.key !== 'email') extra[f.key] = answers[f.key] || '';
       });
-      await submitAccessRequest(center.slug, { rut, email, answers: custom, turnstile_token: turnstile || undefined });
+      await submitAccessRequest(center.slug, { rut, email, answers: extra, turnstile_token: turnstile || undefined });
       setSubmitted(true);
     } catch (err: any) {
       toast.error(err.message);
@@ -100,67 +180,103 @@ export const RegisterModal: React.FC<{ center: SportCenter; onClose: () => void 
     }
   };
 
-  const renderField = (field: AccessField) => {
-    const id = `access-${field.key}`;
-    const common = { id, name: field.key, required: field.required, placeholder: field.placeholder };
-    if (field.key === 'rut') {
-      return <Input {...common} type="text" autoComplete="off" value={rut} onChange={(e) => setRut(formatRUT(e.target.value))} />;
-    }
-    if (field.key === 'email') {
-      return (
-        <Input {...common} type="email" inputMode="email" autoComplete="email" autoCapitalize="none"
-          autoCorrect="off" spellCheck={false} value={email} onChange={(e) => setEmail(e.target.value)} />
+  const renderField = (f: AccessField) => {
+    const id = `access-${f.key}`;
+    const err = errors[f.key];
+    const describedBy = err ? `${id}-error` : f.help ? `${id}-help` : undefined;
+    const common = {
+      id, name: f.key, required: f.required, placeholder: f.placeholder,
+      'aria-invalid': !!err, 'aria-describedby': describedBy,
+      className: `${inputCls} ${err ? invalidCls : ''}`,
+    };
+    const set = (v: string) => { setAnswers((a) => ({ ...a, [f.key]: v })); if (errors[f.key]) setError(f.key, ''); };
+    let control: React.ReactNode;
+    if (f.key === 'rut') {
+      control = (
+        <Input {...common} type="text" inputMode="text" autoComplete="off" placeholder={f.placeholder || '12.345.678-9'} value={rut}
+          onChange={(e) => { setRut(formatRUT(e.target.value)); if (errors.rut) setError('rut', ''); }} onBlur={() => onBlur(f)} />
       );
-    }
-    const value = answers[field.key] || '';
-    const set = (v: string) => setAnswers((a) => ({ ...a, [field.key]: v }));
-    if (field.type === 'textarea') {
-      return <textarea {...common} rows={3} value={value} onChange={(e) => set(e.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm" />;
-    }
-    if (field.type === 'select') {
-      return (
-        <select {...common} value={value} onChange={(e) => set(e.target.value)} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm">
-          <option value="">Selecciona…</option>
-          {(field.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
-        </select>
+    } else if (f.key === 'email') {
+      control = (
+        <Input {...common} type="email" inputMode="email" autoComplete="email" autoCapitalize="none" autoCorrect="off"
+          spellCheck={false} value={email} onChange={(e) => { setEmail(e.target.value); if (errors.email) setError('email', ''); }} onBlur={() => onBlur(f)} />
       );
+    } else if (f.type === 'textarea') {
+      control = <Textarea {...common} rows={3} className={`text-base sm:text-sm ${err ? invalidCls : ''}`} value={valueOf(f)} onChange={(e) => set(e.target.value)} onBlur={() => onBlur(f)} />;
+    } else if (f.type === 'select') {
+      control = (
+        <Select value={valueOf(f)} onValueChange={(v) => { set(v); setError(f.key, ''); }}>
+          <SelectTrigger id={id} aria-invalid={!!err} aria-describedby={describedBy} className={`h-11 w-full text-base sm:text-sm ${err ? invalidCls : ''}`}>
+            <SelectValue placeholder="Selecciona una opción" />
+          </SelectTrigger>
+          <SelectContent className="z-[110]">
+            {(f.options || []).filter(Boolean).map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      );
+    } else if (f.type === 'number') {
+      control = <Input {...common} type="number" inputMode="decimal" value={valueOf(f)} onChange={(e) => set(e.target.value)} onBlur={() => onBlur(f)} />;
+    } else if (f.type === 'email') {
+      control = <Input {...common} type="email" inputMode="email" autoComplete="email" value={valueOf(f)} onChange={(e) => set(e.target.value)} onBlur={() => onBlur(f)} />;
+    } else {
+      control = <Input {...common} type="text" value={valueOf(f)} onChange={(e) => set(e.target.value)} onBlur={() => onBlur(f)} />;
     }
-    if (field.type === 'number') return <Input {...common} type="number" inputMode="decimal" value={value} onChange={(e) => set(e.target.value)} />;
-    if (field.type === 'email') return <Input {...common} type="email" inputMode="email" autoComplete="email" value={value} onChange={(e) => set(e.target.value)} />;
-    return <Input {...common} type="text" value={value} onChange={(e) => set(e.target.value)} />;
+    const valid = (f.key === 'rut' || f.key === 'email') && !!valueOf(f) && !check(f, valueOf(f));
+    return (
+      <FieldRow key={f.key} id={id} label={f.label} required={f.required} error={err} help={f.help} valid={valid}>{control}</FieldRow>
+    );
   };
 
-  return (
-    <div className={overlay} role="dialog" aria-modal="true" aria-labelledby="register-title" onClick={onClose}>
-      <div className={card} onClick={(e) => e.stopPropagation()}>
-        <h2 id="register-title" className="mb-1 text-lg font-bold text-slate-900">{form?.title || 'Registrarse'}</h2>
-        {submitted ? (
-          <>
-            <div className="mt-3 flex items-start gap-2 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 text-green-600" aria-hidden />
-              <p>Recibimos tu solicitud. Te avisaremos por correo cuando el centro la revise.</p>
-            </div>
-            <Button className="mt-4 w-full" onClick={onClose}>Entendido</Button>
-          </>
-        ) : (
-          <form onSubmit={onSubmit} className="space-y-3" autoComplete="on">
-            {form?.description && <p className="text-sm text-slate-600">{form.description}</p>}
-            {(form?.fields || []).map((f) => (
-              <div key={f.key} className="space-y-1">
-                <Label htmlFor={`access-${f.key}`}>{f.label}{f.required ? ' *' : ''}</Label>
-                {renderField(f)}
-                {f.help && <p className="text-xs text-slate-500">{f.help}</p>}
-              </div>
+  if (submitted) {
+    const steps = ['El centro revisa tu solicitud', 'Te avisamos por correo con la respuesta', 'Verificas tu RUT y reservas'];
+    return (
+      <ModalShell onClose={onClose} icon={<MailCheck className="h-6 w-6" />} title="Solicitud enviada"
+        description={<>Enviamos tu solicitud a <strong>{center.name}</strong>. Te avisaremos a <strong className="break-all">{email}</strong>.</>}>
+        <div className="space-y-4 p-5">
+          <ol className="space-y-3">
+            {steps.map((t, i) => (
+              <li key={t} className="flex items-center gap-3 text-sm text-slate-700">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">{i + 1}</span>{t}
+              </li>
             ))}
-            {siteKey && <Turnstile siteKey={siteKey} onSuccess={setTurnstile} onExpire={() => setTurnstile(null)} onError={() => setTurnstile(null)} />}
-            <div className="flex gap-2 pt-1">
-              <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-              <Button type="submit" className="flex-1" disabled={busy}>{busy ? 'Enviando…' : 'Enviar solicitud'}</Button>
+          </ol>
+          <Button className="h-11 w-full bg-emerald-600 text-white hover:bg-emerald-700" onClick={onClose}>Entendido</Button>
+        </div>
+      </ModalShell>
+    );
+  }
+
+  return (
+    <ModalShell onClose={onClose} icon={<UserPlus className="h-6 w-6" />} title={form?.title || 'Solicitar acceso'}
+      description={form?.description || `${center.name} es un centro privado. Completa tus datos y revisaremos tu solicitud.`}>
+      <form onSubmit={onSubmit} noValidate autoComplete="on">
+        <div className="space-y-4 p-5">
+          <p className="text-xs text-slate-600"><span className="text-rose-600">*</span> Campo obligatorio</p>
+          {system.map(renderField)}
+          {custom.length > 0 && (
+            <fieldset className="space-y-4 border-t border-slate-100 pt-4">
+              <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">Información adicional</legend>
+              {custom.map(renderField)}
+            </fieldset>
+          )}
+          {siteKey && (
+            <div className="min-h-[65px]">
+              <Turnstile siteKey={siteKey}
+                onSuccess={(t) => { setTurnstile(t); setTurnstileError(''); }}
+                onExpire={() => setTurnstile(null)}
+                onError={() => { setTurnstile(null); setTurnstileError('No pudimos cargar la verificación. Recarga la página e inténtalo de nuevo'); }} />
+              {turnstileError && <p role="alert" className="mt-1 flex items-center gap-1 text-sm text-rose-700"><AlertCircle className="h-4 w-4" aria-hidden="true" />{turnstileError}</p>}
             </div>
-          </form>
-        )}
-      </div>
-    </div>
+          )}
+        </div>
+        <div className="sticky bottom-0 space-y-1 border-t border-slate-200 bg-white p-4">
+          <Button type="submit" disabled={busy} className="h-11 w-full bg-emerald-600 text-white hover:bg-emerald-700">
+            {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}{busy ? 'Enviando…' : 'Enviar solicitud'}
+          </Button>
+          <Button type="button" variant="ghost" className="h-11 w-full text-slate-600" onClick={onClose}>Cancelar</Button>
+        </div>
+      </form>
+    </ModalShell>
   );
 };
 
@@ -174,27 +290,39 @@ export const AccessVerifyModal: React.FC<{
   onRegister?: () => void;
 }> = ({ center, onClose, onRegister }) => {
   const [rut, setRut] = useState('');
+  const [rutError, setRutError] = useState('');
   const [busy, setBusy] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [verificationId, setVerificationId] = useState('');
   const [maskedEmail, setMaskedEmail] = useState('');
   const [code, setCode] = useState('');
+  const [codeError, setCodeError] = useState('');
+  const [cooldown, setCooldown] = useState(0);
   const phone = center.contact?.phone || center.phone;
   const contactEmail = center.contact?.email || center.email;
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   const sendCode = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!validateRUT(rut)) {
-      toast.error('RUT inválido');
+      setRutError('RUT inválido. Revisa el número y el dígito verificador');
+      document.getElementById('access-verify-rut')?.focus();
       return;
     }
     setBusy(true);
     setNotFound(false);
+    setCodeError('');
     try {
       const res = await requestAccessCode(center.slug, rut);
       setVerificationId(res.verification_id);
       setMaskedEmail(res.masked_email);
       setCode('');
+      setCooldown(res.resend_in_seconds || 30);
       toast.success(`Enviamos un código a ${res.masked_email}`);
     } catch (err: any) {
       if (err instanceof AccessApiError && err.status === 404) setNotFound(true);
@@ -207,69 +335,72 @@ export const AccessVerifyModal: React.FC<{
   const confirm = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
+    setCodeError('');
     try {
       const res = await confirmAccessCode(center.slug, verificationId, code);
       saveAccessToken(center.id, res.access_token, res.expires_at, res.applicant);
       window.dispatchEvent(new Event('access-changed'));
       toast.success('Acceso verificado');
     } catch (err: any) {
-      toast.error(err.message);
+      setCodeError(err.message || 'Código incorrecto o vencido');
     } finally {
       setBusy(false);
     }
   };
 
-  return (
-    <div className={overlay} role="dialog" aria-modal="true" aria-labelledby="verify-title" onClick={onClose}>
-      <div className={card} onClick={(e) => e.stopPropagation()}>
-        <h2 id="verify-title" className="mb-1 text-lg font-bold text-slate-900">Centro privado</h2>
-        <p className="mb-4 text-sm text-slate-600">
-          Para reservar en {center.name} verifica tu RUT. Te enviaremos un código al correo con el que fuiste aprobado.
-        </p>
+  const linkBtn = 'inline-flex h-11 items-center rounded-md border border-amber-300 bg-white px-4 text-sm font-medium text-amber-900 hover:bg-amber-100';
 
-        {!verificationId ? (
-          <form onSubmit={sendCode} className="space-y-3">
-            <div className="space-y-1">
-              <Label htmlFor="access-verify-rut">RUT</Label>
-              <Input id="access-verify-rut" name="rut" type="text" autoComplete="off" placeholder="12.345.678-9"
-                value={rut} onChange={(e) => { setRut(formatRUT(e.target.value)); setNotFound(false); }} required />
-            </div>
-            {notFound && (
-              <div role="alert" className="space-y-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
-                <p>No encontramos un acceso aprobado con ese RUT. Regístrate o contacta al centro deportivo.</p>
-                <div className="flex flex-wrap gap-2">
-                  {onRegister && center.accessForm?.enabled && (
-                    <Button type="button" size="sm" onClick={onRegister}>Registrarse</Button>
-                  )}
-                  {phone && <a href={`tel:${phone}`} className="inline-flex h-8 items-center rounded-md border px-3 text-sm font-medium">Llamar</a>}
-                  {contactEmail && <a href={`mailto:${contactEmail}`} className="inline-flex h-8 items-center rounded-md border px-3 text-sm font-medium">Escribir</a>}
-                </div>
+  return (
+    <ModalShell onClose={onClose} icon={<ShieldCheck className="h-6 w-6" />} title="Centro privado"
+      description={<>Para reservar en {center.name} verifica tu RUT. Te enviaremos un código al correo con el que fuiste aprobado.</>}>
+      {!verificationId ? (
+        <form onSubmit={sendCode} noValidate className="space-y-4 p-5">
+          <FieldRow id="access-verify-rut" label="RUT" required error={rutError} help="Con o sin puntos y guion" valid={!rutError && validateRUT(rut)}>
+            <Input id="access-verify-rut" name="rut" type="text" autoComplete="off" placeholder="12.345.678-9" required
+              aria-invalid={!!rutError} aria-describedby={rutError ? 'access-verify-rut-error' : 'access-verify-rut-help'}
+              className={`${inputCls} ${rutError ? invalidCls : ''}`} value={rut}
+              onChange={(e) => { setRut(formatRUT(e.target.value)); setRutError(''); setNotFound(false); }} />
+          </FieldRow>
+          {notFound && (
+            <div role="alert" className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <p className="flex items-start gap-2"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />No encontramos un acceso aprobado con ese RUT. Regístrate o contacta al centro deportivo.</p>
+              <div className="flex flex-wrap gap-2">
+                {onRegister && center.accessForm?.enabled && (
+                  <Button type="button" className="h-11 bg-emerald-600 text-white hover:bg-emerald-700" onClick={onRegister}>Registrarse</Button>
+                )}
+                {phone && <a href={`tel:${phone}`} className={linkBtn}>Llamar</a>}
+                {contactEmail && <a href={`mailto:${contactEmail}`} className={linkBtn}>Escribir</a>}
               </div>
-            )}
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-              <Button type="submit" className="flex-1" disabled={busy}>{busy ? 'Enviando…' : 'Enviar código'}</Button>
             </div>
-          </form>
-        ) : (
-          <form onSubmit={confirm} className="space-y-3">
-            <p className="text-sm text-slate-700">Ingresa el código de 6 dígitos enviado a {maskedEmail}.</p>
-            <div className="space-y-1">
-              <Label htmlFor="access-code">Código</Label>
-              <Input id="access-code" name="code" type="text" inputMode="numeric" autoComplete="one-time-code"
-                pattern="[0-9]{6}" maxLength={6} value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} required />
-            </div>
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" disabled={busy} onClick={() => sendCode()}>Reenviar</Button>
-              <Button type="submit" className="flex-1" disabled={busy || code.length !== 6}>
-                {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden /> : <ShieldCheck className="mr-1 h-4 w-4" aria-hidden />}
-                Validar y continuar
-              </Button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
+          )}
+          <div className="space-y-1">
+            <Button type="submit" disabled={busy} className="h-11 w-full bg-emerald-600 text-white hover:bg-emerald-700">
+              {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}{busy ? 'Enviando…' : 'Enviar código'}
+            </Button>
+            <Button type="button" variant="ghost" className="h-11 w-full text-slate-600" onClick={onClose}>Cancelar</Button>
+          </div>
+        </form>
+      ) : (
+        <form onSubmit={confirm} className="space-y-4 p-5">
+          <FieldRow id="access-code" label="Código de 6 dígitos" required error={codeError}
+            help={`Lo enviamos a ${maskedEmail}. Revisa también la carpeta de spam.`}>
+            <Input id="access-code" name="code" type="text" inputMode="numeric" autoComplete="one-time-code" autoFocus
+              pattern="[0-9]{6}" maxLength={6} placeholder="••••••" required aria-invalid={!!codeError}
+              aria-describedby={codeError ? 'access-code-error' : 'access-code-help'}
+              className={`h-14 text-center font-mono text-2xl tracking-[0.5em] ${codeError ? invalidCls : ''}`} value={code}
+              onChange={(e) => { setCode(e.target.value.replace(/\D/g, '')); setCodeError(''); }} />
+          </FieldRow>
+          <div className="space-y-1">
+            <Button type="submit" disabled={busy || code.length !== 6} className="h-11 w-full bg-emerald-600 text-white hover:bg-emerald-700">
+              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" />}
+              Validar y continuar
+            </Button>
+            <Button type="button" variant="ghost" className="h-11 w-full text-slate-700" disabled={busy || cooldown > 0} onClick={() => sendCode()}>
+              {cooldown > 0 ? `Reenviar código en ${cooldown} s` : 'Reenviar código'}
+            </Button>
+          </div>
+        </form>
+      )}
+    </ModalShell>
   );
 };
