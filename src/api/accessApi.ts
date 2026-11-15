@@ -145,10 +145,99 @@ export async function validateAccessToken(slug: string, token: string) {
 
 // --- Admin ---
 
-export async function listAccessRequests(getToken: TokenGetter, params: { status?: string; q?: string; page?: number; limit?: number }) {
+export type AccessSortKey = 'created_at' | 'name' | 'rut' | 'email' | 'status' | 'decided_at';
+
+export interface AccessListParams {
+  status?: string;
+  q?: string;
+  from?: string;
+  to?: string;
+  sort?: AccessSortKey;
+  dir?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
+
+const compact = (params: object) =>
+  Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''));
+
+export async function listAccessRequests(getToken: TokenGetter, params: AccessListParams) {
   try {
-    const { data } = await api.get('/admin/access/requests', { ...(await auth(getToken)), params });
-    return data as { items: AccessRequest[]; total: number; page: number; limit: number };
+    const { data } = await api.get('/admin/access/requests', { ...(await auth(getToken)), params: compact(params) });
+    return data as { items: AccessRequest[]; total: number; page: number; limit: number; total_pages: number };
+  } catch (e) { throw errMsg(e); }
+}
+
+// Con responseType blob el JSON de error llega como Blob.
+async function blobError(e: any, fallback: string): Promise<Error> {
+  const data = e?.response?.data;
+  if (data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await data.text());
+      if (parsed?.error) return new Error(parsed.error);
+    } catch { /* se usa el mensaje por defecto */ }
+  }
+  return new Error(fallback);
+}
+
+export async function exportAccessRequests(getToken: TokenGetter, params: AccessListParams): Promise<Blob> {
+  try {
+    const { page: _p, limit: _l, ...filters } = params;
+    const { data } = await api.get('/admin/access/requests/export', {
+      ...(await auth(getToken)), params: compact(filters), responseType: 'blob',
+    });
+    return data as Blob;
+  } catch (e) { throw await blobError(e, 'No se pudo descargar el Excel'); }
+}
+
+export async function downloadAccessTemplate(getToken: TokenGetter): Promise<Blob> {
+  try {
+    const { data } = await api.get('/admin/access/import/template', { ...(await auth(getToken)), responseType: 'blob' });
+    return data as Blob;
+  } catch (e) { throw await blobError(e, 'No se pudo descargar la plantilla'); }
+}
+
+export interface AccessBulkResult {
+  updated: number;
+  skipped: number;
+  failed: Array<{ id: string; rut?: string; error: string }>;
+  truncated?: boolean;
+}
+
+export async function bulkSetAccessStatus(getToken: TokenGetter, payload: {
+  status: AccessStatus;
+  reason?: string;
+  ids?: string[];
+  filter?: { status?: string; q?: string; from?: string; to?: string };
+}) {
+  try {
+    const { data } = await api.post('/admin/access/requests/bulk-status', payload, await auth(getToken));
+    return data as AccessBulkResult;
+  } catch (e) { throw errMsg(e); }
+}
+
+export async function resendAccessApproval(getToken: TokenGetter, id: string) {
+  try {
+    await api.post(`/admin/access/requests/${id}/resend`, {}, await auth(getToken));
+  } catch (e) { throw errMsg(e); }
+}
+
+export interface AccessImportResult {
+  dry_run: boolean;
+  total: number;
+  valid: number;
+  imported: number;
+  errors: Array<{ line: number; rut?: string; error: string }>;
+}
+
+export async function importAccessFile(getToken: TokenGetter, file: File, dryRun: boolean) {
+  try {
+    const form = new FormData();
+    form.append('file', file);
+    const { data } = await api.post('/admin/access/import', form, {
+      ...(await auth(getToken)), params: dryRun ? { dry_run: 1 } : undefined,
+    });
+    return data as AccessImportResult;
   } catch (e) { throw errMsg(e); }
 }
 
