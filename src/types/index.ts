@@ -96,6 +96,7 @@ export interface SportCenter {
   services: string[];
   partialPaymentEnabled?: boolean;
   partialPaymentPercent?: number;
+  serviceFeePercent?: number;
   payment_mode?: 'pay_online' | 'pay_at_center' | '';
   isPrivate?: boolean;
   accessForm?: AccessForm;
@@ -229,6 +230,7 @@ export interface SportCenter {
   services: string[];
   partialPaymentEnabled?: boolean;
   partialPaymentPercent?: number;
+  serviceFeePercent?: number;
   payment_mode?: 'pay_online' | 'pay_at_center' | '';
   isPrivate?: boolean;
   subdomain?: string;

@@ -66,6 +66,10 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
     ? Math.round(effectivePrice * ((center.partialPaymentPercent || 0) / 100))
     : 0;
 
+  const serviceFeePercent = center?.serviceFeePercent ?? 0;
+  const baseNow = payPartial ? partialAmount : effectivePrice;
+  const serviceFee = serviceFeePercent > 0 ? Math.round((baseNow * serviceFeePercent) / 100) : 0;
+
   const validate = () => {
     const newErrors: Partial<GuestDetails> = {};
     if (!user && !guestDetails.name) newErrors.name = 'Requerido';
@@ -261,10 +265,22 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
                     ? `Pagarás $${partialAmount.toLocaleString('es-CL')} ahora y $${(effectivePrice - partialAmount).toLocaleString('es-CL')} en el club.`
                     : 'Pagarás el total de la reserva ahora.'}
                 </p>
+                {serviceFee > 0 && (
+                  <div className="space-y-1 pb-2 text-xs text-slate-600">
+                    <div className="flex justify-between">
+                      <span>Precio de la reserva</span>
+                      <span>${baseNow.toLocaleString('es-CL')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Cargo por servicio ({serviceFeePercent}%)</span>
+                      <span>${serviceFee.toLocaleString('es-CL')}</span>
+                    </div>
+                  </div>
+                )}
                 <div className="flex justify-between items-center pt-2 border-t border-blue-100/50">
                   <span className="text-xs font-medium text-slate-600 uppercase tracking-wider">Monto a pagar:</span>
                   <span className="text-lg font-black text-blue-700">
-                    ${(payPartial ? partialAmount : effectivePrice).toLocaleString('es-CL')}
+                    ${(baseNow + serviceFee).toLocaleString('es-CL')}
                   </span>
                 </div>
               </div>

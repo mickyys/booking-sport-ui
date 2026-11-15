@@ -78,6 +78,10 @@ export const FacilityCheckoutModal: React.FC<FacilityCheckoutModalProps> = ({
     [options, total],
   );
   const amountNow = method === 'mercadopago' ? (partial ? partialAmount : total) : 0;
+  const serviceFee =
+    method === 'mercadopago' && options && options.service_fee_percent > 0
+      ? Math.round((amountNow * options.service_fee_percent) / 100)
+      : 0;
   const noPaymentAvailable = !!options && !options.online && !options.venue;
 
   const validate = () => {
@@ -290,10 +294,16 @@ export const FacilityCheckoutModal: React.FC<FacilityCheckoutModalProps> = ({
                 </span>
                 <span>{money(total)}</span>
               </div>
+              {serviceFee > 0 && (
+                <div className="mt-1 flex items-center justify-between text-sm text-slate-700">
+                  <span>Cargo por servicio ({options?.service_fee_percent}%)</span>
+                  <span>{money(serviceFee)}</span>
+                </div>
+              )}
               <div className="mt-1 flex items-center justify-between">
                 <span className="font-bold text-slate-900">{method === 'mercadopago' ? 'Pagas ahora' : 'Total'}</span>
                 <span className="text-xl font-extrabold" style={{ color: brandColor }}>
-                  {money(method === 'mercadopago' ? amountNow : total)}
+                  {money(method === 'mercadopago' ? amountNow + serviceFee : total)}
                 </span>
               </div>
             </div>

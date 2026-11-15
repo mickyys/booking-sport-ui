@@ -60,6 +60,11 @@ export default function CenterDetailPage() {
     for (const k of ['marketplace_fee_percent', 'retention_percent', 'partial_payment_percent']) {
       if (!(pct(k) >= 0 && pct(k) <= 100)) { toast.error('Los porcentajes deben estar entre 0 y 100'); return; }
     }
+    const fee = pct('marketplace_fee_percent');
+    if (fee > 0 && fee <= 3.7961) {
+      toast.error('La comisión debe ser 0 o mayor a 3,80% (costo de Mercado Pago)');
+      return;
+    }
     const body: Record<string, unknown> = {
       slug: form.slug, address: form.address, city: form.city,
       marketplace_fee_percent: pct('marketplace_fee_percent'),
@@ -73,11 +78,10 @@ export default function CenterDetailPage() {
     setBusy(true);
     try {
       await sa.updateSettings(getAccessTokenSilently, id, body);
-      // Con el modelo comercial activo la comisión efectiva sale de
-      // `commercial.online_payment.commission`: se mantiene alineada con el
-      // porcentaje guardado arriba.
+      // La comisión efectiva sale de `commercial.online_payment.commission`:
+      // se mantiene alineada con el porcentaje guardado arriba (permite 0%).
       const online = (form.payment_mode || center?.payment_mode) === 'pay_online';
-      if (commercial?.enforced && online) {
+      if (online) {
         await sa.setCommission(getAccessTokenSilently, id, pct('marketplace_fee_percent'));
       }
       toast.success('Cambios guardados');
@@ -211,7 +215,7 @@ export default function CenterDetailPage() {
                   <option value="pay_online">Pago online</option>
                 </select>
               </Field>
-              <Field label="Comisión marketplace (%)" htmlFor="fee" hint="Cobro de ReservaloYA por reserva pagada online. Solo la define la plataforma."><input id="fee" type="number" min={0} max={100} step={1} value={String(form.marketplace_fee_percent)} onChange={set('marketplace_fee_percent')} className={fieldCls} /></Field>
+              <Field label="Comisión marketplace (%)" htmlFor="fee" hint="Se suma al precio y la paga el cliente. El centro recibe el precio completo. Mínimo 4% (o 0%) para cubrir el costo de Mercado Pago. Con conexión manual se factura aparte."><input id="fee" type="number" min={0} max={100} step={1} value={String(form.marketplace_fee_percent)} onChange={set('marketplace_fee_percent')} className={fieldCls} /></Field>
             </div>
           </fieldset>
 
