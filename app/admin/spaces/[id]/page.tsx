@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminPath } from '@/context/ViewAsCenterContext';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth0 } from '@auth0/auth0-react';
@@ -55,8 +56,10 @@ const CATEGORY_META: Record<SpaceCategory, { label: string; icon: React.ReactNod
 type Tab = 'info' | 'horarios';
 
 export default function SpaceDetailPage() {
-  const params = useParams<{ id: string }>();
+  const params = useParams<{ id?: string; spaceId?: string }>();
+  const spaceId = params.spaceId ?? params.id;
   const router = useRouter();
+  const adminPath = useAdminPath();
   const { getAccessTokenSilently } = useAuth0();
   const { spaces: rawSpaces, currentSportCenter } = useAdminPanel();
   const fetchAdminSpaces = useBookingStore((state) => state.fetchAdminSpaces);
@@ -75,7 +78,7 @@ export default function SpaceDetailPage() {
     [rawSpaces],
   );
 
-  const space = spaces.find((item) => item.id === params.id);
+  const space = spaces.find((item) => item.id === spaceId);
 
   useEffect(() => {
     if (spaces.length > 0) {
@@ -105,7 +108,7 @@ export default function SpaceDetailPage() {
             <p className="text-sm font-bold text-slate-700">No se encontró el espacio.</p>
             <button
               type="button"
-              onClick={() => router.push('/admin/spaces')}
+              onClick={() => router.push(adminPath('/spaces'))}
               className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-black text-white hover:bg-slate-800"
             >
               <ArrowLeft size={16} /> Volver a Espacios
@@ -128,7 +131,7 @@ export default function SpaceDetailPage() {
     <div className="space-y-4 sm:space-y-6">
       <button
         type="button"
-        onClick={() => router.push('/admin/spaces')}
+        onClick={() => router.push(adminPath('/spaces'))}
         className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-slate-500 transition-colors hover:text-slate-800"
       >
         <ArrowLeft size={16} /> Volver a Espacios

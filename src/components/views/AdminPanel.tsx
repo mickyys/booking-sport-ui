@@ -6,6 +6,7 @@ import { useAuth0 } from '@auth0/auth0-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useBookingStore } from '@/store/useBookingStore';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdminPath } from '@/context/ViewAsCenterContext';
 
 import { AdminDashboard } from './admin/AdminDashboard';
 import { AdminCourts } from './admin/AdminCourts';
@@ -134,6 +135,7 @@ export const AdminDashboardSubPage: React.FC = () => {
     } = useAdminPanel();
     const { getAccessTokenSilently } = useAuth0();
     const router = useRouter();
+    const adminPath = useAdminPath();
     const lastFetchParams = React.useRef<string>("");
 
     React.useEffect(() => {
@@ -172,7 +174,7 @@ export const AdminDashboardSubPage: React.FC = () => {
         <AdminDashboard
             dashboardData={adminDashboardData}
             onCancelBooking={handleDashboardCancel}
-            onNewBooking={() => router.push('/admin')}
+            onNewBooking={() => router.push(adminPath())}
             courts={courts}
             filters={{
                 page: dashboardPage,

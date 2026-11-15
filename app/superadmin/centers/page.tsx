@@ -3,7 +3,7 @@ import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAuth0 } from '@auth0/auth0-react';
-import { Ban, PauseCircle, Pencil, Plus, Search, Star, CheckCircle2 } from 'lucide-react';
+import { Ban, Eye, PauseCircle, Pencil, Plus, Search, Star, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiError, CenterStatus, SuperadminCenter, sa } from '@/api/superadminApi';
 import { Pager, PageHeader, PaymentModeBadge, StatusBadge, fieldCls, useDebounced } from '@/components/superadmin/ui';
@@ -155,6 +155,7 @@ function CentersList() {
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
+                          <Link href={`/superadmin/centers/${c.id}/view`} className={iconBtn} aria-label={`Ver panel de ${c.name}`} title="Ver panel"><Eye size={18} aria-hidden="true" /></Link>
                           <Link href={`/superadmin/centers/${c.id}`} className={iconBtn} aria-label={`Editar ${c.name}`} title="Editar"><Pencil size={18} aria-hidden="true" /></Link>
                           <button type="button" className={iconBtn} onClick={() => setFeaturedCenter(c)} aria-label={`Configurar destacado de ${c.name}`} title="Destacar"><Star size={18} aria-hidden="true" /></button>
                           {st === 'active' ? (
