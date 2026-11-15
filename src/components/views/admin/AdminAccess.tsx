@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowUp, Loader2, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ClipboardList, FileText, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,23 +22,40 @@ export const AdminAccess: React.FC = () => {
     getAccessForm(getAccessTokenSilently).then((r) => setIsPrivate(r.is_private)).catch(() => setIsPrivate(false));
   }, [getAccessTokenSilently]);
 
-  if (isPrivate === null) return <div className="p-8"><Loader2 className="animate-spin" /></div>;
+  if (isPrivate === null) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4 p-4 md:p-8">
-      <h1 className="text-2xl font-bold text-slate-900">Solicitudes de acceso</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Solicitudes de acceso</h1>
+          <p className="text-sm text-slate-500">
+            Revisa, aprueba y administra quién puede reservar en tu centro.
+          </p>
+        </div>
+      </div>
       {!isPrivate && (
-        <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+        <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           Tu centro es público. La plataforma debe marcarlo como privado para exigir acceso aprobado al reservar.
         </p>
       )}
-      <Tabs defaultValue="requests">
-        <TabsList>
-          <TabsTrigger value="requests">Solicitudes</TabsTrigger>
-          <TabsTrigger value="form">Formulario</TabsTrigger>
+      <Tabs defaultValue="requests" className="space-y-4">
+        <TabsList className="bg-white border border-slate-200 rounded-xl p-1">
+          <TabsTrigger value="requests" className="rounded-lg">
+            <ClipboardList className="h-4 w-4 mr-2" /> Solicitudes
+          </TabsTrigger>
+          <TabsTrigger value="form" className="rounded-lg">
+            <FileText className="h-4 w-4 mr-2" /> Formulario
+          </TabsTrigger>
         </TabsList>
-        <TabsContent value="requests"><AccessRequestsTab /></TabsContent>
-        <TabsContent value="form"><FormTab /></TabsContent>
+        <TabsContent value="requests" className="space-y-4"><AccessRequestsTab /></TabsContent>
+        <TabsContent value="form" className="space-y-4"><FormTab /></TabsContent>
       </Tabs>
     </div>
   );
