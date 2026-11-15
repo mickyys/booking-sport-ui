@@ -27,7 +27,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   AccessImportResult, AccessListParams, AccessRequest, AccessSortKey, AccessStatus, bulkSetAccessStatus,
   createManualAccess, downloadAccessTemplate, exportAccessRequests, getAccessStats, importAccessFile,
-  listAccessRequests, resendAccessApproval, setAccessStatus, AccessBulkResult,
+  getAccessForm, listAccessRequests, resendAccessApproval, setAccessStatus, AccessBulkResult,
 } from '@/api/accessApi';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -129,6 +129,10 @@ interface Decision {
 
 type OptionalColumn = 'created' | 'decided' | 'source';
 
+const EXTRA_COLS_KEY = 'access_extra_columns';
+const DEFAULT_EXTRA_VISIBLE = 2;
+const answerOf = (r: AccessRequest, key: string) => r.answers?.find((a) => a.key === key)?.value || '';
+
 export const AccessRequestsTab: React.FC = () => {
   const { getAccessTokenSilently } = useAuth0();
   const [filters, setFilters] = useState<Filters>(readUrl);
@@ -149,7 +153,31 @@ export const AccessRequestsTab: React.FC = () => {
   const [manual, setManual] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [columns, setColumns] = useState<Record<OptionalColumn, boolean>>({ created: true, decided: true, source: false });
+  const [formFields, setFormFields] = useState<Array<{ key: string; label: string }>>([]);
+  const [extraVisible, setExtraVisible] = useState<Record<string, boolean>>({});
   const requestSeq = useRef(0);
+
+  useEffect(() => {
+    try { setExtraVisible(JSON.parse(localStorage.getItem(EXTRA_COLS_KEY) || '{}')); } catch { /* sin preferencia guardada */ }
+    getAccessForm(getAccessTokenSilently)
+      .then((r) => setFormFields(r.form.fields.filter((f) => !f.locked).map((f) => ({ key: f.key, label: f.label }))))
+      .catch(() => { /* las columnas se derivan de las filas */ });
+  }, [getAccessTokenSilently]);
+
+  // Campos definidos en el formulario, más los que solo existen en respuestas antiguas.
+  const extraCols = useMemo(() => {
+    const cols = [...formFields];
+    items.forEach((r) => (r.answers || []).forEach((a) => {
+      if (!cols.some((c) => c.key === a.key)) cols.push({ key: a.key, label: a.label });
+    }));
+    return cols.filter((c) => c.key);
+  }, [formFields, items]);
+  const visibleExtra = extraCols.filter((c, i) => extraVisible[c.key] ?? i < DEFAULT_EXTRA_VISIBLE);
+  const toggleExtra = (key: string, v: boolean) => setExtraVisible((prev) => {
+    const next = { ...prev, [key]: v };
+    try { localStorage.setItem(EXTRA_COLS_KEY, JSON.stringify(next)); } catch { /* ignorar */ }
+    return next;
+  });
 
   const update = useCallback((patch: Partial<Filters>, resetPage = true) => {
     setFilters((prev) => ({ ...prev, ...patch, page: resetPage && patch.page === undefined ? 1 : patch.page ?? prev.page }));
@@ -336,7 +364,7 @@ export const AccessRequestsTab: React.FC = () => {
 
   const from = total === 0 ? 0 : (filters.page - 1) * filters.limit + 1;
   const to = Math.min(filters.page * filters.limit, total);
-  const colCount = 6 + Number(columns.created) + Number(columns.decided) + Number(columns.source);
+  const colCount = 6 + visibleExtra.length + Number(columns.created) + Number(columns.decided) + Number(columns.source);
   const dateCount = Number(!!filters.from) + Number(!!filters.to);
   const firstLoad = loading && items.length === 0;
 
@@ -426,6 +454,18 @@ export const AccessRequestsTab: React.FC = () => {
                   {label}
                 </DropdownMenuCheckboxItem>
               ))}
+              {extraCols.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Campos del formulario</DropdownMenuLabel>
+                  {extraCols.map((c, i) => (
+                    <DropdownMenuCheckboxItem key={c.key} checked={extraVisible[c.key] ?? i < DEFAULT_EXTRA_VISIBLE}
+                      onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => toggleExtra(c.key, !!v)}>
+                      {c.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
           {hasFilters && <Button variant="ghost" className="h-10" onClick={clearFilters}><X className="mr-1 h-4 w-4" />Limpiar</Button>}
@@ -477,6 +517,7 @@ export const AccessRequestsTab: React.FC = () => {
               <SortHead k="rut">RUT</SortHead>
               <SortHead k="email">Correo</SortHead>
               <SortHead k="status">Estado</SortHead>
+              {visibleExtra.map((c) => <TableHead key={c.key} className="whitespace-nowrap">{c.label}</TableHead>)}
               {columns.created && <SortHead k="created_at">Solicitada</SortHead>}
               {columns.decided && <SortHead k="decided_at">Última decisión</SortHead>}
               {columns.source && <TableHead>Origen</TableHead>}
@@ -508,6 +549,11 @@ export const AccessRequestsTab: React.FC = () => {
                 <TableCell className="whitespace-nowrap font-mono text-xs text-slate-700">{formatRUT(r.rut)}</TableCell>
                 <TableCell className="text-sm text-slate-600">{r.email}</TableCell>
                 <TableCell><StatusBadge status={r.status} /></TableCell>
+                {visibleExtra.map((c) => (
+                  <TableCell key={c.key} className="max-w-[14rem] truncate text-sm text-slate-600" title={answerOf(r, c.key) || undefined}>
+                    {answerOf(r, c.key) || '—'}
+                  </TableCell>
+                ))}
                 {columns.created && (
                   <TableCell className="whitespace-nowrap text-sm text-slate-600">
                     {fmtDate(r.created_at)}
@@ -547,6 +593,9 @@ export const AccessRequestsTab: React.FC = () => {
                 <span className="block truncate font-semibold text-slate-900">{r.name || formatRUT(r.rut)}</span>
                 <span className="block font-mono text-xs text-slate-600">{formatRUT(r.rut)}</span>
                 <span className="block truncate text-sm text-slate-600">{r.email}</span>
+                {visibleExtra.slice(0, 2).filter((c) => answerOf(r, c.key)).map((c) => (
+                  <span key={c.key} className="block truncate text-xs text-slate-500">{c.label}: {answerOf(r, c.key)}</span>
+                ))}
               </button>
             </div>
             <div className="flex items-center justify-between gap-2">
