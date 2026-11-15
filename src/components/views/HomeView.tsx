@@ -1,7 +1,9 @@
 "use client";
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Loader2, Search, MapPin, Calendar, X, Zap, Trophy, ArrowRight } from 'lucide-react';
+import { Loader2, Search, MapPin, Calendar, X, Zap, ArrowRight, SlidersHorizontal } from 'lucide-react';
+import MobileFiltersPanel, { MobileFiltersValues } from '@/components/search/MobileFiltersPanel';
+import ActiveFilterChips, { FilterChip } from '@/components/search/ActiveFilterChips';
 import { useBookingStore } from '@/store/useBookingStore';
 import MarketplaceHero from '@/components/search/MarketplaceHero';
 import TenantCard from '@/components/search/TenantCard';
@@ -32,6 +34,7 @@ const MarketplacePage: React.FC = () => {
   const [selectedHour, setSelectedHour] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => todaySantiagoKey());
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // Sync state with URL on mount
   useEffect(() => {
@@ -102,6 +105,31 @@ const MarketplacePage: React.FC = () => {
       !!debouncedSearchTerm,
     [selectedCity, selectedHour, debouncedSearchTerm]
   );
+
+  const applyMobileFilters = useCallback(
+    (v: MobileFiltersValues) => {
+      if (v.radiusKm !== radiusKm) handleRadiusChange(v.radiusKm);
+      if (v.city !== selectedCity || v.radiusKm === radiusKm) handleCityChange(v.city);
+      handleHourChange(v.hour);
+      handleDateChange(v.date || todayISO);
+      setMobileFiltersOpen(false);
+    },
+    [radiusKm, selectedCity, todayISO, handleRadiusChange, handleCityChange, handleHourChange, handleDateChange]
+  );
+
+  const filterChips = useMemo<FilterChip[]>(() => {
+    const chips: FilterChip[] = [];
+    if (selectedCity && selectedCity !== 'Todas') {
+      chips.push({ key: 'city', label: selectedCity, onRemove: () => handleCityChange('Todas') });
+    }
+    if (selectedHour) {
+      chips.push({ key: 'hour', label: `${selectedHour} hrs`, onRemove: () => handleHourChange('') });
+    }
+    if (selectedDate && selectedDate !== todayISO) {
+      chips.push({ key: 'date', label: selectedDate.split('-').reverse().join('-'), onRemove: () => handleDateChange(todayISO) });
+    }
+    return chips;
+  }, [selectedCity, selectedHour, selectedDate, todayISO, handleCityChange, handleHourChange, handleDateChange]);
 
   const clearFilters = useCallback(() => {
     setSelectedCity('Todas');
@@ -199,6 +227,7 @@ const MarketplacePage: React.FC = () => {
       <div ref={searchRef} className="sticky top-16 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col lg:flex-row gap-3">
+            <div className="flex gap-2 flex-1">
             {/* Search */}
             <div className="relative flex-1">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -207,11 +236,12 @@ const MarketplacePage: React.FC = () => {
                 placeholder="Buscar centro, ciudad o dirección..."
                 value={searchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 outline-none transition-all"
+                className="w-full pl-10 pr-9 py-2.5 min-h-11 md:min-h-0 rounded-xl border border-slate-200 bg-slate-50 text-base md:text-sm focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 outline-none transition-all"
               />
               {searchTerm && (
                 <button
                   onClick={() => { setSearchTerm(''); setDebouncedSearchTerm(''); setHasInteracted(true); }}
+                  aria-label="Borrar búsqueda"
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   <X className="w-4 h-4" />
@@ -219,6 +249,25 @@ const MarketplacePage: React.FC = () => {
               )}
             </div>
 
+            {/* Botón filtros (móvil) */}
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen((o) => !o)}
+              aria-expanded={mobileFiltersOpen}
+              aria-controls="mobile-filters-panel"
+              aria-label="Filtros"
+              className="md:hidden relative shrink-0 w-11 h-11 flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700"
+            >
+              <SlidersHorizontal className="w-5 h-5" />
+              {filterChips.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center">
+                  {filterChips.length}
+                </span>
+              )}
+            </button>
+            </div>
+
+            <div className="hidden md:contents">
             {/* City filter */}
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -279,10 +328,13 @@ const MarketplacePage: React.FC = () => {
                 className="pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-emerald-300 outline-none cursor-pointer w-full"
               />
             </div>
+            </div>
           </div>
 
+          <ActiveFilterChips chips={filterChips} />
+
           {hasActiveFilters && (
-            <div className="mt-3 flex items-center justify-end">
+            <div className="hidden md:flex mt-3 items-center justify-end">
               <button
                 onClick={clearFilters}
                 className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors"
@@ -293,6 +345,24 @@ const MarketplacePage: React.FC = () => {
             </div>
           )}
         </div>
+
+        <AnimatePresence>
+          {mobileFiltersOpen && (
+            <MobileFiltersPanel
+              id="mobile-filters-panel"
+              values={{ city: selectedCity, radiusKm, hour: selectedHour, date: selectedDate }}
+              cities={cities}
+              hours={availableHours}
+              radiusOptions={coords ? [...NEARBY_RADIUS_OPTIONS_KM] : undefined}
+              noRadius={NO_RADIUS}
+              minDate={todayISO}
+              maxDate={maxDateISO}
+              todayDate={todayISO}
+              onApply={applyMobileFilters}
+              onClose={() => setMobileFiltersOpen(false)}
+            />
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Results */}
