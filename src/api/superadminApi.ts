@@ -101,6 +101,10 @@ export interface SuperadminBooking {
   paid_amount: number;
   pending_amount: number;
   guest_details?: { name: string; email: string; phone: string };
+  // Reservas creadas desde el panel o por series recurrentes solo guardan
+  // estos campos (sin guest_details ni user_id).
+  customer_name?: string;
+  customer_phone?: string;
   user_id?: string;
 }
 
