@@ -88,6 +88,10 @@ export interface BookingErrorLog {
   booking_code?: string;
   sport_center_id?: string;
   court_id?: string;
+  court_name?: string;
+  booking_date?: string;
+  start_time?: string;
+  end_time?: string;
   mp_payment_id?: string;
   method?: string;
   path?: string;

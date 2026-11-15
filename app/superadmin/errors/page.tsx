@@ -152,7 +152,9 @@ export default function ErrorLogsPage() {
               <Row label="Código reserva" value={selected.booking_code} />
               <Row label="ID reserva" value={selected.booking_id} />
               <Row label="Centro" value={centers.find((c) => c.id === selected.sport_center_id)?.name || selected.sport_center_id} />
-              <Row label="Cancha" value={selected.court_id} />
+              <Row label="Cancha" value={selected.court_name || selected.court_id} />
+              <Row label="Fecha reserva" value={selected.booking_date} />
+              <Row label="Horario" value={selected.start_time && selected.end_time ? `${selected.start_time} – ${selected.end_time}` : undefined} />
               <Row label="Pago Mercado Pago" value={selected.mp_payment_id} />
               <Row label="Trace ID" value={selected.trace_id} />
               <Row label="Petición" value={selected.method ? `${selected.method} ${selected.path ?? ''}` : undefined} />
