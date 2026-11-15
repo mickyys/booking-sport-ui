@@ -49,6 +49,20 @@ export interface CommercialView {
   commission?: { effective: number; source: string; configured?: number; billed_in_split: boolean };
 }
 
+export interface CommissionSimulation {
+  price: number;
+  rate: number;
+  surcharge: number;
+  total: number;
+  mp_rate: number;
+  mp_cost: number;
+  marketplace_fee: number;
+  center_receives: number;
+  platform_net: number;
+  billed_in_split: boolean;
+  below_mp_cost: boolean;
+}
+
 export interface CenterStats {
   total: number;
   active: number;
@@ -193,6 +207,10 @@ export const sa = {
   /** Comisión por reserva online (modelo comercial). `null` restablece la comisión por defecto. */
   setCommission: async (t: GetToken, id: string, value: number | null): Promise<CommercialView> =>
     (await api.put(`/superadmin/sport-centers/${id}/commercial/commission`, { value }, await cfg(t))).data,
+
+  /** Simula el cobro de una reserva con las reglas reales del backend. */
+  simulateCommission: async (t: GetToken, id: string, price: number, rate?: number): Promise<CommissionSimulation> =>
+    (await api.get(`/superadmin/sport-centers/${id}/commercial/simulate`, { ...(await cfg(t)), params: { price, ...(rate !== undefined ? { rate } : {}) } })).data,
 
   commercial: async (t: GetToken, id: string): Promise<CommercialView> =>
     (await api.get(`/superadmin/sport-centers/${id}/commercial`, await cfg(t))).data,

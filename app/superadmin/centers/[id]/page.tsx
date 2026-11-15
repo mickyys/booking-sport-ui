@@ -7,7 +7,7 @@ import { ArrowLeft, Ban, CheckCircle2, ExternalLink, Lock, PauseCircle, Star } f
 import { toast } from 'sonner';
 import { apiError, CenterStatus, CommercialView, SuperadminCenter, sa } from '@/api/superadminApi';
 import { Field, PageHeader, PaymentModeBadge, StatusBadge, fieldCls, formatDateTime } from '@/components/superadmin/ui';
-import { FeaturedDialog, PrivateDialog, StatusDialog } from '@/components/superadmin/CenterDialogs';
+import { CommissionSimulatorDialog, FeaturedDialog, PrivateDialog, StatusDialog } from '@/components/superadmin/CenterDialogs';
 
 const actionBtn = 'inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600';
 
@@ -20,6 +20,7 @@ export default function CenterDetailPage() {
   const [busy, setBusy] = useState(false);
   const [statusTarget, setStatusTarget] = useState<CenterStatus | null>(null);
   const [featuredOpen, setFeaturedOpen] = useState(false);
+  const [simOpen, setSimOpen] = useState(false);
   const [privateOpen, setPrivateOpen] = useState(false);
   const [error, setError] = useState('');
   const [commercial, setCommercial] = useState<CommercialView | null>(null);
@@ -217,6 +218,7 @@ export default function CenterDetailPage() {
               </Field>
               <Field label="Comisión marketplace (%)" htmlFor="fee" hint="Se suma al precio y la paga el cliente. El centro recibe el precio completo. Mínimo 4% (o 0%) para cubrir el costo de Mercado Pago. Con conexión manual se factura aparte."><input id="fee" type="number" min={0} max={100} step={1} value={String(form.marketplace_fee_percent)} onChange={set('marketplace_fee_percent')} className={fieldCls} /></Field>
             </div>
+            <button type="button" className={actionBtn} onClick={() => setSimOpen(true)}>Simular comisión</button>
           </fieldset>
 
           <fieldset className="space-y-4">
@@ -253,6 +255,12 @@ export default function CenterDetailPage() {
           try { await sa.setPrivate(getAccessTokenSilently, id, v); toast.success('Acceso del centro actualizado'); setPrivateOpen(false); load(); }
           catch (e) { toast.error(apiError(e)); }
         }}
+      />
+      <CommissionSimulatorDialog
+        open={simOpen}
+        centerId={id}
+        initialRate={Number(form.marketplace_fee_percent) || commercial?.commission?.effective || 0}
+        onClose={() => setSimOpen(false)}
       />
       <FeaturedDialog
         center={featuredOpen ? center : null}
