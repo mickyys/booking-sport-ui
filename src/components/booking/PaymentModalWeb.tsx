@@ -13,7 +13,8 @@ import MockMPModal from './MockMPModal';
 import { DiscountPicker, CheckoutBenefits } from './DiscountPicker';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { showSlotLockToast } from './showSlotLockToast';
+import { showSlotConflictToast } from './showSlotConflictToast';
+import { parseSlotConflict } from '../../lib/paymentWindow';
 
 interface PaymentModalWebProps {
   slot: TimeSlot;
@@ -106,7 +107,18 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
         setShowMockModal(true);
       } catch (error) {
         console.error("Mock payment init failed:", error);
-        if (!showSlotLockToast(error)) toast.error("Error al iniciar el pago");
+        const conflict = parseSlotConflict(error);
+        if (conflict) {
+          showSlotConflictToast(conflict);
+          if (conflict.kind === 'confirmed') {
+            if (slot.centerId) {
+              fetchSchedules(slot.centerId, santiagoDateKey(slot.date, timeZone));
+            }
+            onClose();
+          }
+        } else {
+          toast.error("Error al iniciar el pago");
+        }
       } finally {
         setProcessing(null);
       }

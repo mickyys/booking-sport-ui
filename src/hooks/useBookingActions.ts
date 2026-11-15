@@ -5,12 +5,13 @@ import { useBookingStore } from '../store/useBookingStore';
 import { useBooking } from './useBooking';
 import { UserProfile } from '../types';
 import axios from 'axios';
-import { buildPaymentWindow, PaymentWindowInfo } from '../lib/paymentWindow';
-import { showSlotLockToast } from '../components/booking/showSlotLockToast';
+import { buildPaymentWindow, PaymentWindowInfo, parseSlotConflict } from '../lib/paymentWindow';
+import { showSlotConflictToast } from '../components/booking/showSlotConflictToast';
+import { santiagoDateKey } from '../lib/santiago';
 
 export const useBookingActions = (user: UserProfile | null) => {
   const router = useRouter();
-  const { createMercadoPagoPayment, createBooking } = useBookingStore();
+  const { createMercadoPagoPayment, createBooking, fetchSchedules } = useBookingStore();
   const {
     slots,
     bookings,
@@ -27,7 +28,20 @@ export const useBookingActions = (user: UserProfile | null) => {
 
   const closePaymentWindow = useCallback(() => setPaymentWindow(null), []);
 
-  const showSlotLockedNotice = (error: unknown): boolean => showSlotLockToast(error);
+  const showSlotConflictNotice = (error: unknown): boolean => {
+    const conflict = parseSlotConflict(error);
+    if (!conflict) return false;
+    showSlotConflictToast(conflict);
+    // Otra persona confirmó el horario: se cierra el checkout y se refresca la
+    // agenda para que el horario deje de ofrecerse.
+    if (conflict.kind === 'confirmed' && selectedSlot) {
+      setSelectedSlot(null);
+      if (selectedSlot.centerId) {
+        void fetchSchedules(selectedSlot.centerId, santiagoDateKey(selectedSlot.date));
+      }
+    }
+    return true;
+  };
 
   const handleConfirmBooking = async (
     method: 'mercadopago' | 'venue' | 'presential' | 'cash',
@@ -86,7 +100,7 @@ export const useBookingActions = (user: UserProfile | null) => {
         return true;
       } catch (error) {
         paymentTab?.close();
-        if (!showSlotLockedNotice(error)) {
+        if (!showSlotConflictNotice(error)) {
           toast.error(getErrorMessage(error, "Error al iniciar el pago con MercadoPago."));
         }
         throw error;
@@ -112,7 +126,7 @@ export const useBookingActions = (user: UserProfile | null) => {
         router.push(`/booking/success?code=${booking?.booking_code ?? 'N/A'}`);
         return true;
       } catch (error) {
-        if (!showSlotLockedNotice(error)) {
+        if (!showSlotConflictNotice(error)) {
           toast.error(getErrorMessage(error, "Error al confirmar la reserva."));
         }
         throw error;

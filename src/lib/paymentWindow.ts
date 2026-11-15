@@ -77,18 +77,22 @@ export function humanRemaining(totalSeconds: number): string {
   return minutes === 1 ? '1 minuto' : `${minutes} minutos`;
 }
 
-export interface SlotLockInfo {
+/** Tipo de conflicto 409 al intentar reservar un horario. */
+export type SlotConflictKind = 'in_payment' | 'window_expired' | 'confirmed';
+
+export interface SlotConflictInfo {
+  kind: SlotConflictKind;
   message: string;
-  /** Segundos hasta que se libera el horario; null si el backend no lo informó. */
+  /** Segundos hasta que se libera el horario; null si no aplica o el backend no lo informó. */
   retryAfterSeconds: number | null;
 }
 
 /**
- * Interpreta un 409 por horario en pago o ventana vencida. Usa los datos
- * estructurados del backend y, si faltan (backend antiguo), deduce el tiempo
- * del texto ("en 8 minutos").
+ * Interpreta un 409 al reservar: horario en pago, ventana vencida o reserva ya
+ * confirmada. Usa los datos estructurados del backend (`code`) y, si faltan
+ * (backend antiguo), deduce el caso del texto.
  */
-export function parseSlotLock(error: unknown): SlotLockInfo | null {
+export function parseSlotConflict(error: unknown): SlotConflictInfo | null {
   const response = (error as { response?: { status?: number; data?: unknown } })?.response;
   if (!response || response.status !== 409) return null;
   const data = (response.data ?? {}) as {
@@ -98,9 +102,22 @@ export function parseSlotLock(error: unknown): SlotLockInfo | null {
     lock_expires_at?: string;
   };
   const message = data.error ?? '';
+
+  const isConfirmed =
+    data.code === 'slot_confirmed' ||
+    /ya fue confirmad|reserva confirmada/i.test(message);
+  if (isConfirmed) {
+    return {
+      kind: 'confirmed',
+      message: message || 'este horario ya fue confirmado por otra persona',
+      retryAfterSeconds: null,
+    };
+  }
+
+  const isExpired = data.code === 'payment_window_expired';
   const isLock =
+    isExpired ||
     data.code === 'slot_in_payment' ||
-    data.code === 'payment_window_expired' ||
     /en proceso de pago|tiempo para pagar/i.test(message);
   if (!isLock) return null;
 
@@ -113,7 +130,9 @@ export function parseSlotLock(error: unknown): SlotLockInfo | null {
     const m = message.match(/en (\d+) minutos?/i);
     if (m) seconds = Number(m[1]) * 60;
   }
+
   return {
+    kind: isExpired ? 'window_expired' : 'in_payment',
     message: message || 'Otro usuario está pagando este horario.',
     retryAfterSeconds: seconds && seconds > 0 ? seconds : null,
   };
