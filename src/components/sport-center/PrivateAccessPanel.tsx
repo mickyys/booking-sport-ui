@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { AlertCircle, CheckCircle2, Loader2, MailCheck, ShieldCheck, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -76,17 +76,53 @@ const ModalShell: React.FC<{
 }> = ({ onClose, icon, title, description, children }) => (
   <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
     <DialogContent
-      className="top-auto bottom-0 max-h-[92dvh] w-full max-w-full translate-y-0 gap-0 overflow-y-auto rounded-b-none rounded-t-2xl p-0 sm:top-1/2 sm:bottom-auto sm:max-w-md sm:-translate-y-1/2 sm:rounded-2xl"
+      className="top-auto bottom-0 flex max-h-[92dvh] w-full max-w-full translate-y-0 flex-col gap-0 overflow-hidden rounded-b-none rounded-t-2xl p-0 sm:top-1/2 sm:bottom-auto sm:max-w-md sm:-translate-y-1/2 sm:rounded-2xl"
     >
-      <div className="border-b border-emerald-100 bg-emerald-50/60 p-5 pr-14">
-        <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700" aria-hidden="true">{icon}</span>
-        <DialogTitle className="text-lg font-bold leading-snug text-slate-900">{title}</DialogTitle>
-        {description && <DialogDescription className="mt-1 text-sm text-slate-600">{description}</DialogDescription>}
+      <div className="flex shrink-0 items-start gap-3 border-b border-emerald-100 bg-emerald-50/60 p-4 pr-14">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700" aria-hidden="true">{icon}</span>
+        <div className="min-w-0">
+          <DialogTitle className="text-lg font-bold leading-snug text-slate-900">{title}</DialogTitle>
+          {description && <DialogDescription className="mt-0.5 line-clamp-2 text-sm text-slate-600">{description}</DialogDescription>}
+        </div>
       </div>
       {children}
     </DialogContent>
   </Dialog>
 );
+
+/** Área con scroll invisible; un degradado inferior avisa cuando hay más contenido. */
+const ScrollBody: React.FC<{ className?: string; children: React.ReactNode }> = ({ className = '', children }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+
+  const measure = useCallback(() => {
+    const el = ref.current;
+    if (el) setMore(el.scrollHeight - el.scrollTop - el.clientHeight > 4);
+  }, []);
+
+  useEffect(() => {
+    measure();
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    Array.from(el.children).forEach((c) => ro.observe(c));
+    return () => ro.disconnect();
+  }, [measure]);
+
+  return (
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div ref={ref} onScroll={measure}
+        className={`min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}>
+        {children}
+      </div>
+      <div aria-hidden="true"
+        className={`pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white to-transparent transition-opacity duration-200 ${more ? 'opacity-100' : 'opacity-0'}`} />
+    </div>
+  );
+};
+
+const footerCls = 'shrink-0 border-t border-slate-200 bg-white p-4';
 
 const FieldRow: React.FC<{
   id: string;
@@ -232,7 +268,7 @@ export const RegisterModal: React.FC<{ center: SportCenter; onClose: () => void 
     return (
       <ModalShell onClose={onClose} icon={<MailCheck className="h-6 w-6" />} title="Solicitud enviada"
         description={<>Enviamos tu solicitud a <strong>{center.name}</strong>. Te avisaremos a <strong className="break-all">{email}</strong>.</>}>
-        <div className="space-y-4 p-5">
+        <div className="space-y-4 p-4">
           <ol className="space-y-3">
             {steps.map((t, i) => (
               <li key={t} className="flex items-center gap-3 text-sm text-slate-700">
@@ -249,12 +285,12 @@ export const RegisterModal: React.FC<{ center: SportCenter; onClose: () => void 
   return (
     <ModalShell onClose={onClose} icon={<UserPlus className="h-6 w-6" />} title={form?.title || 'Solicitar acceso'}
       description={form?.description || `${center.name} es un centro privado. Completa tus datos y revisaremos tu solicitud.`}>
-      <form onSubmit={onSubmit} noValidate autoComplete="on">
-        <div className="space-y-4 p-5">
+      <form onSubmit={onSubmit} noValidate autoComplete="on" className="flex min-h-0 flex-1 flex-col">
+        <ScrollBody className="space-y-3 p-4">
           <p className="text-xs text-slate-600"><span className="text-rose-600">*</span> Campo obligatorio</p>
           {system.map(renderField)}
           {custom.length > 0 && (
-            <fieldset className="space-y-4 border-t border-slate-100 pt-4">
+            <fieldset className="space-y-3 border-t border-slate-100 pt-3">
               <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">Información adicional</legend>
               {custom.map(renderField)}
             </fieldset>
@@ -268,12 +304,12 @@ export const RegisterModal: React.FC<{ center: SportCenter; onClose: () => void 
               {turnstileError && <p role="alert" className="mt-1 flex items-center gap-1 text-sm text-rose-700"><AlertCircle className="h-4 w-4" aria-hidden="true" />{turnstileError}</p>}
             </div>
           )}
-        </div>
-        <div className="sticky bottom-0 space-y-1 border-t border-slate-200 bg-white p-4">
-          <Button type="submit" disabled={busy} className="h-11 w-full bg-emerald-600 text-white hover:bg-emerald-700">
+        </ScrollBody>
+        <div className={`${footerCls} flex flex-col gap-1 sm:flex-row-reverse sm:gap-2`}>
+          <Button type="submit" disabled={busy} className="h-11 w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:flex-1">
             {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}{busy ? 'Enviando…' : 'Enviar solicitud'}
           </Button>
-          <Button type="button" variant="ghost" className="h-11 w-full text-slate-600" onClick={onClose}>Cancelar</Button>
+          <Button type="button" variant="ghost" className="h-11 w-full text-slate-600 sm:w-auto" onClick={onClose}>Cancelar</Button>
         </div>
       </form>
     </ModalShell>
@@ -354,7 +390,8 @@ export const AccessVerifyModal: React.FC<{
     <ModalShell onClose={onClose} icon={<ShieldCheck className="h-6 w-6" />} title="Centro privado"
       description={<>Para reservar en {center.name} verifica tu RUT. Te enviaremos un código al correo con el que fuiste aprobado.</>}>
       {!verificationId ? (
-        <form onSubmit={sendCode} noValidate className="space-y-4 p-5">
+        <form onSubmit={sendCode} noValidate className="flex min-h-0 flex-1 flex-col">
+          <ScrollBody className="space-y-3 p-4">
           <FieldRow id="access-verify-rut" label="RUT" required error={rutError} help="Con o sin puntos y guion" valid={!rutError && validateRUT(rut)}>
             <Input id="access-verify-rut" name="rut" type="text" autoComplete="off" placeholder="12.345.678-9" required
               aria-invalid={!!rutError} aria-describedby={rutError ? 'access-verify-rut-error' : 'access-verify-rut-help'}
@@ -373,15 +410,17 @@ export const AccessVerifyModal: React.FC<{
               </div>
             </div>
           )}
-          <div className="space-y-1">
-            <Button type="submit" disabled={busy} className="h-11 w-full bg-emerald-600 text-white hover:bg-emerald-700">
+          </ScrollBody>
+          <div className={`${footerCls} flex flex-col gap-1 sm:flex-row-reverse sm:gap-2`}>
+            <Button type="submit" disabled={busy} className="h-11 w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:flex-1">
               {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}{busy ? 'Enviando…' : 'Enviar código'}
             </Button>
-            <Button type="button" variant="ghost" className="h-11 w-full text-slate-600" onClick={onClose}>Cancelar</Button>
+            <Button type="button" variant="ghost" className="h-11 w-full text-slate-600 sm:w-auto" onClick={onClose}>Cancelar</Button>
           </div>
         </form>
       ) : (
-        <form onSubmit={confirm} className="space-y-4 p-5">
+        <form onSubmit={confirm} className="flex min-h-0 flex-1 flex-col">
+          <ScrollBody className="p-4">
           <FieldRow id="access-code" label="Código de 6 dígitos" required error={codeError}
             help={`Lo enviamos a ${maskedEmail}. Revisa también la carpeta de spam.`}>
             <Input id="access-code" name="code" type="text" inputMode="numeric" autoComplete="one-time-code" autoFocus
@@ -390,7 +429,8 @@ export const AccessVerifyModal: React.FC<{
               className={`h-14 text-center font-mono text-2xl tracking-[0.5em] ${codeError ? invalidCls : ''}`} value={code}
               onChange={(e) => { setCode(e.target.value.replace(/\D/g, '')); setCodeError(''); }} />
           </FieldRow>
-          <div className="space-y-1">
+          </ScrollBody>
+          <div className={`${footerCls} space-y-1`}>
             <Button type="submit" disabled={busy || code.length !== 6} className="h-11 w-full bg-emerald-600 text-white hover:bg-emerald-700">
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" />}
               Validar y continuar
