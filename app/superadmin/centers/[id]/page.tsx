@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useAuth0 } from '@auth0/auth0-react';
-import { ArrowLeft, Ban, CheckCircle2, ExternalLink, Lock, PauseCircle, Star } from 'lucide-react';
+import { ArrowLeft, Ban, CheckCircle2, Eye, ExternalLink, Lock, PauseCircle, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiError, CenterStatus, CommercialView, SuperadminCenter, sa } from '@/api/superadminApi';
 import { Field, PageHeader, PaymentModeBadge, StatusBadge, fieldCls, formatDateTime } from '@/components/superadmin/ui';
@@ -122,7 +122,7 @@ export default function CenterDetailPage() {
       <PageHeader
         title={center.name}
         subtitle={`${center.city || 'Sin ciudad'} · ${center.admin_email || 'sin admin'} · ${adminCount} usuario(s) admin`}
-        actions={<a href={publicUrl} target="_blank" rel="noreferrer" className={actionBtn}>Ver público <ExternalLink size={14} aria-hidden="true" /></a>}
+        actions={<><Link href={`/superadmin/centers/${id}/view`} className={actionBtn}><Eye size={14} aria-hidden="true" /> Ver panel del centro</Link><a href={publicUrl} target="_blank" rel="noreferrer" className={actionBtn}>Ver público <ExternalLink size={14} aria-hidden="true" /></a></>}
       />
 
       <div className="grid gap-5 lg:grid-cols-3">

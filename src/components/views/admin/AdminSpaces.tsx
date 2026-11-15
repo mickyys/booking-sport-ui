@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminPath } from '@/context/ViewAsCenterContext';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -60,6 +61,7 @@ const SOURCE_BADGE: Record<ScheduleSource, { label: string; classes: string }> =
 
 export const AdminSpaces: React.FC<AdminSpacesProps> = ({ sportCenter }) => {
   const router = useRouter();
+  const adminPath = useAdminPath();
   const { getAccessTokenSilently } = useAuth0();
   const {
     adminSpaces,
@@ -293,7 +295,7 @@ export const AdminSpaces: React.FC<AdminSpacesProps> = ({ sportCenter }) => {
             return (
               <article
                 key={space.id}
-                onClick={() => router.push(`/admin/spaces/${space.id}`)}
+                onClick={() => router.push(adminPath(`/spaces/${space.id}`))}
                 className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300 hover:shadow-md"
               >
                 <div className="relative">
@@ -349,7 +351,7 @@ export const AdminSpaces: React.FC<AdminSpacesProps> = ({ sportCenter }) => {
                     <button
                       onClick={(event) => {
                         event.stopPropagation();
-                        router.push(`/admin/spaces/${space.id}`);
+                        router.push(adminPath(`/spaces/${space.id}`));
                       }}
                       className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-3 text-sm font-black text-white transition-colors hover:bg-slate-800"
                     >
