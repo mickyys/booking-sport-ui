@@ -121,6 +121,12 @@ export interface SuperadminBooking {
   // estos campos (sin guest_details ni user_id).
   customer_name?: string;
   customer_phone?: string;
+  payment_info?: {
+    mp_fee_amount?: number;
+    commission_amount?: number;
+    commission_rate?: number;
+    net_received_amount?: number;
+  };
   user_id?: string;
 }
 
