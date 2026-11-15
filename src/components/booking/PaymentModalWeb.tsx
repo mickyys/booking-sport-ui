@@ -13,6 +13,7 @@ import MockMPModal from './MockMPModal';
 import { DiscountPicker, CheckoutBenefits } from './DiscountPicker';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { showSlotLockToast } from './showSlotLockToast';
 
 interface PaymentModalWebProps {
   slot: TimeSlot;
@@ -105,7 +106,7 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
         setShowMockModal(true);
       } catch (error) {
         console.error("Mock payment init failed:", error);
-        toast.error("Error al iniciar el pago");
+        if (!showSlotLockToast(error)) toast.error("Error al iniciar el pago");
       } finally {
         setProcessing(null);
       }
@@ -389,7 +390,7 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
             <Info className="w-4 h-4 shrink-0 mt-0.5" />
             <p>
               {slot.paymentRequired
-                ? 'Serás redirigido a la pasarela de pago segura. No almacenamos tus datos bancarios.'
+                ? 'Tendrás 15 minutos para completar el pago en la pasarela segura. Si no lo completas, el horario se libera para otros. No almacenamos tus datos bancarios.'
                 : 'Esta reserva no requiere pago previo. El pago se realiza directamente en el recinto.'
               }
             </p>

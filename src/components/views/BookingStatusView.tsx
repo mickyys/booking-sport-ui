@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useBookingStore } from '@/store/useBookingStore';
 import { SuccessPage } from './booking/SuccessPage';
 import { FailurePage } from './booking/FailurePage';
+import { PaymentLockStatus } from './booking/PaymentLockStatus';
 
 export default function BookingStatusPage() {
   const router = useRouter();
@@ -86,6 +87,7 @@ export default function BookingStatusPage() {
   }
 
   if (currentBooking?.status === 'pending') {
+    const lockExpiresAt = (currentBooking as { lock_expires_at?: string }).lock_expires_at ?? null;
     return (
       <div className="max-w-xl mx-auto px-4 py-20 text-center bg-white rounded-3xl shadow-sm border border-slate-100 mt-8">
         <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -93,6 +95,7 @@ export default function BookingStatusPage() {
         </div>
         <h2 className="text-2xl font-bold mb-2">Pago en proceso</h2>
         <p className="text-slate-500 mb-8">{pendingMessage}</p>
+        {lockExpiresAt && <PaymentLockStatus lockExpiresAt={lockExpiresAt} />}
         <button
           onClick={() => window.location.reload()}
           className="bg-emerald-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-emerald-700 transition-colors w-full"

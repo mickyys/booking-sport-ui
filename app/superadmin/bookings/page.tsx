@@ -101,16 +101,39 @@ export default function BookingsPage() {
               ? Array.from({ length: 6 }).map((_, i) => <TableRow key={i}><TableCell colSpan={6}><div className="h-6 animate-pulse rounded bg-slate-100" /></TableCell></TableRow>)
               : data?.items.length === 0
               ? <TableRow><TableCell colSpan={6} className="py-10 text-center text-slate-600">No hay reservas con esos filtros.</TableCell></TableRow>
-              : data?.items.map((b) => (
+              : data?.items.map((b) => {
+                  const name = b.guest_details?.name?.trim() || b.customer_name?.trim() || '';
+                  const contact =
+                    b.guest_details?.phone?.trim() ||
+                    b.customer_phone?.trim() ||
+                    b.guest_details?.email?.trim() ||
+                    b.user_id ||
+                    '';
+                  return (
                   <TableRow key={b.id}>
                     <TableCell className="font-mono text-xs">{b.booking_code || b.id.slice(-6)}</TableCell>
                     <TableCell><p className="font-semibold text-slate-900">{b.sport_center_name || '—'}</p><p className="text-xs text-slate-600">{b.court_name || ''}</p></TableCell>
                     <TableCell className="whitespace-nowrap tabular-nums">{(b.local_date || b.date.slice(0, 10))} {String(b.hour).padStart(2, '0')}:{String(b.minutes).padStart(2, '0')}</TableCell>
-                    <TableCell className="text-sm">{b.guest_details?.email || b.user_id || '—'}</TableCell>
+                    <TableCell className="text-sm">
+                      {name || contact ? (
+                        <>
+                          {name && <p className="font-medium text-slate-900">{name}</p>}
+                          {contact && (
+                            <p
+                              className={name ? 'text-xs text-slate-600' : 'text-slate-900'}
+                              title={b.guest_details?.email || undefined}
+                            >
+                              {contact}
+                            </p>
+                          )}
+                        </>
+                      ) : '—'}
+                    </TableCell>
                     <TableCell><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${statusStyle[b.status] || statusStyle.expired}`}>{statusLabel[b.status] || b.status}</span></TableCell>
                     <TableCell className="text-right tabular-nums">{formatCLP(b.final_price)}{b.pending_amount > 0 && <p className="text-xs text-amber-700">Pendiente {formatCLP(b.pending_amount)}</p>}</TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
           </TableBody>
         </Table>
         <Pager page={page} limit={LIMIT} total={data?.total ?? 0} onPage={setPage} />
