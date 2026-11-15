@@ -22,6 +22,7 @@ import { getWhatsappUrl } from '@/utils/contact';
 import { ShareButton } from '@/components/sport-center/ShareButton';
 import { SpaceSelector, SpaceOption } from '@/components/sport-center/SpaceSelector';
 import { CancellationPolicyCard } from '@/components/sport-center/CancellationPolicyCard';
+import { PrivateAccessPanel, useCenterAccess } from '@/components/sport-center/PrivateAccessPanel';
 import { GoogleReviewsCard, GoogleRatingChip, useGoogleReviews } from '@/components/sport-center/GoogleReviewsCard';
 
 interface SportCenterDetailViewProps {
@@ -58,6 +59,7 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
   }, [courts.length, fetchCourts]);
 
   const branding = useMemo(() => resolveBranding(center?.branding), [center?.branding]);
+  const { isPrivate, hasAccess, checking } = useCenterAccess(center);
 
   // Facilities cacheadas por slug en el store (llegan con fetchSportCenterBySlug).
   const facilities = useMemo(
@@ -195,6 +197,11 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
           <div className="mx-auto max-w-6xl">
             <h1 className="mb-2 text-2xl font-extrabold text-white drop-shadow md:text-4xl">{center.name}</h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/90">
+              {isPrivate && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-2.5 py-1 text-xs font-bold text-amber-950">
+                  Privado
+                </span>
+              )}
               {reviews && <GoogleRatingChip data={reviews} />}
               <span className="flex items-center gap-1.5">
                 <MapPin className="h-4 w-4" aria-hidden="true" />
@@ -253,7 +260,15 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
               </section>
             )}
 
-            <section id="reservar" aria-labelledby="reservar-titulo" className="scroll-mt-4 rounded-2xl border border-slate-200 bg-white p-5">
+            {isPrivate && !hasAccess && <PrivateAccessPanel center={center} checking={checking} />}
+
+            <section
+              id="reservar"
+              aria-labelledby="reservar-titulo"
+              aria-disabled={isPrivate && !hasAccess}
+              {...(isPrivate && !hasAccess ? { inert: true } : {})}
+              className={`scroll-mt-4 rounded-2xl border border-slate-200 bg-white p-5 ${isPrivate && !hasAccess ? 'opacity-60' : ''}`}
+            >
               <h2 id="reservar-titulo" className="mb-1 text-lg font-bold text-slate-900">
                 Reservar{selectedSpace ? ` · ${selectedSpace.name}` : ''}
               </h2>

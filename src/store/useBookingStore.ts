@@ -499,6 +499,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         partialPaymentPercent: c.partial_payment_percent,
           services: c.services || [],
           isFeatured: c.is_featured,
+          isPrivate: !!c.is_private,
           distanceKm: c.distance_km ?? (c.distance != null ? c.distance / 1000 : undefined),
           coordinates: normalizeCoordinates(c.coordinates)
         } as SportCenter;
@@ -558,6 +559,8 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         services: c.services || [],
         coordinates: normalizeCoordinates(c.coordinates),
         googlePlaceId: c.google_place_id || undefined,
+        isPrivate: !!c.is_private,
+        accessForm: c.access_form || undefined,
       };
       const facilities: Facility[] = Array.isArray(data.facilities) ? data.facilities : [];
       set({
@@ -685,6 +688,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           partialPaymentPercent: center.partial_payment_percent,
           cancellationHours: center.cancellation_hours,
           retentionPercent: center.retention_percent,
+          isPrivate: !!center.is_private,
           image_url: center.image_url
         };
       }

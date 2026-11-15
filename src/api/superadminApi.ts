@@ -15,6 +15,7 @@ export interface SuperadminCenter {
   status_reason?: string;
   status_changed_at?: string;
   is_featured: boolean;
+  is_private?: boolean;
   featured_priority?: number;
   featured_until?: string;
   payment_mode?: 'pay_online' | 'pay_at_center' | '';
@@ -55,6 +56,7 @@ export interface CenterStats {
   blocked: number;
   featured: number;
   pay_online: number;
+  private?: number;
 }
 
 export interface BookingErrorLog {
@@ -204,6 +206,8 @@ export const sa = {
   setStatus: async (t: GetToken, id: string, status: CenterStatus, reason: string) =>
     (await api.put(`/superadmin/sport-centers/${id}/status`, { status, reason }, await cfg(t))).data,
 
+  setPrivate: async (t: GetToken, id: string, body: { is_private: boolean; reason?: string }) =>
+    (await api.put(`/superadmin/sport-centers/${id}/private`, body, await cfg(t))).data,
   setFeatured: async (t: GetToken, id: string, body: { is_featured: boolean; priority: number; until?: string | null }) =>
     (await api.put(`/superadmin/sport-centers/${id}/featured`, body, await cfg(t))).data,
 

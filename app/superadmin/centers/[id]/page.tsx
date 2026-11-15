@@ -3,11 +3,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useAuth0 } from '@auth0/auth0-react';
-import { ArrowLeft, Ban, CheckCircle2, ExternalLink, PauseCircle, Star } from 'lucide-react';
+import { ArrowLeft, Ban, CheckCircle2, ExternalLink, Lock, PauseCircle, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiError, CenterStatus, CommercialView, SuperadminCenter, sa } from '@/api/superadminApi';
 import { Field, PageHeader, PaymentModeBadge, StatusBadge, fieldCls, formatDateTime } from '@/components/superadmin/ui';
-import { FeaturedDialog, StatusDialog } from '@/components/superadmin/CenterDialogs';
+import { FeaturedDialog, PrivateDialog, StatusDialog } from '@/components/superadmin/CenterDialogs';
 
 const actionBtn = 'inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600';
 
@@ -20,6 +20,7 @@ export default function CenterDetailPage() {
   const [busy, setBusy] = useState(false);
   const [statusTarget, setStatusTarget] = useState<CenterStatus | null>(null);
   const [featuredOpen, setFeaturedOpen] = useState(false);
+  const [privateOpen, setPrivateOpen] = useState(false);
   const [error, setError] = useState('');
   const [commercial, setCommercial] = useState<CommercialView | null>(null);
   const [freeMonthBusy, setFreeMonthBusy] = useState(false);
@@ -125,6 +126,7 @@ export default function CenterDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={st} />
             <PaymentModeBadge mode={center.payment_mode} />
+            {center.is_private && <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-800"><Lock size={14} aria-hidden="true" />Privado</span>}
             {center.is_featured && <span className="inline-flex items-center gap-1 text-xs font-semibold text-yellow-800"><Star size={14} className="fill-yellow-400 text-yellow-500" aria-hidden="true" />Destacado · {center.featured_priority ?? 0}</span>}
           </div>
           {center.status_reason && st !== 'active' && (
@@ -176,6 +178,7 @@ export default function CenterDetailPage() {
           )}
           <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
             <button type="button" className={actionBtn} onClick={() => setFeaturedOpen(true)}><Star size={16} aria-hidden="true" /> Destacado</button>
+            <button type="button" className={actionBtn} onClick={() => setPrivateOpen(true)}><Lock size={16} aria-hidden="true" /> {center.is_private ? 'Privado' : 'Hacer privado'}</button>
             {st === 'active' ? (
               <>
                 <button type="button" className={actionBtn} onClick={() => setStatusTarget('suspended')}><PauseCircle size={16} aria-hidden="true" /> Suspender</button>
@@ -236,6 +239,14 @@ export default function CenterDetailPage() {
         onClose={() => setStatusTarget(null)}
         onConfirm={async (s, reason) => {
           try { await sa.setStatus(getAccessTokenSilently, id, s, reason); toast.success('Estado actualizado'); setStatusTarget(null); load(); }
+          catch (e) { toast.error(apiError(e)); }
+        }}
+      />
+      <PrivateDialog
+        center={privateOpen ? center : null}
+        onClose={() => setPrivateOpen(false)}
+        onConfirm={async (v) => {
+          try { await sa.setPrivate(getAccessTokenSilently, id, v); toast.success('Acceso del centro actualizado'); setPrivateOpen(false); load(); }
           catch (e) { toast.error(apiError(e)); }
         }}
       />

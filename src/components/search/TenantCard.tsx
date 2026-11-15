@@ -51,6 +51,11 @@ export const TenantCard: React.FC<TenantCardProps> = ({ center, index }) => {
           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
           {courtsCount} cancha{courtsCount !== 1 ? 's' : ''}
         </div>
+        {center.isPrivate && (
+          <div className="absolute bottom-4 left-4 flex items-center gap-1 bg-slate-900/85 px-3 py-1.5 rounded-full text-xs font-bold text-white shadow-sm">
+            Privado
+          </div>
+        )}
         {/* Destacado badge */}
         {center.isFeatured && (
           <div className="absolute top-4 right-4 flex items-center gap-1 bg-amber-400 px-3 py-1.5 rounded-full text-xs font-bold text-amber-950 shadow-sm">

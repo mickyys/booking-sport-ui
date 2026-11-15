@@ -108,3 +108,55 @@ export const FeaturedDialog: React.FC<{
     </Dialog>
   );
 };
+
+export const PrivateDialog: React.FC<{
+  center: SuperadminCenter | null;
+  onClose: () => void;
+  onConfirm: (v: { is_private: boolean; reason: string }) => Promise<void>;
+}> = ({ center, onClose, onConfirm }) => {
+  const [priv, setPriv] = useState(false);
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!center) return;
+    setPriv(!!center.is_private);
+    setReason('');
+  }, [center]);
+
+  const needsReason = priv && !center?.is_private;
+  const invalid = needsReason && reason.trim().length < 5;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (invalid) return;
+    setBusy(true);
+    try {
+      await onConfirm({ is_private: priv, reason: reason.trim() });
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Dialog open={!!center} onOpenChange={(o) => !o && !busy && onClose()}>
+      <DialogContent>
+        <form onSubmit={submit} className="space-y-4">
+          <DialogHeader>
+            <DialogTitle>Centro privado</DialogTitle>
+            <DialogDescription>{center?.name}</DialogDescription>
+          </DialogHeader>
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold text-slate-800">
+            <input type="checkbox" checked={priv} onChange={(e) => setPriv(e.target.checked)} className="h-5 w-5 accent-emerald-700" />
+            Exigir acceso aprobado para reservar
+          </label>
+          <Field label={needsReason ? 'Motivo (obligatorio)' : 'Motivo (opcional)'} htmlFor="priv-reason">
+            <textarea id="priv-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} className={fieldCls} />
+          </Field>
+          <DialogFooter>
+            <button type="button" onClick={onClose} disabled={busy} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-semibold">Cancelar</button>
+            <button type="submit" disabled={busy || invalid} className="min-h-11 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white disabled:opacity-50">Guardar</button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};

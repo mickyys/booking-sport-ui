@@ -98,6 +98,7 @@ export interface SportCenter {
   partialPaymentPercent?: number;
   payment_mode?: 'pay_online' | 'pay_at_center' | '';
   isPrivate?: boolean;
+  accessForm?: AccessForm;
   subdomain?: string;
   isFeatured?: boolean;
   distanceKm?: number;
@@ -463,4 +464,24 @@ export interface Tenant {
   name: string;
   branding?: TenantBranding;
   canonical_host: string;
+}
+
+export type AccessFieldType = 'text' | 'textarea' | 'email' | 'select' | 'number';
+
+export interface AccessField {
+  key: string;
+  label: string;
+  type: AccessFieldType;
+  required: boolean;
+  locked?: boolean;
+  options?: string[];
+  placeholder?: string;
+  help?: string;
+}
+
+export interface AccessForm {
+  enabled: boolean;
+  title?: string;
+  description?: string;
+  fields: AccessField[];
 }

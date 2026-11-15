@@ -11,6 +11,7 @@ import {
   Plug,
   BadgePercent,
   Star,
+  Lock,
 } from 'lucide-react';
 import { PanelSidebar, type PanelNavItem } from '@/components/layout/PanelSidebar';
 
@@ -20,6 +21,7 @@ const navItems: PanelNavItem[] = [
   { to: '/admin/recurring', icon: Repeat, label: 'Reservas fijas' },
   { to: '/admin/spaces', icon: Trophy, label: 'Espacios' },
   { to: '/admin/socios', icon: BadgePercent, label: 'Socios' },
+  { to: '/admin/solicitudes', icon: Lock, label: 'Solicitudes' },
   { to: '/admin/users', icon: Users, label: 'Usuarios' },
   { to: '/admin/qr', icon: QrCode, label: 'QR' },
   { to: '/admin/settings', icon: Settings, label: 'Configuración' },
