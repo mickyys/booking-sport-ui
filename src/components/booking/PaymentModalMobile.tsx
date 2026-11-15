@@ -71,6 +71,8 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
   const baseNow = payPartial ? partialAmount : effectivePrice;
   const serviceFee = serviceFeePercent > 0 ? Math.round((baseNow * serviceFeePercent) / 100) : 0;
 
+  const showPaymentSummary = !isFreeWithBenefit && (isPaymentRequired || slot.paymentOptional) && baseNow > 0;
+
   const validate = () => {
     const newErrors: Partial<GuestDetails> = {};
     if (!user && !guestDetails.name) newErrors.name = 'Requerido';
@@ -266,6 +268,11 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
                     ? `Pagarás $${partialAmount.toLocaleString('es-CL')} ahora y $${(effectivePrice - partialAmount).toLocaleString('es-CL')} en el club.`
                     : 'Pagarás el total de la reserva ahora.'}
                 </p>
+              </div>
+            )}
+
+            {showPaymentSummary && (
+              <div className="mb-6 bg-blue-50/50 border border-blue-100 rounded-xl p-4">
                 {serviceFee > 0 && (
                   <div className="space-y-1 pb-2 text-xs text-slate-600">
                     <div className="flex justify-between">
