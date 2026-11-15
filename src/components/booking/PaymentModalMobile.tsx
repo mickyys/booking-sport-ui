@@ -11,6 +11,7 @@ import { formatChileanPhone, normalizeChileanPhone } from '../../utils/phone';
 import CancellationPolicyModal from '../search/CancellationPolicyModal';
 import { DiscountPicker, CheckoutBenefits } from './DiscountPicker';
 import { toast } from 'sonner';
+import { getAccessApplicant } from '../../api/accessApi';
 import axios from 'axios';
 
 interface PaymentModalMobileProps {
@@ -36,8 +37,8 @@ export const PaymentModalMobile: React.FC<PaymentModalMobileProps> = ({
   const hoursUntilBooking = differenceInHours(slot.date, new Date());
   const hasLimitedRefund = center?.cancellationHours !== undefined && hoursUntilBooking < center.cancellationHours;
   const [guestDetails, setGuestDetails] = useState<GuestDetails>({
-    name: user?.name || '',
-    email: user?.email || '',
+    name: user?.name || getAccessApplicant(slot.centerId)?.name || '',
+    email: user?.email || getAccessApplicant(slot.centerId)?.email || '',
     phone: ''
   });
   const [errors, setErrors] = useState<Partial<GuestDetails>>({});

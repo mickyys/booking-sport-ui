@@ -22,7 +22,7 @@ import { getWhatsappUrl } from '@/utils/contact';
 import { ShareButton } from '@/components/sport-center/ShareButton';
 import { SpaceSelector, SpaceOption } from '@/components/sport-center/SpaceSelector';
 import { CancellationPolicyCard } from '@/components/sport-center/CancellationPolicyCard';
-import { PrivateAccessPanel, useCenterAccess } from '@/components/sport-center/PrivateAccessPanel';
+import { AccessVerifyModal, RegisterModal, useCenterAccess } from '@/components/sport-center/PrivateAccessPanel';
 import { GoogleReviewsCard, GoogleRatingChip, useGoogleReviews } from '@/components/sport-center/GoogleReviewsCard';
 
 interface SportCenterDetailViewProps {
@@ -59,7 +59,8 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
   }, [courts.length, fetchCourts]);
 
   const branding = useMemo(() => resolveBranding(center?.branding), [center?.branding]);
-  const { isPrivate, hasAccess, checking } = useCenterAccess(center);
+  const { isPrivate, hasAccess } = useCenterAccess(center);
+  const [registerOpen, setRegisterOpen] = useState(false);
 
   // Facilities cacheadas por slug en el store (llegan con fetchSportCenterBySlug).
   const facilities = useMemo(
@@ -217,6 +218,22 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 lg:py-8">
+        {isPrivate && (
+          hasAccess ? (
+            <p className="mb-3 flex items-center gap-2 rounded-xl bg-green-50 px-3 py-2 text-sm font-semibold text-green-800">
+              Acceso verificado · ya puedes reservar
+            </p>
+          ) : center.accessForm?.enabled ? (
+            <button
+              type="button"
+              onClick={() => setRegisterOpen(true)}
+              className="mb-3 flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
+              style={{ backgroundColor: branding.primary }}
+            >
+              Registrarse
+            </button>
+          ) : null
+        )}
         {/* Acciones rápidas */}
         <nav aria-label="Acciones rápidas" className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <a href={googleMapsDirectionsUrl(mapsTarget)} target="_blank" rel="noopener noreferrer" className={actionClass}>
@@ -260,15 +277,7 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
               </section>
             )}
 
-            {isPrivate && !hasAccess && <PrivateAccessPanel center={center} checking={checking} />}
-
-            <section
-              id="reservar"
-              aria-labelledby="reservar-titulo"
-              aria-disabled={isPrivate && !hasAccess}
-              {...(isPrivate && !hasAccess ? { inert: true } : {})}
-              className={`scroll-mt-4 rounded-2xl border border-slate-200 bg-white p-5 ${isPrivate && !hasAccess ? 'opacity-60' : ''}`}
-            >
+            <section id="reservar" aria-labelledby="reservar-titulo" className="scroll-mt-4 rounded-2xl border border-slate-200 bg-white p-5">
               <h2 id="reservar-titulo" className="mb-1 text-lg font-bold text-slate-900">
                 Reservar{selectedSpace ? ` · ${selectedSpace.name}` : ''}
               </h2>
@@ -431,6 +440,18 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
                     image: center.image,
                     centerId,
                   });
+            if (isPrivate && !hasAccess) {
+              return (
+                <AccessVerifyModal
+                  center={center}
+                  onClose={() => setSelectedSlot(null)}
+                  onRegister={() => {
+                    setSelectedSlot(null);
+                    setRegisterOpen(true);
+                  }}
+                />
+              );
+            }
             return (
               <PaymentModal
                 slot={selectedSlot}
@@ -442,6 +463,7 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
             );
           })()}
       </AnimatePresence>
+      {registerOpen && <RegisterModal center={center} onClose={() => setRegisterOpen(false)} />}
     </div>
   );
 };

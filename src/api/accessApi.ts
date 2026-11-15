@@ -50,9 +50,22 @@ export function getAccessToken(centerId: string): string {
   }
 }
 
-export function saveAccessToken(centerId: string, token: string, expiresAt: string) {
+export interface AccessApplicant { name?: string; email?: string; rut?: string }
+
+export function saveAccessToken(centerId: string, token: string, expiresAt: string, applicant?: AccessApplicant) {
   if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_PREFIX + centerId, JSON.stringify({ token, expires_at: expiresAt }));
+  window.localStorage.setItem(STORAGE_PREFIX + centerId, JSON.stringify({ token, expires_at: expiresAt, applicant }));
+}
+
+/** Datos de la solicitud aprobada, para prellenar el contacto de la reserva. */
+export function getAccessApplicant(centerId: string): AccessApplicant | null {
+  if (typeof window === 'undefined' || !centerId || !getAccessToken(centerId)) return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_PREFIX + centerId);
+    return raw ? (JSON.parse(raw).applicant ?? null) : null;
+  } catch {
+    return null;
+  }
 }
 
 export function clearAccessToken(centerId: string) {
@@ -77,8 +90,16 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+export class AccessApiError extends Error {
+  status?: number;
+  constructor(message: string, status?: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 function errMsg(e: any): Error {
-  return new Error(e?.response?.data?.error || 'No se pudo completar la operación');
+  return new AccessApiError(e?.response?.data?.error || 'No se pudo completar la operación', e?.response?.status);
 }
 
 export function isAccessError(e: any): boolean {
