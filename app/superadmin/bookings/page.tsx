@@ -115,7 +115,7 @@ export default function BookingsPage() {
                     <TableCell className="font-mono text-xs">{b.booking_code || b.id.slice(-6)}</TableCell>
                     <TableCell><p className="font-semibold text-slate-900">{b.sport_center_name || '—'}</p><p className="text-xs text-slate-600">{b.court_name || ''}</p></TableCell>
                     <TableCell className="whitespace-nowrap tabular-nums">{(b.local_date || b.date.slice(0, 10))} {String(b.hour).padStart(2, '0')}:{String(b.minutes).padStart(2, '0')}</TableCell>
-                    <TableCell>{b.created_at ? new Intl.DateTimeFormat('es-CL', { timeZone: 'America/Santiago' }).format(new Date(b.created_at)) : '—'}</TableCell>
+                    <TableCell>{b.created_at ? new Intl.DateTimeFormat('es-CL', { timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(b.created_at)) : '—'}</TableCell>
                     <TableCell className="text-sm">
                       {name || contact ? (
                         <>
