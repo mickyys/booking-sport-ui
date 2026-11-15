@@ -93,15 +93,15 @@ export default function BookingsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Código</TableHead><TableHead>Centro / cancha</TableHead><TableHead>Fecha</TableHead>
-              <TableHead>Cliente</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Monto</TableHead>
+              <TableHead>Creada</TableHead><TableHead>Cliente</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Monto</TableHead>
               <TableHead className="text-right">Comisión MP</TableHead><TableHead className="text-right">ReservaloYA</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading && !data
-              ? Array.from({ length: 6 }).map((_, i) => <TableRow key={i}><TableCell colSpan={8}><div className="h-6 animate-pulse rounded bg-slate-100" /></TableCell></TableRow>)
+              ? Array.from({ length: 7 }).map((_, i) => <TableRow key={i}><TableCell colSpan={9}><div className="h-6 animate-pulse rounded bg-slate-100" /></TableCell></TableRow>)
               : data?.items.length === 0
-              ? <TableRow><TableCell colSpan={8} className="py-10 text-center text-slate-600">No hay reservas con esos filtros.</TableCell></TableRow>
+              ? <TableRow><TableCell colSpan={9} className="py-10 text-center text-slate-600">No hay reservas con esos filtros.</TableCell></TableRow>
               : data?.items.map((b) => {
                   const name = b.guest_details?.name?.trim() || b.customer_name?.trim() || '';
                   const contact =
@@ -115,6 +115,7 @@ export default function BookingsPage() {
                     <TableCell className="font-mono text-xs">{b.booking_code || b.id.slice(-6)}</TableCell>
                     <TableCell><p className="font-semibold text-slate-900">{b.sport_center_name || '—'}</p><p className="text-xs text-slate-600">{b.court_name || ''}</p></TableCell>
                     <TableCell className="whitespace-nowrap tabular-nums">{(b.local_date || b.date.slice(0, 10))} {String(b.hour).padStart(2, '0')}:{String(b.minutes).padStart(2, '0')}</TableCell>
+                    <TableCell>{b.created_at ? new Intl.DateTimeFormat('es-CL', { timeZone: 'America/Santiago' }).format(new Date(b.created_at)) : '—'}</TableCell>
                     <TableCell className="text-sm">
                       {name || contact ? (
                         <>

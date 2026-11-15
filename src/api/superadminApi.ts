@@ -116,6 +116,7 @@ export interface SuperadminBooking {
   hour: number;
   minutes: number;
   status: string;
+  created_at?: string;
   payment_method?: string;
   final_price: number;
   paid_amount: number;
