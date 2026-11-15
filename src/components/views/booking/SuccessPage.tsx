@@ -63,7 +63,8 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
             ? `${String(booking.hour).padStart(2, '0')}:${String(booking.minutes ?? 0).padStart(2, '0')} hrs`
             : '';
 
-    const displayPrice = booking?.paidAmount ?? 0;
+    const serviceFee = booking?.serviceFeeAmount ?? 0;
+    const displayPrice = (booking?.paidAmount ?? 0) + serviceFee;
     const pendingAmount = booking?.pendingAmount ?? 0;
     const isTotalPaid = pendingAmount === 0;
     const centerName = booking?.sport_center_name ?? booking?.sportCenterName ?? 'Cancha';
@@ -209,6 +210,11 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onGoHome, onGoToProfil
                                             <p className="text-lg font-bold text-emerald-600">
                                                 ${(isFreeBooking ? priceAtVenue : displayPrice)?.toLocaleString('es-CL') ?? '0'}
                                             </p>
+                                            {!isFreeBooking && serviceFee > 0 && (
+                                                <p className="text-xs text-slate-500 mt-0.5">
+                                                    Reserva ${(booking?.paidAmount ?? 0).toLocaleString('es-CL')} + cargo por servicio ${serviceFee.toLocaleString('es-CL')}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
 

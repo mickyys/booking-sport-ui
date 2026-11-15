@@ -206,6 +206,7 @@ export interface FacilityBookingDay {
   price: number;
   paid_amount: number;
   pending_amount: number;
+  service_fee_amount?: number;
   is_partial_payment: boolean;
   created_at: string;
 }

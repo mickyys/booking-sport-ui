@@ -283,6 +283,7 @@ export interface Booking {
   payment_method?: string;
   paidAmount?: number;
   pendingAmount?: number;
+  serviceFeeAmount?: number;
   isPartialPayment?: boolean;
   partialPaymentPaid?: boolean;
 
@@ -400,6 +401,7 @@ export interface BookingDTO {
   updated_at: string
   paid_amount?: number;
   pending_amount?: number;
+  service_fee_amount?: number;
   is_partial_payment?: boolean;
   partial_payment_paid?: boolean;
 }

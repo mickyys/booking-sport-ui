@@ -157,6 +157,20 @@ export const DashboardDetailDialog: React.FC<DashboardDetailDialogProps> = ({
               </div>
             )}
 
+            {(booking.serviceFeeAmount ?? 0) > 0 && (
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Cobrado al cliente</span>
+                  <span className="font-black text-slate-800">
+                    {formatCLP((booking.paidAmount ?? 0) + (booking.serviceFeeAmount ?? 0))}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Incluye cargo por servicio de {formatCLP(booking.serviceFeeAmount)}. El centro recibe {formatCLP(booking.paidAmount)}.
+                </p>
+              </div>
+            )}
+
             {booking.isPartialPayment && (
               <div
                 className={`rounded-xl border p-4 ${

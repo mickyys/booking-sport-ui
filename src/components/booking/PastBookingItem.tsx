@@ -34,6 +34,11 @@ export const PastBookingItem: React.FC<PastBookingItemProps> = ({ booking }) => 
                 {booking.isPartialPayment && (
                     <span className="text-[10px] font-medium text-slate-400">Total</span>
                 )}
+                {(booking.serviceFeeAmount ?? 0) > 0 && (
+                    <span className="text-[10px] font-medium text-slate-400 block">
+                        + cargo servicio ${booking.serviceFeeAmount?.toLocaleString('es-CL')}
+                    </span>
+                )}
             </div>
         </div>
     );

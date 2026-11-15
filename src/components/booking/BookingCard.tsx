@@ -55,6 +55,12 @@ export const BookingCard: React.FC<BookingCardProps> = ({ booking, courts, isLoa
                                 <span className="text-slate-500 font-medium">Pagado Online:</span>
                                 <span className="font-bold text-emerald-600">${booking.paidAmount?.toLocaleString('es-CL')}</span>
                             </div>
+                            {(booking.serviceFeeAmount ?? 0) > 0 && (
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-slate-500 font-medium">Cargo por servicio:</span>
+                                    <span className="font-bold text-slate-700">${booking.serviceFeeAmount?.toLocaleString('es-CL')}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between items-center text-xs">
                                 <span className="text-slate-500 font-medium">Pendiente en Local:</span>
                                 <span className="font-black text-rose-600">${booking.pendingAmount?.toLocaleString('es-CL')}</span>
@@ -68,9 +74,19 @@ export const BookingCard: React.FC<BookingCardProps> = ({ booking, courts, isLoa
                         </div>
                     ) : (
                         booking.price !== undefined && (
-                            <p className="font-bold text-emerald-700 mt-1">
-                                ${booking.price.toLocaleString('es-CL')}
-                            </p>
+                            <>
+                                <p className="font-bold text-emerald-700 mt-1">
+                                    ${booking.price.toLocaleString('es-CL')}
+                                </p>
+                                {(booking.serviceFeeAmount ?? 0) > 0 && (
+                                    <p className="text-xs text-slate-500">
+                                        + cargo por servicio ${booking.serviceFeeAmount?.toLocaleString('es-CL')} ={" "}
+                                        <span className="font-bold text-slate-700">
+                                            ${(booking.price + (booking.serviceFeeAmount ?? 0)).toLocaleString('es-CL')} pagado
+                                        </span>
+                                    </p>
+                                )}
+                            </>
                         )
                     )}
                 </div>

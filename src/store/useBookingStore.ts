@@ -33,6 +33,7 @@ const mapAdminCourtSchedules = (courts: any[], partialPaymentFallback: boolean) 
       isPartialPayment: slot.is_partial_payment,
       paidAmount: slot.paid_amount,
       pendingAmount: slot.pending_amount,
+      serviceFeeAmount: slot.service_fee_amount,
       partialPaymentPaid: slot.partial_payment_paid
     }))
   }));
@@ -146,6 +147,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           paymentMethod: b.booking_detail.payment_method,
           paidAmount: b.booking_detail.paid_amount,
           pendingAmount: b.booking_detail.pending_amount,
+          serviceFeeAmount: b.booking_detail.service_fee_amount,
           createdAt: b.created_at
 
         }));
@@ -237,6 +239,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
         paymentMethod: b.payment_method || 'internal',
         paidAmount: b.paid_amount,
           pendingAmount: b.pending_amount,
+          serviceFeeAmount: b.service_fee_amount,
           isPartialPayment: b.is_partial_payment,
           partialPaymentPaid: b.partial_payment_paid,
         createdAt: b.created_at
@@ -348,6 +351,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           ...data.booking_detail, 
           paidAmount: data.booking_detail.paid_amount,
           pendingAmount: data.booking_detail.pending_amount,
+          serviceFeeAmount: data.booking_detail.service_fee_amount,
           isPartialPayment: data.booking_detail.is_partial_payment,
           cancellationPolicy: data.cancellation_policy,
           canCancel: data.can_cancel,
@@ -766,6 +770,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           isPartialPayment: slot.is_partial_payment,
           paidAmount: slot.paid_amount,
           pendingAmount: slot.pending_amount,
+          serviceFeeAmount: slot.service_fee_amount,
           partialPaymentPaid: slot.partial_payment_paid
         }))
       }));
@@ -1171,6 +1176,7 @@ export const useBookingStore = create<BookingState, [["zustand/persist", Partial
           paymentMethod: b.payment_method,
           cancelledBy: b.cancelled_by, paidAmount: b.paid_amount,
           pendingAmount: b.pending_amount,
+          serviceFeeAmount: b.service_fee_amount,
           isPartialPayment: b.is_partial_payment,
           partialPaymentPaid: b.partial_payment_paid,
           createdAt: b.created_at

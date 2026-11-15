@@ -109,6 +109,7 @@ type SlotData = {
     partialPaymentPaid?: boolean;
     paidAmount?: number;
     pendingAmount?: number;
+    serviceFeeAmount?: number;
     duration_minutes?: number;
 };
 
@@ -1231,6 +1232,12 @@ export const AdminAgenda: React.FC = () => {
                                 <dt>Total</dt>
                                 <dd>{formatCLP(slot.price)}</dd>
                             </div>
+                            {(slot.serviceFeeAmount ?? 0) > 0 && (
+                                <div>
+                                    <dt>Cobrado al cliente</dt>
+                                    <dd>{formatCLP((slot.paidAmount ?? 0) + (slot.serviceFeeAmount ?? 0))} (cargo {formatCLP(slot.serviceFeeAmount ?? 0)})</dd>
+                                </div>
+                            )}
                             {slot.isPartialPayment && (
                                 <>
                                     <div>
@@ -1381,6 +1388,20 @@ export const AdminAgenda: React.FC = () => {
                                     {formatCLP(selectedSlot.price)}
                                 </span>
                             </div>
+
+                            {(selectedSlot.serviceFeeAmount ?? 0) > 0 && (
+                                <div className="bg-slate-50 rounded-2xl p-4 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500 font-semibold">Cobrado al cliente</span>
+                                        <span className="font-bold text-slate-900">
+                                            {formatCLP((selectedSlot.paidAmount ?? 0) + (selectedSlot.serviceFeeAmount ?? 0))}
+                                        </span>
+                                    </div>
+                                    <p className="mt-1 text-xs text-slate-500">
+                                        Incluye cargo por servicio de {formatCLP(selectedSlot.serviceFeeAmount ?? 0)}; el centro recibe {formatCLP(selectedSlot.paidAmount ?? 0)}.
+                                    </p>
+                                </div>
+                            )}
 
                             {selectedSlot.isPartialPayment && (
                                 <div className="bg-emerald-50/40 border border-emerald-100 rounded-2xl p-4 space-y-2">
