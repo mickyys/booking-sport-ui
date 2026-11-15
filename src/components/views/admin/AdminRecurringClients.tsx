@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminPath } from '@/context/ViewAsCenterContext';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -35,6 +36,7 @@ const DEFAULT_FILTERS: RecurringFilters = {
 export const AdminRecurringClients: React.FC = () => {
   const { getAccessTokenSilently } = useAuth0();
   const router = useRouter();
+  const adminPath = useAdminPath();
   const {
     recurringReservations,
     recurringSeries,
@@ -148,7 +150,7 @@ export const AdminRecurringClients: React.FC = () => {
         </h1>
 
         <Link
-          href="/admin"
+          href={adminPath()}
           className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-black text-white transition-colors hover:bg-emerald-600"
         >
           <Plus size={16} />
@@ -173,7 +175,7 @@ export const AdminRecurringClients: React.FC = () => {
         hasFinished={stats.finished > 0}
         onSelect={handleSelect}
         onClearFilters={handleClearFilters}
-        onGoToAgenda={() => router.push('/admin')}
+        onGoToAgenda={() => router.push(adminPath())}
         onShowFinished={() => setFilters({ ...DEFAULT_FILTERS, tab: 'finished' })}
       />
 
