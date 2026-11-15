@@ -94,13 +94,14 @@ export default function BookingsPage() {
             <TableRow>
               <TableHead>Código</TableHead><TableHead>Centro / cancha</TableHead><TableHead>Fecha</TableHead>
               <TableHead>Cliente</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Monto</TableHead>
+              <TableHead className="text-right">Comisión MP</TableHead><TableHead className="text-right">ReservaloYA</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading && !data
-              ? Array.from({ length: 6 }).map((_, i) => <TableRow key={i}><TableCell colSpan={6}><div className="h-6 animate-pulse rounded bg-slate-100" /></TableCell></TableRow>)
+              ? Array.from({ length: 6 }).map((_, i) => <TableRow key={i}><TableCell colSpan={8}><div className="h-6 animate-pulse rounded bg-slate-100" /></TableCell></TableRow>)
               : data?.items.length === 0
-              ? <TableRow><TableCell colSpan={6} className="py-10 text-center text-slate-600">No hay reservas con esos filtros.</TableCell></TableRow>
+              ? <TableRow><TableCell colSpan={8} className="py-10 text-center text-slate-600">No hay reservas con esos filtros.</TableCell></TableRow>
               : data?.items.map((b) => {
                   const name = b.guest_details?.name?.trim() || b.customer_name?.trim() || '';
                   const contact =
@@ -131,6 +132,15 @@ export default function BookingsPage() {
                     </TableCell>
                     <TableCell><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${statusStyle[b.status] || statusStyle.expired}`}>{statusLabel[b.status] || b.status}</span></TableCell>
                     <TableCell className="text-right tabular-nums">{formatCLP(b.final_price)}{b.pending_amount > 0 && <p className="text-xs text-amber-700">Pendiente {formatCLP(b.pending_amount)}</p>}</TableCell>
+                    <TableCell className="text-right tabular-nums">{b.payment_info?.mp_fee_amount ? formatCLP(b.payment_info.mp_fee_amount) : '—'}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {b.payment_info?.commission_amount ? (
+                        <>
+                          {formatCLP(b.payment_info.commission_amount)}
+                          {!!b.payment_info.commission_rate && <p className="text-xs text-slate-600">{b.payment_info.commission_rate}%</p>}
+                        </>
+                      ) : '—'}
+                    </TableCell>
                   </TableRow>
                   );
                 })}

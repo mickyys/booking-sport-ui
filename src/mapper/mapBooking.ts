@@ -30,6 +30,7 @@ export function mapBooking(dto: BookingDTO): Booking {
     paymentMethod: dto.payment_method === 'venue' ? 'cash' : dto.payment_method,
     paidAmount: dto.paid_amount,
     pendingAmount: dto.pending_amount,
+    serviceFeeAmount: dto.service_fee_amount,
     isPartialPayment: dto.is_partial_payment,
     partialPaymentPaid: dto.partial_payment_paid,
 

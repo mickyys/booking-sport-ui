@@ -12,6 +12,7 @@ import CancellationPolicyModal from '../search/CancellationPolicyModal';
 import MockMPModal from './MockMPModal';
 import { DiscountPicker, CheckoutBenefits } from './DiscountPicker';
 import { toast } from 'sonner';
+import { getAccessApplicant } from '../../api/accessApi';
 import axios from 'axios';
 import { showSlotConflictToast } from './showSlotConflictToast';
 import { parseSlotConflict } from '../../lib/paymentWindow';
@@ -39,8 +40,8 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
   const hoursUntilBooking = differenceInHours(slot.date, new Date());
   const hasLimitedRefund = center?.cancellationHours !== undefined && hoursUntilBooking < center.cancellationHours;
   const [guestDetails, setGuestDetails] = useState<GuestDetails>({
-    name: user?.name || '',
-    email: user?.email || '',
+    name: user?.name || getAccessApplicant(slot.centerId)?.name || '',
+    email: user?.email || getAccessApplicant(slot.centerId)?.email || '',
     phone: ''
   });
   const [errors, setErrors] = useState<Partial<GuestDetails>>({});
@@ -71,6 +72,12 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
   const partialAmount = isPartialAvailable && center?.partialPaymentPercent
     ? Math.round(effectivePrice * ((center.partialPaymentPercent || 0) / 100))
     : 0;
+
+  const serviceFeePercent = center?.serviceFeePercent ?? 0;
+  const baseNow = payPartial ? partialAmount : effectivePrice;
+  const serviceFee = serviceFeePercent > 0 ? Math.round((baseNow * serviceFeePercent) / 100) : 0;
+
+  const showPaymentSummary = !isFreeWithBenefit && (isPaymentRequired || slot.paymentOptional) && baseNow > 0;
 
   const validate = () => {
     const newErrors: Partial<GuestDetails> = {};
@@ -308,10 +315,27 @@ export const PaymentModalWeb: React.FC<PaymentModalWebProps> = ({
                     ? `Pagarás $${partialAmount.toLocaleString('es-CL')} ahora y $${(effectivePrice - partialAmount).toLocaleString('es-CL')} en el club.`
                     : 'Pagarás el total de la reserva ahora.'}
                 </p>
+              </div>
+            )}
+
+            {showPaymentSummary && (
+              <div className="mb-6 bg-blue-50/50 border border-blue-100 rounded-xl p-4">
+                {serviceFee > 0 && (
+                  <div className="space-y-1 pb-2 text-xs text-slate-600">
+                    <div className="flex justify-between">
+                      <span>Precio de la reserva</span>
+                      <span>${baseNow.toLocaleString('es-CL')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Cargo por servicio ({serviceFeePercent}%)</span>
+                      <span>${serviceFee.toLocaleString('es-CL')}</span>
+                    </div>
+                  </div>
+                )}
                 <div className="flex justify-between items-center pt-2 border-t border-blue-100/50">
                   <span className="text-xs font-medium text-slate-600 uppercase tracking-wider">Monto a pagar:</span>
                   <span className="text-lg font-black text-blue-700">
-                    ${(payPartial ? partialAmount : effectivePrice).toLocaleString('es-CL')}
+                    ${(baseNow + serviceFee).toLocaleString('es-CL')}
                   </span>
                 </div>
               </div>

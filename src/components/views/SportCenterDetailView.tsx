@@ -22,6 +22,7 @@ import { getWhatsappUrl } from '@/utils/contact';
 import { ShareButton } from '@/components/sport-center/ShareButton';
 import { SpaceSelector, SpaceOption } from '@/components/sport-center/SpaceSelector';
 import { CancellationPolicyCard } from '@/components/sport-center/CancellationPolicyCard';
+import { AccessVerifyModal, RegisterModal, useCenterAccess } from '@/components/sport-center/PrivateAccessPanel';
 import { GoogleReviewsCard, GoogleRatingChip, useGoogleReviews } from '@/components/sport-center/GoogleReviewsCard';
 
 interface SportCenterDetailViewProps {
@@ -58,6 +59,8 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
   }, [courts.length, fetchCourts]);
 
   const branding = useMemo(() => resolveBranding(center?.branding), [center?.branding]);
+  const { isPrivate, hasAccess } = useCenterAccess(center);
+  const [registerOpen, setRegisterOpen] = useState(false);
 
   // Facilities cacheadas por slug en el store (llegan con fetchSportCenterBySlug).
   const facilities = useMemo(
@@ -195,6 +198,11 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
           <div className="mx-auto max-w-6xl">
             <h1 className="mb-2 text-2xl font-extrabold text-white drop-shadow md:text-4xl">{center.name}</h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/90">
+              {isPrivate && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-2.5 py-1 text-xs font-bold text-amber-950">
+                  Privado
+                </span>
+              )}
               {reviews && <GoogleRatingChip data={reviews} />}
               <span className="flex items-center gap-1.5">
                 <MapPin className="h-4 w-4" aria-hidden="true" />
@@ -210,6 +218,22 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 lg:py-8">
+        {isPrivate && (
+          hasAccess ? (
+            <p className="mb-3 flex items-center gap-2 rounded-xl bg-green-50 px-3 py-2 text-sm font-semibold text-green-800">
+              Acceso verificado · ya puedes reservar
+            </p>
+          ) : center.accessForm?.enabled ? (
+            <button
+              type="button"
+              onClick={() => setRegisterOpen(true)}
+              className="mb-3 flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
+              style={{ backgroundColor: branding.primary }}
+            >
+              Registrarse
+            </button>
+          ) : null
+        )}
         {/* Acciones rápidas */}
         <nav aria-label="Acciones rápidas" className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <a href={googleMapsDirectionsUrl(mapsTarget)} target="_blank" rel="noopener noreferrer" className={actionClass}>
@@ -416,6 +440,18 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
                     image: center.image,
                     centerId,
                   });
+            if (isPrivate && !hasAccess) {
+              return (
+                <AccessVerifyModal
+                  center={center}
+                  onClose={() => setSelectedSlot(null)}
+                  onRegister={() => {
+                    setSelectedSlot(null);
+                    setRegisterOpen(true);
+                  }}
+                />
+              );
+            }
             return (
               <PaymentModal
                 slot={selectedSlot}
@@ -427,6 +463,7 @@ export const SportCenterDetailView: React.FC<SportCenterDetailViewProps> = ({ sl
             );
           })()}
       </AnimatePresence>
+      {registerOpen && <RegisterModal center={center} onClose={() => setRegisterOpen(false)} />}
     </div>
   );
 };

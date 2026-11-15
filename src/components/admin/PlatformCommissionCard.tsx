@@ -57,7 +57,7 @@ export const PlatformCommissionCard: React.FC = () => {
         </div>
         <div className="space-y-1">
           <p className="text-sm font-semibold text-slate-800">
-            {billedSeparately ? 'Se factura aparte' : `${commission.effective}% por cada reserva pagada online`}
+            {billedSeparately ? 'Se factura aparte' : `${commission.effective}% sobre el precio, lo paga el cliente. Recibes el precio completo`}
           </p>
           <p className="flex items-center gap-1.5 text-xs text-slate-500">
             <Lock className="h-3.5 w-3.5" aria-hidden="true" />

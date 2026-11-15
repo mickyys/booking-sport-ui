@@ -3,11 +3,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useAuth0 } from '@auth0/auth0-react';
-import { ArrowLeft, Ban, CheckCircle2, ExternalLink, PauseCircle, Star } from 'lucide-react';
+import { ArrowLeft, Ban, CheckCircle2, ExternalLink, Lock, PauseCircle, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiError, CenterStatus, CommercialView, SuperadminCenter, sa } from '@/api/superadminApi';
 import { Field, PageHeader, PaymentModeBadge, StatusBadge, fieldCls, formatDateTime } from '@/components/superadmin/ui';
-import { FeaturedDialog, StatusDialog } from '@/components/superadmin/CenterDialogs';
+import { CommissionSimulatorDialog, FeaturedDialog, PrivateDialog, StatusDialog } from '@/components/superadmin/CenterDialogs';
 
 const actionBtn = 'inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600';
 
@@ -20,6 +20,8 @@ export default function CenterDetailPage() {
   const [busy, setBusy] = useState(false);
   const [statusTarget, setStatusTarget] = useState<CenterStatus | null>(null);
   const [featuredOpen, setFeaturedOpen] = useState(false);
+  const [simOpen, setSimOpen] = useState(false);
+  const [privateOpen, setPrivateOpen] = useState(false);
   const [error, setError] = useState('');
   const [commercial, setCommercial] = useState<CommercialView | null>(null);
   const [freeMonthBusy, setFreeMonthBusy] = useState(false);
@@ -59,6 +61,11 @@ export default function CenterDetailPage() {
     for (const k of ['marketplace_fee_percent', 'retention_percent', 'partial_payment_percent']) {
       if (!(pct(k) >= 0 && pct(k) <= 100)) { toast.error('Los porcentajes deben estar entre 0 y 100'); return; }
     }
+    const fee = pct('marketplace_fee_percent');
+    if (fee > 0 && fee <= 3.7961) {
+      toast.error('La comisión debe ser 0 o mayor a 3,80% (costo de Mercado Pago)');
+      return;
+    }
     const body: Record<string, unknown> = {
       slug: form.slug, address: form.address, city: form.city,
       marketplace_fee_percent: pct('marketplace_fee_percent'),
@@ -72,11 +79,10 @@ export default function CenterDetailPage() {
     setBusy(true);
     try {
       await sa.updateSettings(getAccessTokenSilently, id, body);
-      // Con el modelo comercial activo la comisión efectiva sale de
-      // `commercial.online_payment.commission`: se mantiene alineada con el
-      // porcentaje guardado arriba.
+      // La comisión efectiva sale de `commercial.online_payment.commission`:
+      // se mantiene alineada con el porcentaje guardado arriba (permite 0%).
       const online = (form.payment_mode || center?.payment_mode) === 'pay_online';
-      if (commercial?.enforced && online) {
+      if (online) {
         await sa.setCommission(getAccessTokenSilently, id, pct('marketplace_fee_percent'));
       }
       toast.success('Cambios guardados');
@@ -125,6 +131,7 @@ export default function CenterDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={st} />
             <PaymentModeBadge mode={center.payment_mode} />
+            {center.is_private && <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-800"><Lock size={14} aria-hidden="true" />Privado</span>}
             {center.is_featured && <span className="inline-flex items-center gap-1 text-xs font-semibold text-yellow-800"><Star size={14} className="fill-yellow-400 text-yellow-500" aria-hidden="true" />Destacado · {center.featured_priority ?? 0}</span>}
           </div>
           {center.status_reason && st !== 'active' && (
@@ -176,6 +183,7 @@ export default function CenterDetailPage() {
           )}
           <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
             <button type="button" className={actionBtn} onClick={() => setFeaturedOpen(true)}><Star size={16} aria-hidden="true" /> Destacado</button>
+            <button type="button" className={actionBtn} onClick={() => setPrivateOpen(true)}><Lock size={16} aria-hidden="true" /> {center.is_private ? 'Privado' : 'Hacer privado'}</button>
             {st === 'active' ? (
               <>
                 <button type="button" className={actionBtn} onClick={() => setStatusTarget('suspended')}><PauseCircle size={16} aria-hidden="true" /> Suspender</button>
@@ -208,8 +216,9 @@ export default function CenterDetailPage() {
                   <option value="pay_online">Pago online</option>
                 </select>
               </Field>
-              <Field label="Comisión marketplace (%)" htmlFor="fee" hint="Cobro de ReservaloYA por reserva pagada online. Solo la define la plataforma."><input id="fee" type="number" min={0} max={100} step={1} value={String(form.marketplace_fee_percent)} onChange={set('marketplace_fee_percent')} className={fieldCls} /></Field>
+              <Field label="Comisión marketplace (%)" htmlFor="fee" hint="Se suma al precio y la paga el cliente. El centro recibe el precio completo. Mínimo 4% (o 0%) para cubrir el costo de Mercado Pago. Con conexión manual se factura aparte."><input id="fee" type="number" min={0} max={100} step={1} value={String(form.marketplace_fee_percent)} onChange={set('marketplace_fee_percent')} className={fieldCls} /></Field>
             </div>
+            <button type="button" className={actionBtn} onClick={() => setSimOpen(true)}>Simular comisión</button>
           </fieldset>
 
           <fieldset className="space-y-4">
@@ -238,6 +247,20 @@ export default function CenterDetailPage() {
           try { await sa.setStatus(getAccessTokenSilently, id, s, reason); toast.success('Estado actualizado'); setStatusTarget(null); load(); }
           catch (e) { toast.error(apiError(e)); }
         }}
+      />
+      <PrivateDialog
+        center={privateOpen ? center : null}
+        onClose={() => setPrivateOpen(false)}
+        onConfirm={async (v) => {
+          try { await sa.setPrivate(getAccessTokenSilently, id, v); toast.success('Acceso del centro actualizado'); setPrivateOpen(false); load(); }
+          catch (e) { toast.error(apiError(e)); }
+        }}
+      />
+      <CommissionSimulatorDialog
+        open={simOpen}
+        centerId={id}
+        initialRate={Number(form.marketplace_fee_percent) || commercial?.commission?.effective || 0}
+        onClose={() => setSimOpen(false)}
       />
       <FeaturedDialog
         center={featuredOpen ? center : null}

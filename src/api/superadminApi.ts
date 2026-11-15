@@ -15,6 +15,7 @@ export interface SuperadminCenter {
   status_reason?: string;
   status_changed_at?: string;
   is_featured: boolean;
+  is_private?: boolean;
   featured_priority?: number;
   featured_until?: string;
   payment_mode?: 'pay_online' | 'pay_at_center' | '';
@@ -48,6 +49,20 @@ export interface CommercialView {
   commission?: { effective: number; source: string; configured?: number; billed_in_split: boolean };
 }
 
+export interface CommissionSimulation {
+  price: number;
+  rate: number;
+  surcharge: number;
+  total: number;
+  mp_rate: number;
+  mp_cost: number;
+  marketplace_fee: number;
+  center_receives: number;
+  platform_net: number;
+  billed_in_split: boolean;
+  below_mp_cost: boolean;
+}
+
 export interface CenterStats {
   total: number;
   active: number;
@@ -55,6 +70,7 @@ export interface CenterStats {
   blocked: number;
   featured: number;
   pay_online: number;
+  private?: number;
 }
 
 export interface BookingErrorLog {
@@ -72,6 +88,10 @@ export interface BookingErrorLog {
   booking_code?: string;
   sport_center_id?: string;
   court_id?: string;
+  court_name?: string;
+  booking_date?: string;
+  start_time?: string;
+  end_time?: string;
   mp_payment_id?: string;
   method?: string;
   path?: string;
@@ -105,6 +125,12 @@ export interface SuperadminBooking {
   // estos campos (sin guest_details ni user_id).
   customer_name?: string;
   customer_phone?: string;
+  payment_info?: {
+    mp_fee_amount?: number;
+    commission_amount?: number;
+    commission_rate?: number;
+    net_received_amount?: number;
+  };
   user_id?: string;
 }
 
@@ -192,6 +218,10 @@ export const sa = {
   setCommission: async (t: GetToken, id: string, value: number | null): Promise<CommercialView> =>
     (await api.put(`/superadmin/sport-centers/${id}/commercial/commission`, { value }, await cfg(t))).data,
 
+  /** Simula el cobro de una reserva con las reglas reales del backend. */
+  simulateCommission: async (t: GetToken, id: string, price: number, rate?: number): Promise<CommissionSimulation> =>
+    (await api.get(`/superadmin/sport-centers/${id}/commercial/simulate`, { ...(await cfg(t)), params: { price, ...(rate !== undefined ? { rate } : {}) } })).data,
+
   commercial: async (t: GetToken, id: string): Promise<CommercialView> =>
     (await api.get(`/superadmin/sport-centers/${id}/commercial`, await cfg(t))).data,
 
@@ -204,6 +234,8 @@ export const sa = {
   setStatus: async (t: GetToken, id: string, status: CenterStatus, reason: string) =>
     (await api.put(`/superadmin/sport-centers/${id}/status`, { status, reason }, await cfg(t))).data,
 
+  setPrivate: async (t: GetToken, id: string, body: { is_private: boolean; reason?: string }) =>
+    (await api.put(`/superadmin/sport-centers/${id}/private`, body, await cfg(t))).data,
   setFeatured: async (t: GetToken, id: string, body: { is_featured: boolean; priority: number; until?: string | null }) =>
     (await api.put(`/superadmin/sport-centers/${id}/featured`, body, await cfg(t))).data,
 

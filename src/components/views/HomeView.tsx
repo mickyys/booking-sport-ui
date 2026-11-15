@@ -325,7 +325,7 @@ const MarketplacePage: React.FC = () => {
 
         {sportCenters.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {sportCenters.filter((center) => !center.isPrivate).map((center, index) => (
+            {sportCenters.map((center, index) => (
               <TenantCard key={center.id} center={center} index={index} />
             ))}
           </div>

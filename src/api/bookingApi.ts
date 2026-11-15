@@ -181,6 +181,7 @@ export interface FacilityPaymentOptions {
   partial_percent: number;
   price_per_day: number;
   capacity: number;
+  service_fee_percent: number;
 }
 
 export const getFacilityPaymentOptions = async (spaceId: string): Promise<FacilityPaymentOptions> => {
@@ -205,6 +206,7 @@ export interface FacilityBookingDay {
   price: number;
   paid_amount: number;
   pending_amount: number;
+  service_fee_amount?: number;
   is_partial_payment: boolean;
   created_at: string;
 }
@@ -215,6 +217,8 @@ export interface CreateFacilityBookingResult {
   init_point?: string;
   total: number;
   amount_to_pay: number;
+  service_fee?: number;
+  total_to_pay?: number;
   bookings: FacilityBookingDay[];
 }
 
