@@ -1158,7 +1158,7 @@ export const AdminAgenda: React.FC = () => {
                         headerToolbar={false}
                         height="auto"
                         slotMinTime="08:00:00"
-                        slotMaxTime="23:00:00"
+                        slotMaxTime="24:00:00"
                         allDaySlot
                         allDayText="Día completo"
                         nowIndicator
